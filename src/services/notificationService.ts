@@ -127,16 +127,23 @@ class NotificationService {
       if (!stored) return false;
       
       const allNotifications: Notification[] = JSON.parse(stored);
-      const filteredNotifications = allNotifications.filter(n => n.id !== notificationId);
+      const notificationIndex = allNotifications.findIndex(n => n.id === notificationId);
       
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredNotifications));
+      if (notificationIndex === -1) return false;
+      
+      allNotifications[notificationIndex] = {
+        ...allNotifications[notificationIndex],
+        status: 'archived'
+      };
+      
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allNotifications));
       return true;
     } catch (error) {
       console.error('Error archiving notification:', error);
       return false;
     }
   }
-  
+
   // Get unread notification count
   getUnreadCount(userId: string): number {
     const notifications = this.getNotifications(userId);
@@ -306,6 +313,51 @@ class NotificationService {
     }
     
     return this.createNotification(notificationData);
+  }
+
+  // Delete notification permanently
+  deleteNotification(notificationId: string): boolean {
+    try {
+      const stored = localStorage.getItem(this.STORAGE_KEY);
+      if (!stored) return false;
+      
+      const allNotifications: Notification[] = JSON.parse(stored);
+      const filteredNotifications = allNotifications.filter(n => n.id !== notificationId);
+      
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredNotifications));
+      return true;
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      return false;
+    }
+  }
+
+  // Unarchive notification (restore from archive)
+  unarchiveNotification(notificationId: string): boolean {
+    try {
+      const stored = localStorage.getItem(this.STORAGE_KEY);
+      if (!stored) return false;
+      
+      const allNotifications: Notification[] = JSON.parse(stored);
+      const notificationIndex = allNotifications.findIndex(n => n.id === notificationId);
+      
+      if (notificationIndex === -1) return false;
+      
+      // If it was previously read, keep it as read, otherwise mark as unread
+      const previousStatus = allNotifications[notificationIndex].status;
+      const newStatus = previousStatus === 'read' ? 'read' : 'unread';
+      
+      allNotifications[notificationIndex] = {
+        ...allNotifications[notificationIndex],
+        status: newStatus
+      };
+      
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allNotifications));
+      return true;
+    } catch (error) {
+      console.error('Error unarchiving notification:', error);
+      return false;
+    }
   }
 
 }

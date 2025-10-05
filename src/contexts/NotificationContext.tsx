@@ -9,6 +9,8 @@ interface NotificationContextType {
   markAsRead: (id: string) => void;
   markMultipleAsRead: (ids: string[]) => void;
   archiveNotification: (id: string) => void;
+  unarchiveNotification: (id: string) => void;
+  deleteNotification: (id: string) => void;
   refreshNotifications: () => void;
   createNotification: (notification: Omit<Notification, 'id' | 'createdAt' | 'status'>) => void;
 }
@@ -69,10 +71,53 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const archiveNotification = (id: string) => {
     const success = notificationService.archiveNotification(id);
     if (success) {
-      setNotifications(prev => prev.filter(notification => notification.id !== id));
+      setNotifications(prev => 
+        prev.map(notification => 
+          notification.id === id 
+            ? { ...notification, status: 'archived' } 
+            : notification
+        )
+      );
       // Update unread count if the archived notification was unread
       const archivedNotification = notifications.find(n => n.id === id);
       if (archivedNotification && archivedNotification.status === 'unread') {
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    }
+  };
+
+  const unarchiveNotification = (id: string) => {
+    const success = notificationService.unarchiveNotification(id);
+    if (success) {
+      setNotifications(prev => {
+        const notification = prev.find(n => n.id === id);
+        if (!notification) return prev;
+        
+        // If it was previously read, keep it as read, otherwise mark as unread
+        const previousStatus = notification.status;
+        const newStatus = previousStatus === 'read' ? 'read' : 'unread';
+        
+        return prev.map(n => 
+          n.id === id 
+            ? { ...n, status: newStatus } 
+            : n
+        );
+      });
+      // Update unread count if the unarchived notification becomes unread
+      const unarchivedNotification = notifications.find(n => n.id === id);
+      if (unarchivedNotification && unarchivedNotification.status !== 'read') {
+        setUnreadCount(prev => prev + 1);
+      }
+    }
+  };
+
+  const deleteNotification = (id: string) => {
+    const success = notificationService.deleteNotification(id);
+    if (success) {
+      setNotifications(prev => prev.filter(notification => notification.id !== id));
+      // Update unread count if the deleted notification was unread
+      const deletedNotification = notifications.find(n => n.id === id);
+      if (deletedNotification && deletedNotification.status === 'unread') {
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
     }
@@ -96,6 +141,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     markAsRead,
     markMultipleAsRead,
     archiveNotification,
+    unarchiveNotification,
+    deleteNotification,
     refreshNotifications,
     createNotification
   };

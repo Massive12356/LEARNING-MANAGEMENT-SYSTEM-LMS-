@@ -5,6 +5,7 @@ import { BellIcon, BellAlertIcon, CheckCircleIcon, ExclamationTriangleIcon, Info
 import { XMarkIcon, EllipsisHorizontalIcon } from '@heroicons/react/24/solid';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { Notification, NotificationType } from '../../types';
+import { NotificationModal } from '../notifications/NotificationModal';
 
 const getNotificationIcon = (type: NotificationType) => {
   switch (type) {
@@ -74,6 +75,8 @@ export const NotificationBell: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [notificationSettings, setNotificationSettings] = useState<any>(null);
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Load notification settings
   useEffect(() => {
@@ -109,6 +112,15 @@ export const NotificationBell: React.FC = () => {
   // Filter to show only recent notifications (last 10)
   const recentNotifications = filteredNotifications.slice(0, 10);
   const unreadNotifications = recentNotifications.filter(n => n.status === 'unread');
+
+  const handleNotificationClick = (notification: Notification) => {
+    setSelectedNotification(notification);
+    setIsModalOpen(true);
+    // Mark as read when opening the modal
+    if (notification.status === 'unread') {
+      markAsRead(notification.id);
+    }
+  };
 
   const handleMarkAllAsRead = () => {
     const unreadIds = unreadNotifications.map(n => n.id);
@@ -187,7 +199,8 @@ export const NotificationBell: React.FC = () => {
                 {recentNotifications.map((notification) => (
                   <li 
                     key={notification.id} 
-                    className={`p-4 ${notification.status === 'unread' ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}
+                    className={`p-4 ${notification.status === 'unread' ? 'bg-blue-50 dark:bg-blue-900/10' : ''} cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700`}
+                    onClick={() => handleNotificationClick(notification)}
                   >
                     <div className="flex">
                       <div className="flex-shrink-0">
@@ -266,6 +279,25 @@ export const NotificationBell: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Notification Modal */}
+      <NotificationModal
+        notification={selectedNotification as any}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onMarkAsRead={selectedNotification?.status === 'unread' ? () => {
+          if (selectedNotification) {
+            markAsRead(selectedNotification.id);
+            setIsModalOpen(false);
+          }
+        } : undefined}
+        onArchive={() => {
+          if (selectedNotification) {
+            archiveNotification(selectedNotification.id);
+            setIsModalOpen(false);
+          }
+        }}
+      />
     </div>
   );
 };

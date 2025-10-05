@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { NotificationModal } from '../../components/notifications/NotificationModal';
 import { 
   BellIcon, 
   BellAlertIcon, 
@@ -9,17 +10,22 @@ import {
   ExclamationTriangleIcon, 
   InformationCircleIcon,
   ArchiveBoxIcon,
-  CheckIcon
+  CheckIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline';
 
 export const NotificationList: React.FC = () => {
-  const { notifications, markAsRead, markMultipleAsRead, archiveNotification } = useNotifications();
-  const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
+  const { notifications, markAsRead, markMultipleAsRead, archiveNotification, unarchiveNotification, deleteNotification } = useNotifications();
+  const [filter, setFilter] = useState<'all' | 'unread' | 'read' | 'archived'>('all');
   const [selectedNotifications, setSelectedNotifications] = useState<string[]>([]);
+  const [selectedNotification, setSelectedNotification] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Filter notifications based on selected filter
   const filteredNotifications = notifications.filter(notification => {
     if (filter === 'unread') return notification.status === 'unread';
     if (filter === 'read') return notification.status === 'read';
+    if (filter === 'archived') return notification.status === 'archived';
     return true;
   });
 
@@ -51,6 +57,25 @@ export const NotificationList: React.FC = () => {
   const handleArchiveSelected = () => {
     selectedNotifications.forEach(id => archiveNotification(id));
     setSelectedNotifications([]);
+  };
+
+  const handleUnarchiveSelected = () => {
+    selectedNotifications.forEach(id => unarchiveNotification(id));
+    setSelectedNotifications([]);
+  };
+
+  const handleDeleteSelected = () => {
+    selectedNotifications.forEach(id => deleteNotification(id));
+    setSelectedNotifications([]);
+  };
+
+  const handleNotificationClick = (notification: any) => {
+    setSelectedNotification(notification);
+    setIsModalOpen(true);
+    // Mark as read when opening the modal
+    if (notification.status === 'unread') {
+      markAsRead(notification.id);
+    }
   };
 
   const formatTime = (date: Date) => {
@@ -138,23 +163,47 @@ export const NotificationList: React.FC = () => {
               
               {selectedNotifications.length > 0 && (
                 <div className="flex items-center space-x-2">
+                  {filter !== 'archived' && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleMarkSelectedAsRead}
+                        className="flex items-center space-x-1"
+                      >
+                        <CheckIcon className="h-4 w-4" />
+                        <span>Mark as read</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleArchiveSelected}
+                        className="flex items-center space-x-1"
+                      >
+                        <ArchiveBoxIcon className="h-4 w-4" />
+                        <span>Archive</span>
+                      </Button>
+                    </>
+                  )}
+                  {filter === 'archived' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleUnarchiveSelected}
+                      className="flex items-center space-x-1"
+                    >
+                      <ArchiveBoxIcon className="h-4 w-4" />
+                      <span>Unarchive</span>
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleMarkSelectedAsRead}
+                    onClick={handleDeleteSelected}
                     className="flex items-center space-x-1"
                   >
-                    <CheckIcon className="h-4 w-4" />
-                    <span>Mark as read</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleArchiveSelected}
-                    className="flex items-center space-x-1"
-                  >
-                    <ArchiveBoxIcon className="h-4 w-4" />
-                    <span>Archive</span>
+                    <TrashIcon className="h-4 w-4" />
+                    <span>Delete</span>
                   </Button>
                 </div>
               )}
@@ -193,6 +242,16 @@ export const NotificationList: React.FC = () => {
               >
                 Read
               </button>
+              <button
+                onClick={() => setFilter('archived')}
+                className={`px-3 py-1 text-sm rounded-full ${
+                  filter === 'archived'
+                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                }`}
+              >
+                Archived
+              </button>
             </div>
           </div>
         </CardHeader>
@@ -209,7 +268,9 @@ export const NotificationList: React.FC = () => {
                   ? "You don't have any notifications yet." 
                   : filter === 'unread' 
                     ? "You're all caught up! No unread notifications." 
-                    : "You haven't read any notifications yet."}
+                    : filter === 'read'
+                      ? "You haven't read any notifications yet."
+                      : "No archived notifications."}
               </p>
             </div>
           ) : (
@@ -217,13 +278,17 @@ export const NotificationList: React.FC = () => {
               {filteredNotifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`p-4 border rounded-lg transition-colors ${getNotificationColor(notification.status)}`}
+                  className={`p-4 border rounded-lg transition-colors ${getNotificationColor(notification.status)} cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700`}
+                  onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex items-start space-x-3">
                     <input
                       type="checkbox"
                       checked={selectedNotifications.includes(notification.id)}
-                      onChange={() => handleSelectNotification(notification.id)}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        handleSelectNotification(notification.id);
+                      }}
                       className="mt-1 rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                     />
                     
@@ -246,12 +311,27 @@ export const NotificationList: React.FC = () => {
                           </p>
                         </div>
                         
-                        <button
-                          onClick={() => archiveNotification(notification.id)}
-                          className="ml-2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                        >
-                          <ArchiveBoxIcon className="h-4 w-4" />
-                        </button>
+                        {filter !== 'archived' ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              archiveNotification(notification.id);
+                            }}
+                            className="ml-2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                          >
+                            <ArchiveBoxIcon className="h-4 w-4" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              unarchiveNotification(notification.id);
+                            }}
+                            className="ml-2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                          >
+                            <ArchiveBoxIcon className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                       
                       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -262,12 +342,27 @@ export const NotificationList: React.FC = () => {
                           )}
                         </div>
                         
-                        {notification.status === 'unread' && (
+                        {notification.status === 'unread' && filter !== 'archived' && (
                           <button
-                            onClick={() => markAsRead(notification.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              markAsRead(notification.id);
+                            }}
                             className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                           >
                             Mark as read
+                          </button>
+                        )}
+                        
+                        {filter === 'read' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteNotification(notification.id);
+                            }}
+                            className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                          >
+                            Delete
                           </button>
                         )}
                       </div>
@@ -279,6 +374,31 @@ export const NotificationList: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Notification Modal */}
+      <NotificationModal
+        notification={selectedNotification}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onMarkAsRead={selectedNotification?.status === 'unread' ? () => {
+          if (selectedNotification) {
+            markAsRead(selectedNotification.id);
+            setIsModalOpen(false);
+          }
+        } : undefined}
+        onArchive={() => {
+          if (selectedNotification) {
+            archiveNotification(selectedNotification.id);
+            setIsModalOpen(false);
+          }
+        }}
+        onUnarchive={() => {
+          if (selectedNotification) {
+            unarchiveNotification(selectedNotification.id);
+            setIsModalOpen(false);
+          }
+        }}
+      />
     </div>
   );
 };

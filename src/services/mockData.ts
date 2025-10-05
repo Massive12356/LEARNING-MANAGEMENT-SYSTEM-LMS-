@@ -113,8 +113,8 @@ const sampleModules: Module[] = [
         description: 'Understanding React fundamentals',
         type: 'video',
         content: {
-          url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-          duration: 15
+          type: 'embed',
+          embedUrl: 'https://www.youtube.com/embed/l9AzO1FMgM8'
         },
         order: 1,
         moduleId: 'module-1',
@@ -161,8 +161,8 @@ const sampleModules: Module[] = [
         description: 'Learn about functional and class components',
         type: 'video',
         content: {
-          url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-          duration: 25
+          type: 'embed',
+          embedUrl: 'https://www.youtube.com/embed/l9AzO1FMgM8'
         },
         order: 1,
         moduleId: 'module-2',
@@ -204,7 +204,31 @@ export const mockCourses: Course[] = [
     isGraded: true,
     organizationId: 'org-1',
     teacherId: 'user-2',
-    modules: [],
+    modules: [
+      {
+        id: 'module-3',
+        title: 'TypeScript Advanced Concepts',
+        description: 'Deep dive into advanced TypeScript features',
+        order: 1,
+        courseId: 'course-2',
+        lessons: [
+          {
+            id: 'lesson-5',
+            title: 'Advanced Types',
+            description: 'Learn about advanced type system features',
+            type: 'video',
+            content: {
+              type: 'embed',
+              embedUrl: 'https://www.youtube.com/embed/l9AzO1FMgM8'
+            },
+            order: 1,
+            moduleId: 'module-3',
+            duration: 30,
+            isRequired: true,
+          }
+        ]
+      }
+    ],
     createdAt: new Date('2024-01-05'),
     updatedAt: new Date('2024-01-10'),
   },
@@ -221,7 +245,31 @@ export const mockCourses: Course[] = [
     isGraded: false,
     organizationId: 'org-2',
     teacherId: 'user-3',
-    modules: [],
+    modules: [
+      {
+        id: 'module-4',
+        title: 'Leadership Principles',
+        description: 'Core principles of effective leadership',
+        order: 1,
+        courseId: 'course-3',
+        lessons: [
+          {
+            id: 'lesson-6',
+            title: 'Introduction to Leadership',
+            description: 'Understanding what makes a great leader',
+            type: 'video',
+            content: {
+              type: 'embed',
+              embedUrl: 'https://www.youtube.com/embed/l9AzO1FMgM8'
+            },
+            order: 1,
+            moduleId: 'module-4',
+            duration: 20,
+            isRequired: true,
+          }
+        ]
+      }
+    ],
     createdAt: new Date('2024-01-10'),
     updatedAt: new Date('2024-01-12'),
   }
