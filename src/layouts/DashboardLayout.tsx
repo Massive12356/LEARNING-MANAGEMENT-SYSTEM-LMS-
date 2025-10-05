@@ -22,7 +22,9 @@ import {
   ArrowUturnLeftIcon,
   MagnifyingGlassIcon,
   ChevronDownIcon,
-  UserIcon
+  UserIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline';
 import { NotificationBell } from '../components/ui/NotificationBell';
 import toast from 'react-hot-toast';
@@ -35,6 +37,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const { user, logout, isViewingAs, exitViewAs, originalUser } = useAuth();
   const { theme, toggleTheme } = useUI();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loadingOrg, setLoadingOrg] = useState(true);
@@ -282,7 +285,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
       {/* Sidebar */}
       <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
-        fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 transform transition-transform 
+        fixed inset-y-0 left-0 z-50 ${sidebarCollapsed ? 'w-20' : 'w-64'} bg-white dark:bg-gray-800 transform transition-all duration-300 ease-in-out
         lg:translate-x-0 lg:static lg:inset-0 shadow-xl`}>
         
         <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-700">
@@ -290,17 +293,32 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             <div className="p-1.5 bg-blue-600 rounded-lg">
               <AcademicCapIcon className="h-6 w-6 text-white" />
             </div>
-            <span className="text-lg font-semibold text-gray-900 dark:text-white">
-              LMS Platform
-            </span>
+            {!sidebarCollapsed && (
+              <span className="text-lg font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+                LMS Platform
+              </span>
+            )}
           </Link>
           
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-1 rounded-md text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-          >
-            <XMarkIcon className="h-6 w-6" />
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="p-1 rounded-md text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hidden lg:block"
+            >
+              {sidebarCollapsed ? (
+                <ChevronRightIcon className="h-5 w-5" />
+              ) : (
+                <ChevronLeftIcon className="h-5 w-5" />
+              )}
+            </button>
+            
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden p-1 rounded-md text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+            >
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 flex flex-col overflow-y-auto">
@@ -317,17 +335,21 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <EyeIcon className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-                  <span className="text-xs font-medium text-yellow-800 dark:text-yellow-200">
-                    Viewing as {user.firstName} {user.lastName}
-                  </span>
+                  {!sidebarCollapsed && (
+                    <span className="text-xs font-medium text-yellow-800 dark:text-yellow-200">
+                      Viewing as {user.firstName} {user.lastName}
+                    </span>
+                  )}
                 </div>
-                <button
-                  onClick={handleViewAsExit}
-                  className="text-xs text-yellow-700 dark:text-yellow-300 hover:text-yellow-900 dark:hover:text-yellow-100 flex items-center space-x-1"
-                >
-                  <ArrowUturnLeftIcon className="h-3 w-3" />
-                  <span>Exit</span>
-                </button>
+                {!sidebarCollapsed && (
+                  <button
+                    onClick={handleViewAsExit}
+                    className="text-xs text-yellow-700 dark:text-yellow-300 hover:text-yellow-900 dark:hover:text-yellow-100 flex items-center space-x-1"
+                  >
+                    <ArrowUturnLeftIcon className="h-3 w-3" />
+                    <span>Exit</span>
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -340,15 +362,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex items-center ${sidebarCollapsed ? 'justify-center px-3' : 'space-x-3 px-3'} py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                   onClick={() => setSidebarOpen(false)}
+                  title={sidebarCollapsed ? item.name : undefined}
                 >
                   <item.icon className="h-5 w-5" />
-                  <span>{item.name}</span>
+                  {!sidebarCollapsed && <span>{item.name}</span>}
                 </Link>
               );
             })}
@@ -358,27 +381,29 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
             <button
               onClick={toggleTheme}
-              className="flex items-center space-x-3 w-full px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              className={`flex items-center ${sidebarCollapsed ? 'justify-center px-3' : 'space-x-3 px-3'} py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors`}
+              title={sidebarCollapsed ? (theme === 'light' ? 'Dark Mode' : 'Light Mode') : undefined}
             >
               {theme === 'light' ? (
                 <>
                   <MoonIcon className="h-5 w-5" />
-                  <span>Dark Mode</span>
+                  {!sidebarCollapsed && <span>Dark Mode</span>}
                 </>
               ) : (
                 <>
                   <SunIcon className="h-5 w-5" />
-                  <span>Light Mode</span>
+                  {!sidebarCollapsed && <span>Light Mode</span>}
                 </>
               )}
             </button>
             
             <button
               onClick={handleLogout}
-              className="flex items-center space-x-3 w-full px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              className={`flex items-center ${sidebarCollapsed ? 'justify-center px-3' : 'space-x-3 px-3'} py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors`}
+              title={sidebarCollapsed ? 'Sign Out' : undefined}
             >
               <ArrowRightOnRectangleIcon className="h-5 w-5" />
-              <span>Sign Out</span>
+              {!sidebarCollapsed && <span>Sign Out</span>}
             </button>
           </div>
         </div>
@@ -393,7 +418,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div 
+        className="flex-1 flex flex-col overflow-hidden"
+        style={{ 
+          marginLeft: '0px',
+          transition: 'margin-left 0.3s ease-in-out'
+        }}
+      >
         {/* Header */}
         <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
           <div className="px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
