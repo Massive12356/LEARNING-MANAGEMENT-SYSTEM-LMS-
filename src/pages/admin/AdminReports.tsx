@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import * as React from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { exportToCSV } from '../../utils/csvParser';
 import { 
   ChartBarIcon,
   UserGroupIcon,
@@ -36,46 +38,177 @@ export function AdminReports() {
   }, [user, dateRange]);
 
   const loadReportData = async () => {
+    if (!user?.organizationId) return;
+    
     try {
       // Mock data - replace with real API calls
       const mockData = {
         totalUsers: 1247,
         activeUsers: 892,
-        totalCourses: 45,
-        completedCourses: 1834,
-        totalEnrollments: 3421,
-        certificatesIssued: 567,
-        averageCompletionRate: 73.5,
-        averageTimeSpent: 2.4, // hours
+        totalCourses: 42,
+        completedCourses: 312,
+        totalEnrollments: 1847,
+        certificatesIssued: 268,
+        averageCompletionRate: 74.3,
+        averageTimeSpent: 1247,
         userGrowth: [
-          { date: '2024-01-01', users: 1000 },
-          { date: '2024-01-15', users: 1150 },
-          { date: '2024-01-30', users: 1247 }
+          { date: '2024-01-01', count: 1120 },
+          { date: '2024-01-08', count: 1156 },
+          { date: '2024-01-15', count: 1189 },
+          { date: '2024-01-22', count: 1215 },
+          { date: '2024-01-29', count: 1247 }
         ],
         coursePopularity: [
-          { course: 'React Development', enrollments: 234 },
-          { course: 'TypeScript Advanced', enrollments: 189 },
-          { course: 'JavaScript Fundamentals', enrollments: 156 }
+          { course: 'React Development', enrollments: 342 },
+          { course: 'TypeScript Patterns', enrollments: 298 },
+          { course: 'JavaScript Fundamentals', enrollments: 276 },
+          { course: 'UI/UX Design Principles', enrollments: 234 },
+          { course: 'Data Structures & Algorithms', enrollments: 197 }
         ],
         completionTrends: [
-          { week: 'Week 1', completions: 45 },
-          { week: 'Week 2', completions: 52 },
-          { week: 'Week 3', completions: 38 },
-          { week: 'Week 4', completions: 61 }
+          { date: '2024-01-01', completions: 24 },
+          { date: '2024-01-08', completions: 31 },
+          { date: '2024-01-15', completions: 28 },
+          { date: '2024-01-22', completions: 35 },
+          { date: '2024-01-29', completions: 42 }
         ]
       };
 
       setReportData(mockData);
     } catch (error) {
-      console.error('Failed to load report data:', error);
+      console.error('Failed to load admin report:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const exportReport = (format: 'csv' | 'pdf') => {
-    // TODO: Implement report export
-    console.log(`Exporting report as ${format}`);
+    if (format === 'csv') {
+      // Export as CSV
+      const csvData = [
+        // Summary data
+        { Metric: 'Total Users', Value: reportData.totalUsers },
+        { Metric: 'Active Users', Value: reportData.activeUsers },
+        { Metric: 'Total Courses', Value: reportData.totalCourses },
+        { Metric: 'Completed Courses', Value: reportData.completedCourses },
+        { Metric: 'Total Enrollments', Value: reportData.totalEnrollments },
+        { Metric: 'Certificates Issued', Value: reportData.certificatesIssued },
+        { Metric: 'Average Completion Rate', Value: `${reportData.averageCompletionRate}%` },
+        { Metric: 'Average Time Spent (minutes)', Value: reportData.averageTimeSpent }
+      ];
+      
+      exportToCSV(csvData, `admin-report-${new Date().toISOString().split('T')[0]}.csv`);
+    } else {
+      // Export as PDF (HTML for now, as per project requirements)
+      const reportContent = generateReportHTML();
+      const blob = new Blob([reportContent], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `admin-report-${new Date().toISOString().split('T')[0]}.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const generateReportHTML = (): string => {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Analytics Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+        .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #ddd; padding-bottom: 20px; }
+        .section { margin-bottom: 30px; }
+        .section h2 { color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: #f9fafb; padding: 20px; border-radius: 8px; text-align: center; }
+        .stat-value { font-size: 24px; font-weight: bold; color: #1f2937; }
+        .stat-label { font-size: 14px; color: #6b7280; margin-top: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f9fafb; font-weight: 600; }
+        .generated-date { text-align: center; color: #6b7280; margin-top: 40px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Admin Analytics Report</h1>
+        <p>Organization: ${user?.organizationId || 'Unknown'}</p>
+        <p>Generated on ${new Date().toLocaleDateString()}</p>
+    </div>
+
+    <div class="section">
+        <h2>Key Metrics</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">${reportData.totalUsers.toLocaleString()}</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${reportData.activeUsers.toLocaleString()}</div>
+                <div class="stat-label">Active Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${reportData.totalCourses}</div>
+                <div class="stat-label">Total Courses</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${reportData.certificatesIssued.toLocaleString()}</div>
+                <div class="stat-label">Certificates Issued</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Course Popularity</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Course</th>
+                    <th>Enrollments</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${reportData.coursePopularity.map(course => `
+                <tr>
+                    <td>${course.course}</td>
+                    <td>${course.enrollments}</td>
+                </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>User Growth Trend</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>User Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${reportData.userGrowth.map(entry => `
+                <tr>
+                    <td>${new Date(entry.date).toLocaleDateString()}</td>
+                    <td>${entry.count}</td>
+                </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="generated-date">
+        Report generated on ${new Date().toLocaleString()}
+    </div>
+</body>
+</html>
+    `;
   };
 
   if (loading) {

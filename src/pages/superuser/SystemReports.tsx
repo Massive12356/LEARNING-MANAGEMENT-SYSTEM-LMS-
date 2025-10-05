@@ -1,51 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import * as React from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { exportToCSV } from '../../utils/csvParser';
 import { 
   ChartBarIcon,
-  BuildingOfficeIcon,
   UserGroupIcon,
   BookOpenIcon,
+  TrophyIcon,
   ArrowDownTrayIcon,
-  GlobeAltIcon,
   ServerIcon,
   ClockIcon,
-  TrophyIcon
+  GlobeAltIcon,
+  BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 
-export  function SystemReports() {
+export function SystemReports() {
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('30');
   const [reportData, setReportData] = useState({
     platformOverview: {
-      totalOrganizations: 24,
-      totalUsers: 5847,
-      totalCourses: 342,
-      totalEnrollments: 12456,
-      certificatesIssued: 2134,
-      storageUsed: '2.4TB',
-      bandwidthUsed: '1.2TB',
-      uptime: '99.9%'
+      totalOrganizations: 0,
+      totalUsers: 0,
+      totalCourses: 0,
+      certificatesIssued: 0,
+      uptime: '',
+      responseTime: ''
     },
-    organizationComparison: [
-      { name: 'TechEd Academy', users: 1247, courses: 45, completions: 892, growth: '+12%' },
-      { name: 'Business Skills Institute', users: 892, courses: 32, completions: 634, growth: '+8%' },
-      { name: 'Creative Learning Hub', users: 634, courses: 28, completions: 445, growth: '+15%' },
-      { name: 'Healthcare Training', users: 445, courses: 22, completions: 312, growth: '+5%' }
-    ],
     systemMetrics: {
-      avgResponseTime: '120ms',
-      errorRate: '0.02%',
-      activeConnections: 3421,
-      peakConcurrentUsers: 1892,
-      databaseSize: '45GB',
-      backupStatus: 'Healthy'
+      avgResponseTime: '',
+      activeConnections: 0,
+      errorRate: '',
+      peakConcurrentUsers: 0
     },
+    organizationPerformance: [] as any[],
     usagePatterns: {
-      peakHours: '2-4 PM',
-      mostActiveDay: 'Wednesday',
-      avgSessionDuration: '24 minutes',
-      mobileUsage: '42%'
+      peakHours: '',
+      mostActiveDay: '',
+      avgSessionDuration: '',
+      mobileUsage: ''
     }
   });
 
@@ -56,8 +49,37 @@ export  function SystemReports() {
   const loadReportData = async () => {
     try {
       // Mock data loading - replace with real API calls
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // Data is already set in state initialization
+      const mockData = {
+        platformOverview: {
+          totalOrganizations: 24,
+          totalUsers: 5847,
+          totalCourses: 342,
+          certificatesIssued: 1247,
+          uptime: '99.9%',
+          responseTime: '120ms'
+        },
+        systemMetrics: {
+          avgResponseTime: '120ms',
+          activeConnections: 342,
+          errorRate: '0.02%',
+          peakConcurrentUsers: 1247
+        },
+        organizationPerformance: [
+          { name: 'Tech Academy', users: 1247, courses: 42, completions: 312, growth: '+12%', completionRate: '78%' },
+          { name: 'Business Skills Institute', users: 892, courses: 38, completions: 268, growth: '+8%', completionRate: '74%' },
+          { name: 'Creative Learning Hub', users: 634, courses: 31, completions: 197, growth: '+15%', completionRate: '82%' },
+          { name: 'Healthcare Training Center', users: 445, courses: 27, completions: 156, growth: '+5%', completionRate: '71%' },
+          { name: 'Engineering Excellence', users: 389, courses: 24, completions: 134, growth: '+22%', completionRate: '85%' }
+        ],
+        usagePatterns: {
+          peakHours: '9AM-11AM, 2PM-4PM',
+          mostActiveDay: 'Tuesday',
+          avgSessionDuration: '24 minutes',
+          mobileUsage: '34%'
+        }
+      };
+
+      setReportData(mockData);
     } catch (error) {
       console.error('Failed to load report data:', error);
     } finally {
@@ -66,8 +88,151 @@ export  function SystemReports() {
   };
 
   const exportReport = (format: 'csv' | 'pdf') => {
-    // TODO: Implement system report export
-    console.log(`Exporting system report as ${format}`);
+    if (format === 'csv') {
+      // Export as CSV
+      const csvData = [
+        // Platform overview
+        { Metric: 'Total Organizations', Value: reportData.platformOverview.totalOrganizations },
+        { Metric: 'Total Users', Value: reportData.platformOverview.totalUsers },
+        { Metric: 'Total Courses', Value: reportData.platformOverview.totalCourses },
+        { Metric: 'Certificates Issued', Value: reportData.platformOverview.certificatesIssued },
+        { Metric: 'System Uptime', Value: reportData.platformOverview.uptime },
+        { Metric: 'Avg Response Time', Value: reportData.platformOverview.responseTime },
+        // System metrics
+        { Metric: 'Active Connections', Value: reportData.systemMetrics.activeConnections },
+        { Metric: 'Error Rate', Value: reportData.systemMetrics.errorRate },
+        { Metric: 'Peak Concurrent Users', Value: reportData.systemMetrics.peakConcurrentUsers }
+      ];
+      
+      exportToCSV(csvData, `system-report-${new Date().toISOString().split('T')[0]}.csv`);
+    } else {
+      // Export as PDF (HTML for now, as per project requirements)
+      const reportContent = generateReportHTML();
+      const blob = new Blob([reportContent], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `system-report-${new Date().toISOString().split('T')[0]}.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const generateReportHTML = (): string => {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>System Reports</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+        .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #ddd; padding-bottom: 20px; }
+        .section { margin-bottom: 30px; }
+        .section h2 { color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: #f9fafb; padding: 20px; border-radius: 8px; text-align: center; }
+        .stat-value { font-size: 24px; font-weight: bold; color: #1f2937; }
+        .stat-label { font-size: 14px; color: #6b7280; margin-top: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f9fafb; font-weight: 600; }
+        .generated-date { text-align: center; color: #6b7280; margin-top: 40px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>System Reports</h1>
+        <p>Generated on ${new Date().toLocaleDateString()}</p>
+    </div>
+
+    <div class="section">
+        <h2>Platform Overview</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">${reportData.platformOverview.totalOrganizations}</div>
+                <div class="stat-label">Organizations</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${reportData.platformOverview.totalUsers.toLocaleString()}</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${reportData.platformOverview.totalCourses}</div>
+                <div class="stat-label">Total Courses</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${reportData.platformOverview.certificatesIssued.toLocaleString()}</div>
+                <div class="stat-label">Certificates</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Organization Performance</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Organization</th>
+                    <th>Users</th>
+                    <th>Courses</th>
+                    <th>Completions</th>
+                    <th>Growth</th>
+                    <th>Completion Rate</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${reportData.organizationPerformance.map(org => `
+                <tr>
+                    <td>${org.name}</td>
+                    <td>${org.users}</td>
+                    <td>${org.courses}</td>
+                    <td>${org.completions}</td>
+                    <td>${org.growth}</td>
+                    <td>${org.completionRate}</td>
+                </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>System Metrics</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Average Response Time</td>
+                    <td>${reportData.systemMetrics.avgResponseTime}</td>
+                </tr>
+                <tr>
+                    <td>Active Connections</td>
+                    <td>${reportData.systemMetrics.activeConnections}</td>
+                </tr>
+                <tr>
+                    <td>Error Rate</td>
+                    <td>${reportData.systemMetrics.errorRate}</td>
+                </tr>
+                <tr>
+                    <td>Peak Concurrent Users</td>
+                    <td>${reportData.systemMetrics.peakConcurrentUsers.toLocaleString()}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="generated-date">
+        Report generated on ${new Date().toLocaleString()}
+    </div>
+</body>
+</html>
+    `;
   };
 
   if (loading) {
@@ -252,7 +417,7 @@ export  function SystemReports() {
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                {reportData.organizationComparison.map((org, index) => {
+                {reportData.organizationPerformance.map((org, index) => {
                   const completionRate = ((org.completions / org.users) * 100).toFixed(1);
                   return (
                     <tr key={org.name} className="hover:bg-gray-50 dark:hover:bg-gray-800">

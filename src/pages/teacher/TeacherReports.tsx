@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import * as React from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { exportToCSV } from '../../utils/csvParser';
 import { mockApi } from '../../services/mockApi';
 import { 
   ChartBarIcon,
@@ -52,27 +54,27 @@ export function TeacherReports() {
     if (!user) return;
 
     try {
-      // TODO: Replace with real API call to GET /api/reports/teacher
+      // Mock data - replace with real API calls
       const mockReportData: TeacherReport = {
         courses: [
           {
             id: 'course-1',
-            title: 'Complete React Development Course',
+            title: 'React Development',
             studentsEnrolled: 156,
-            completionRate: 78.5,
-            averageScore: 87.2,
-            totalTimeSpent: 2340,
-            certificatesIssued: 122,
+            completionRate: 87.3,
+            averageScore: 89.5,
+            totalTimeSpent: 2847,
+            certificatesIssued: 136,
             status: 'live'
           },
           {
             id: 'course-2',
-            title: 'Advanced TypeScript Patterns',
-            studentsEnrolled: 89,
-            completionRate: 65.2,
-            averageScore: 82.1,
-            totalTimeSpent: 1560,
-            certificatesIssued: 58,
+            title: 'TypeScript Patterns',
+            studentsEnrolled: 124,
+            completionRate: 76.8,
+            averageScore: 82.3,
+            totalTimeSpent: 2156,
+            certificatesIssued: 95,
             status: 'live'
           },
           {
@@ -107,9 +109,119 @@ export function TeacherReports() {
     }
   };
 
-  const exportReport = () => {
-    // TODO: Implement CSV export functionality
-    console.log('Exporting teacher report...');
+  const exportReport = (format: 'csv' | 'pdf') => {
+    if (!reportData) return;
+    
+    if (format === 'csv') {
+      // Export as CSV
+      const csvData = [
+        // Overall stats
+        { Metric: 'Total Courses', Value: reportData.overallStats.totalCourses },
+        { Metric: 'Total Students', Value: reportData.overallStats.totalStudents },
+        { Metric: 'Average Completion Rate', Value: `${reportData.overallStats.averageCompletionRate.toFixed(1)}%` },
+        { Metric: 'Total Certificates Issued', Value: reportData.overallStats.totalCertificatesIssued }
+      ];
+      
+      exportToCSV(csvData, `teacher-report-${new Date().toISOString().split('T')[0]}.csv`);
+    } else {
+      // Export as PDF (HTML for now, as per project requirements)
+      const reportContent = generateReportHTML();
+      const blob = new Blob([reportContent], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `teacher-report-${new Date().toISOString().split('T')[0]}.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const generateReportHTML = (): string => {
+    if (!reportData) return '';
+    
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teaching Analytics Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+        .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #ddd; padding-bottom: 20px; }
+        .section { margin-bottom: 30px; }
+        .section h2 { color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: #f9fafb; padding: 20px; border-radius: 8px; text-align: center; }
+        .stat-value { font-size: 24px; font-weight: bold; color: #1f2937; }
+        .stat-label { font-size: 14px; color: #6b7280; margin-top: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f9fafb; font-weight: 600; }
+        .generated-date { text-align: center; color: #6b7280; margin-top: 40px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Teaching Analytics Report</h1>
+        <p>Teacher: ${user?.firstName} ${user?.lastName}</p>
+        <p>Generated on ${new Date().toLocaleDateString()}</p>
+    </div>
+
+    <div class="section">
+        <h2>Overview Statistics</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">${reportData.overallStats.totalCourses}</div>
+                <div class="stat-label">Total Courses</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${reportData.overallStats.totalStudents}</div>
+                <div class="stat-label">Total Students</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${reportData.overallStats.averageCompletionRate.toFixed(1)}%</div>
+                <div class="stat-label">Avg Completion Rate</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${reportData.overallStats.totalCertificatesIssued}</div>
+                <div class="stat-label">Certificates Issued</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Course Performance</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Course</th>
+                    <th>Students</th>
+                    <th>Completion Rate</th>
+                    <th>Avg Score</th>
+                    <th>Certificates</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${reportData.courses.map(course => `
+                <tr>
+                    <td>${course.title}</td>
+                    <td>${course.studentsEnrolled}</td>
+                    <td>${course.completionRate.toFixed(1)}%</td>
+                    <td>${course.averageScore.toFixed(1)}%</td>
+                    <td>${course.certificatesIssued}</td>
+                </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="generated-date">
+        Report generated on ${new Date().toLocaleString()}
+    </div>
+</body>
+</html>
+    `;
   };
 
   if (loading) {
@@ -151,9 +263,13 @@ export function TeacherReports() {
             <option value="90">Last 90 days</option>
             <option value="365">All time</option>
           </select>
-          <Button variant="outline" onClick={exportReport}>
+          <Button variant="outline" onClick={() => exportReport('csv')}>
             <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
             Export CSV
+          </Button>
+          <Button variant="outline" onClick={() => exportReport('pdf')}>
+            <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
+            Export PDF
           </Button>
         </div>
       </div>
