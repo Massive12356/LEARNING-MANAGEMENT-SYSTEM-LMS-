@@ -51,6 +51,7 @@ import CreateAdmin from '../pages/superuser/CreateAdmin';
 import { OrganizationManagement } from '../pages/superuser/OrganizationManagement';
 import { SystemReports } from '../pages/superuser/SystemReports';
 import { SystemSettings } from '../pages/superuser/SystemSettings';
+import SuperuserUserManagement from '../pages/superuser/UserManagement';
 
 // Test Components
 import NotificationPreferencesTest from '../test/NotificationPreferencesTest';
@@ -193,6 +194,7 @@ export const AppRoutes: React.FC = () => {
               <Route path="dashboard" element={<SuperuserDashboard />} />
               <Route path="create-admin" element={<CreateAdmin />} />
               <Route path="organizations" element={<OrganizationManagement />} />
+              <Route path="users" element={<SuperuserUserManagement />} />
               <Route path="reports" element={<SystemReports />} />
               <Route path="settings" element={<SystemSettings />} />
             </Routes>
