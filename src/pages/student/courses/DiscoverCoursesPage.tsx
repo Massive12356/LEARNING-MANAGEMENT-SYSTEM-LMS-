@@ -13,7 +13,7 @@ import {
   TrophyIcon,
   StarIcon,
   ArrowRightIcon,
-  SearchIcon,
+  MagnifyingGlassIcon,
   FunnelIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
@@ -113,7 +113,7 @@ export function DiscoverCoursesPage() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
           <div className="relative flex-1 max-w-2xl">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <SearchIcon className="h-5 w-5 text-gray-400" />
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
             </div>
             <input
               type="text"
