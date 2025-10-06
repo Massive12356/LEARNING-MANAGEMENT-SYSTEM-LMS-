@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { RegisterForm } from '../../types';
@@ -187,71 +187,71 @@ export const RegisterPage: React.FC = () => {
           value={formData.email}
           onChange={handleChange}
           error={errors.email}
-          autoComplete="email"
-          placeholder="Enter your email"
-        />
+            autoComplete="email"
+            placeholder="Enter your email"
+          />
 
-        <Input
-          name="orgCode"
-          type="text"
-          label="Organization Code"
-          value={orgCode}
-          onChange={(e) => {
-            setOrgCode(e.target.value);
-            setOrgCodeError('');
-          }}
-          error={orgCodeError}
-          placeholder="Enter your organization code"
-          helpText="Enter the code provided by your organization"
-          onBlur={() => validateOrgCode()}
-        />
+          <Input
+            name="orgCode"
+            type="text"
+            label="Organization Code"
+            value={orgCode}
+            onChange={(e) => {
+              setOrgCode(e.target.value);
+              setOrgCodeError('');
+            }}
+            error={orgCodeError}
+            placeholder="Enter your organization code"
+            helpText="Enter the code provided by your organization"
+            onBlur={() => validateOrgCode()}
+          />
 
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Account Type
-          </label>
-          <select
-            name="role"
-            value={formData.role}
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Account Type
+            </label>
+            <select
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="student">Student</option>
+              <option value="teacher">Teacher</option>
+            </select>
+          </div>
+
+          <Input
+            name="password"
+            type="password"
+            label="Password"
+            value={formData.password}
             onChange={handleChange}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            error={errors.password}
+            autoComplete="new-password"
+            placeholder="Create a password"
+            helpText="Must be at least 8 characters"
+          />
+
+          <Input
+            name="confirmPassword"
+            type="password"
+            label="Confirm password"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            error={errors.confirmPassword}
+            autoComplete="new-password"
+            placeholder="Confirm your password"
+          />
+
+          <Button
+            type="submit"
+            className="w-full"
+            loading={loading}
           >
-            <option value="student">Student</option>
-            <option value="teacher">Teacher</option>
-          </select>
-        </div>
-
-        <Input
-          name="password"
-          type="password"
-          label="Password"
-          value={formData.password}
-          onChange={handleChange}
-          error={errors.password}
-          autoComplete="new-password"
-          placeholder="Create a password"
-          helpText="Must be at least 8 characters"
-        />
-
-        <Input
-          name="confirmPassword"
-          type="password"
-          label="Confirm password"
-          value={formData.confirmPassword}
-          onChange={handleChange}
-          error={errors.confirmPassword}
-          autoComplete="new-password"
-          placeholder="Confirm your password"
-        />
-
-        <Button
-          type="submit"
-          className="w-full"
-          loading={loading}
-        >
-          Create account
-        </Button>
-      </form>
-    </div>
-  );
-};
+            Create account
+          </Button>
+        </form>
+      </div>
+    );
+  };

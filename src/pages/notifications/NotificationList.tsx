@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNotifications } from '../../contexts/NotificationContext';
+import { useNotifications } from '../../hooks/useNotifications';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { NotificationModal } from '../../components/notifications/NotificationModal';

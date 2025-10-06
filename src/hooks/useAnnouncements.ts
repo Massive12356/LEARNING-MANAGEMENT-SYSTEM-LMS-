@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { notificationService } from '../services/notificationService';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from './useAuth';
 
 export const useAnnouncements = () => {
   const { user } = useAuth();

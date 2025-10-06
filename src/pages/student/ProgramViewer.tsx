@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { mockApi } from '../../services/mockApi';
@@ -284,7 +284,7 @@ export function ProgramViewer() {
                     {isCompleted ? (
                       <div className="text-center">
                         <div className="text-green-600 dark:text-green-400 mb-2">
-                          <CheckCircleIcon className="h-8 w-88 mx-auto" />
+                          <CheckCircleIcon className="h-8 w-8 mx-auto" />
                         </div>
                         <p className="text-sm font-medium text-green-600 dark:text-green-400">
                           Completed

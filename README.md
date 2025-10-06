@@ -35,7 +35,7 @@ A modern, production-ready Learning Management System built with React, TypeScri
 - **Frontend**: React 18, TypeScript, Tailwind CSS
 - **Build Tool**: Vite
 - **Routing**: React Router v6
-- **State Management**: React Context + Hooks
+- **State Management**: Zustand (migrating from React Context)
 - **UI Components**: Custom component library
 - **Icons**: Heroicons
 - **Notifications**: React Hot Toast
@@ -48,9 +48,12 @@ src/
 ├── components/           # Reusable UI components
 │   ├── ui/              # Basic UI elements (Button, Input, Card, Modal)
 │   └── COMPONENTS.md    # Component documentation
-├── contexts/            # React context providers
-│   ├── AuthContext.tsx  # Authentication state
-│   └── UIContext.tsx    # UI state (theme, sidebar)
+├── contexts/            # React context providers (deprecated, migrating to stores)
+├── stores/              # Zustand stores for state management
+│   ├── authStore.ts     # Authentication state
+│   ├── uiStore.ts       # UI state (theme, sidebar)
+│   ├── notificationStore.ts # Notification state
+│   └── README.md        # Store documentation
 ├── hooks/               # Custom React hooks
 ├── layouts/             # Layout components
 │   ├── AuthLayout.tsx   # Authentication pages layout
@@ -308,6 +311,7 @@ Update organization settings in mock data or admin panel:
 - [x] Role-based access
 
 ### Phase 2 (Current)
+- [x] Zustand state management implementation
 - [ ] Real-time notifications
 - [ ] Advanced analytics
 - [ ] Mobile app (React Native)
@@ -356,7 +360,7 @@ For questions and support:
 - `src/types/index.ts` - All TypeScript type definitions
 - `src/services/mockApi.ts` - API service with mock implementations
 - `src/routes/index.tsx` - Route configuration and protection
-- `src/contexts/AuthContext.tsx` - Authentication logic
+- `src/stores/` - Zustand stores for state management
 - `src/utils/` - Utility functions for CSV, certificates, and email
 
 ---

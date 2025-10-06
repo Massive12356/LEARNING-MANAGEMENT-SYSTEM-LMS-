@@ -1,15 +1,15 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { TodoList } from '../../components/ui/TodoList';
-import { TodoStats } from '../../components/ui/TodoStats';
 import { RichTextDisplay } from '../../components/ui/RichTextEditor';
 import { mockApi } from '../../services/mockApi';
 import { useTodos } from '../../hooks/useTodos';
-import { Course } from '../../types';
+import { Course, Program, Organization } from '../../types';
+import { organizationService } from '../../services/organizationService';
 import { 
   BookOpenIcon, 
   AcademicCapIcon, 
@@ -21,6 +21,7 @@ import {
   BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { DetailedAnalytics } from '../../components/teacher/DetailedAnalytics';
 
 export function TeacherDashboard() {
   const { user } = useAuth();

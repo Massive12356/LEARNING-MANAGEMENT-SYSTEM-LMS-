@@ -3,7 +3,7 @@ import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { RichTextDisplay } from '../../components/ui/RichTextEditor';
 import { studentReportService, StudentReportData } from '../../services/studentReportService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { 
   BookOpenIcon, 
   DocumentTextIcon, 

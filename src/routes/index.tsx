@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { DashboardLayout } from '../layouts/DashboardLayout';
 import { AuthLayout } from '../layouts/AuthLayout';
@@ -56,6 +56,7 @@ import SuperuserUserManagement from '../pages/superuser/UserManagement';
 // Test Components
 import NotificationPreferencesTest from '../test/NotificationPreferencesTest';
 import NotificationPreferencesTestPage from '../NotificationPreferencesTest';
+import ZustandTest from '../test/ZustandTest';
 
 // Common Pages
 import { NotFound } from '../pages/NotFound';
@@ -215,6 +216,14 @@ export const AppRoutes: React.FC = () => {
         <ProtectedRoute>
           <DashboardLayout>
             <NotificationPreferencesTestPage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/test/zustand" element={
+        <ProtectedRoute>
+          <DashboardLayout>
+            <ZustandTest />
           </DashboardLayout>
         </ProtectedRoute>
       } />

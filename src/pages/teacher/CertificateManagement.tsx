@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -205,11 +205,11 @@ export default function CertificateManagement() {
         ))}
 
         {/* Create Template Card */}
-        <Card className="border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 transition-colors">
-          <CardContent 
-            className="p-6 cursor-pointer"
-            onClick={() => setShowTemplateModal(true)}
-          >
+        <Card 
+          className="border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 transition-colors"
+          onClick={() => setShowTemplateModal(true)}
+        >
+          <CardContent className="p-6 cursor-pointer">
             <div className="text-center">
               <PlusIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
               <h3 className="font-medium text-gray-900 dark:text-white mb-2">

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { useUI } from '../contexts/UIContext';
-import { useNotifications } from '../contexts/NotificationContext';
+import { useAuth } from '../hooks/useAuth';
+import { useUI } from '../hooks/useUI';
+import { useNotifications } from '../hooks/useNotifications';
 import { organizationService } from '../services/organizationService';
 import { Organization } from '../types';
 import {
@@ -24,7 +24,13 @@ import {
   ChevronDownIcon,
   UserIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  BellIcon,
+  QueueListIcon,
+  DocumentTextIcon,
+  EnvelopeIcon,
+  PencilSquareIcon,
+  PresentationChartLineIcon
 } from '@heroicons/react/24/outline';
 import { NotificationBell } from '../components/ui/NotificationBell';
 import toast from 'react-hot-toast';
@@ -35,100 +41,15 @@ interface DashboardLayoutProps {
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { user, logout, isViewingAs, exitViewAs, originalUser } = useAuth();
-  const { theme, toggleTheme } = useUI();
+  const { theme, toggleTheme, sidebarCollapsed, toggleSidebar } = useUI();
+  const { unreadCount } = useNotifications(); // We only need unreadCount since NotificationBell uses it
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [organization, setOrganization] = useState<Organization | null>(null);
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loadingOrg, setLoadingOrg] = useState(true);
-  const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
-
-  // Load organization data
-  useEffect(() => {
-    const loadOrganizationData = async () => {
-      if (!user) return;
-      
-      try {
-        setLoadingOrg(true);
-        
-        if (user.role === 'admin' || user.role === 'superuser') {
-          // Admins and superusers can see all organizations
-          const allOrgs = await organizationService.getOrganizations();
-          setOrganizations(allOrgs);
-          
-          // For admins, also set current organization
-          if (user.organizationId && user.role === 'admin') {
-            const org = allOrgs.find(o => o.id === user.organizationId) || null;
-            setOrganization(org);
-          }
-        } else if (user.organizationId) {
-          // Students and teachers get their specific organization
-          const org = await organizationService.getOrganizationById(user.organizationId);
-          setOrganization(org);
-        }
-      } catch (error) {
-        console.error('Error loading organization data:', error);
-      } finally {
-        setLoadingOrg(false);
-      }
-    };
-
-    loadOrganizationData();
-  }, [user]);
-
-  const navigation = React.useMemo(() => {
-    if (!user) return [];
-
-    const baseNav = [
-      { name: 'Dashboard', href: `/${user.role}/dashboard`, icon: HomeIcon },
-    ];
-
-    switch (user.role) {
-      case 'student':
-        return [
-          ...baseNav,
-          { name: 'Todo', href: '/student/todo', icon: ChartBarIcon },
-          { name: 'My Courses', href: '/student/my-courses', icon: BookOpenIcon },
-          { name: 'Discover', href: '/student/discover', icon: MagnifyingGlassIcon },
-          { name: 'Notifications', href: '/student/notifications', icon: ChartBarIcon },
-          { name: 'Reports', href: '/student/reports', icon: ChartBarIcon },
-          { name: 'Settings', href: '/student/settings', icon: CogIcon },
-        ];
-      case 'teacher':
-        return [
-          ...baseNav,
-          { name: 'Courses', href: '/teacher/courses', icon: BookOpenIcon },
-          { name: 'Certificates', href: '/teacher/certificates', icon: AcademicCapIcon },
-          { name: 'Notifications', href: '/teacher/notifications', icon: ChartBarIcon },
-          { name: 'Reports', href: '/teacher/reports', icon: ChartBarIcon },
-        ];
-      case 'admin':
-        return [
-          ...baseNav,
-          { name: 'Users', href: '/admin/users', icon: UserGroupIcon },
-          { name: 'Courses', href: '/admin/courses', icon: BookOpenIcon },
-          { name: 'Programs', href: '/admin/programs', icon: AcademicCapIcon },
-          { name: 'Organization', href: '/admin/organization', icon: BuildingOfficeIcon },
-          { name: 'Notifications', href: '/admin/notifications', icon: ChartBarIcon },
-          { name: 'Reports', href: '/admin/reports', icon: ChartBarIcon },
-          { name: 'Settings', href: '/admin/settings', icon: CogIcon },
-        ];
-      case 'superuser':
-        return [
-          ...baseNav,
-          { name: 'Organizations', href: '/superuser/organizations', icon: BuildingOfficeIcon },
-          { name: 'Users', href: '/superuser/users', icon: UserGroupIcon },
-          { name: 'System', href: '/superuser/system', icon: CogIcon },
-          { name: 'Reports', href: '/superuser/reports', icon: ChartBarIcon },
-        ];
-      default:
-        return baseNav;
-    }
-  }, [user]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -144,89 +65,41 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     };
   }, []);
 
-  // Close dropdown when route changes
+  // Redirect to login if not authenticated
   useEffect(() => {
-    setProfileDropdownOpen(false);
-  }, [location]);
+    if (!user) {
+      navigate('/login', { replace: true });
+    }
+  }, [user, navigate]);
 
-  const renderOrganizationBadge = () => {
-    if (!organization || loadingOrg) return null;
+  // Load organization data
+  useEffect(() => {
+    const loadOrganization = async () => {
+      if (!user?.organizationId) {
+        setLoadingOrg(false);
+        return;
+      }
 
-    switch (user?.role) {
-      case 'student':
-        return (
-          <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800">
-            <BuildingOfficeIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <span className="text-xs font-medium text-blue-700 dark:text-blue-300 truncate max-w-[120px]">
-              {organization.name}
-            </span>
-          </div>
-        );
-      
-      case 'teacher':
-        return (
-          <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800">
-            <BuildingOfficeIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
-            <span className="text-xs font-medium text-green-700 dark:text-green-300 truncate max-w-[120px]">
-              Teaching at {organization.name}
-            </span>
-          </div>
-        );
-      
-      case 'admin':
-        return (
-          <div 
-            className="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 cursor-pointer relative"
-            onClick={() => setOrgDropdownOpen(!orgDropdownOpen)}
-          >
-            <BuildingOfficeIcon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-            <span className="text-xs font-medium text-purple-700 dark:text-purple-300 truncate max-w-[120px]">
-              {organization.name}
-            </span>
-            <ChevronDownIcon className="h-3 w-3 text-purple-600 dark:text-purple-400" />
-            
-            {orgDropdownOpen && organizations.length > 1 && (
-              <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
-                <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Switch Organization</h3>
-                </div>
-                <div className="max-h-60 overflow-y-auto">
-                  {organizations.map((org) => (
-                    <button
-                      key={org.id}
-                      onClick={() => {
-                        // In a real app, this would switch organizations
-                        toast.success(`Switched to ${org.name}`);
-                        setOrgDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${
-                        org.id === organization?.id 
-                          ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-                          : 'text-gray-700 dark:text-gray-300'
-                      }`}
-                    >
-                      {org.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      
-      case 'superuser':
-        // Superusers have a global view, so we simplify the display
-        return (
-          <span 
-            className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200"
-            aria-label="Superuser with global access"
-          >
-            Global View
-          </span>
-        );
-      
-      default:
-        return null;
+      try {
+        const orgData = await organizationService.getOrganizationById(user.organizationId);
+        setOrganization(orgData);
+      } catch (error) {
+        console.error('Failed to load organization:', error);
+        toast.error('Failed to load organization data');
+      } finally {
+        setLoadingOrg(false);
+      }
+    };
+
+    loadOrganization();
+  }, [user]);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      toast.error('Failed to logout');
     }
   };
 
@@ -234,35 +107,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     setProfileDropdownOpen(!profileDropdownOpen);
   };
 
-  const handleLogout = () => {
-    logout();
-    setProfileDropdownOpen(false);
-  };
-
   const handleViewAsExit = () => {
     exitViewAs();
-    setProfileDropdownOpen(false);
-  };
-
-  const getProfileMenuItems = () => {
-    const baseItems = [
-      { name: 'Profile', href: `/${user?.role}/settings`, icon: UserIcon },
-      { name: 'Settings', href: `/${user?.role}/settings`, icon: CogIcon },
-    ];
-
-    if (user?.role === 'student') {
-      baseItems.splice(1, 0, { name: 'My Courses', href: '/student/my-courses', icon: BookOpenIcon });
-    }
-
-    return baseItems;
+    toast.success('Exited view as mode');
   };
 
   const getRoleDisplayName = (role: string) => {
     switch (role) {
-      case 'student': return 'Student Account';
-      case 'teacher': return 'Teacher Account';
-      case 'admin': return 'Administrator';
-      case 'superuser': return 'Super User';
+      case 'student': return 'Student';
+      case 'teacher': return 'Teacher';
+      case 'admin': return 'Admin';
+      case 'superuser': return 'Superuser';
       default: return role;
     }
   };
@@ -272,9 +127,78 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       case 'student': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
       case 'teacher': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
       case 'admin': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-      case 'superuser': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+      case 'superuser': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
     }
+  };
+
+  const getProfileMenuItems = () => {
+    const baseItems = [
+      { name: 'Profile', href: `/${user?.role}/settings`, icon: UserIcon }
+    ];
+
+    if (user?.role === 'student') {
+      baseItems.push(
+        { name: 'My Courses', href: '/student/my-courses', icon: BookOpenIcon },
+        { name: 'Discover', href: '/student/discover', icon: MagnifyingGlassIcon }
+      );
+    }
+
+    return baseItems;
+  };
+
+  // Navigation items based on user role
+  const getNavigationItems = () => {
+    if (!user) return [];
+
+    switch (user.role) {
+      case 'student':
+        return [
+          { name: 'Dashboard', href: '/student/dashboard', icon: HomeIcon },
+          { name: 'Todo', href: '/student/todo', icon: QueueListIcon },
+          { name: 'My Courses', href: '/student/my-courses', icon: BookOpenIcon },
+          { name: 'Discover', href: '/student/discover', icon: MagnifyingGlassIcon },
+          { name: 'Reports', href: '/student/reports', icon: ChartBarIcon },
+          { name: 'Notifications', href: '/student/notifications', icon: BellIcon }
+        ];
+      case 'teacher':
+        return [
+          { name: 'Dashboard', href: '/teacher/dashboard', icon: HomeIcon },
+          { name: 'Courses', href: '/teacher/courses', icon: BookOpenIcon },
+          { name: 'Certificates', href: '/teacher/certificates', icon: DocumentTextIcon },
+          { name: 'Notifications', href: '/teacher/notifications', icon: BellIcon },
+          { name: 'Reports', href: '/teacher/reports', icon: ChartBarIcon }
+        ];
+      case 'admin':
+        return [
+          { name: 'Dashboard', href: '/admin/dashboard', icon: HomeIcon },
+          { name: 'Users', href: '/admin/users', icon: UserGroupIcon },
+          { name: 'Courses', href: '/admin/courses', icon: BookOpenIcon },
+          { name: 'Programs', href: '/admin/programs', icon: AcademicCapIcon },
+          { name: 'Organization', href: '/admin/organization', icon: BuildingOfficeIcon },
+          { name: 'Email Templates', href: '/admin/email-templates', icon: PencilSquareIcon },
+          { name: 'Notifications', href: '/admin/notifications', icon: BellIcon },
+          { name: 'Reports', href: '/admin/reports', icon: PresentationChartLineIcon }
+        ];
+      case 'superuser':
+        return [
+          { name: 'Dashboard', href: '/superuser/dashboard', icon: HomeIcon },
+          { name: 'Organizations', href: '/superuser/organizations', icon: BuildingOfficeIcon },
+          { name: 'Users', href: '/superuser/users', icon: UserGroupIcon },
+          { name: 'Reports', href: '/superuser/reports', icon: ChartBarIcon },
+          { name: 'Settings', href: '/superuser/settings', icon: CogIcon }
+        ];
+      default:
+        return [
+          { name: 'Dashboard', href: `/${user.role}/dashboard`, icon: HomeIcon }
+        ];
+    }
+  };
+
+  const navigation = getNavigationItems();
+
+  const isActive = (path: string) => {
+    return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
   if (!user) {
@@ -285,11 +209,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
       {/* Sidebar */}
       <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
-        fixed inset-y-0 left-0 z-50 ${sidebarCollapsed ? 'w-20' : 'w-64'} bg-white dark:bg-gray-800 transform transition-all duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-50 ${sidebarCollapsed ? 'w-20' : 'w-64'} bg-white dark:bg-gray-800 transform transition-all duration-300 ease-in-out 
         lg:translate-x-0 lg:static lg:inset-0 shadow-xl`}>
-        
         <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-700">
-          <Link to="/" className="flex items-center space-x-2">
+          <Link to={`/${user.role}/dashboard`} className="flex items-center space-x-2">
             <div className="p-1.5 bg-blue-600 rounded-lg">
               <AcademicCapIcon className="h-6 w-6 text-white" />
             </div>
@@ -302,7 +225,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              onClick={toggleSidebar}
               className="p-1 rounded-md text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hidden lg:block"
             >
               {sidebarCollapsed ? (
@@ -322,48 +245,66 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
         </div>
 
         <div className="flex-1 flex flex-col overflow-y-auto">
-          {/* Organization Info in Sidebar (for mobile) */}
-          {user.role !== 'teacher' && (
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700 lg:hidden">
-              {renderOrganizationBadge()}
-            </div>
-          )}
-
-          {/* View As Banner */}
-          {isViewingAs && originalUser && (
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800 p-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <EyeIcon className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-                  {!sidebarCollapsed && (
-                    <span className="text-xs font-medium text-yellow-800 dark:text-yellow-200">
-                      Viewing as {user.firstName} {user.lastName}
-                    </span>
-                  )}
-                </div>
+          {/* Organization Info */}
+          {user.role !== 'teacher' && !loadingOrg && organization && (
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center space-x-3">
+                {organization.logo ? (
+                  <img 
+                    src={organization.logo} 
+                    alt={organization.name} 
+                    className="h-8 w-8 rounded object-cover"
+                  />
+                ) : (
+                  <div className="h-8 w-8 rounded bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                    <BuildingOfficeIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                )}
                 {!sidebarCollapsed && (
-                  <button
-                    onClick={handleViewAsExit}
-                    className="text-xs text-yellow-700 dark:text-yellow-300 hover:text-yellow-900 dark:hover:text-yellow-100 flex items-center space-x-1"
-                  >
-                    <ArrowUturnLeftIcon className="h-3 w-3" />
-                    <span>Exit</span>
-                  </button>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      {organization.name}
+                    </p>
+                  </div>
                 )}
               </div>
+              
+              {isViewingAs && originalUser && (
+                <div className="mt-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <EyeIcon className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                      {!sidebarCollapsed && (
+                        <span className="text-xs font-medium text-yellow-800 dark:text-yellow-200">
+                          Viewing as {user.firstName} {user.lastName}
+                        </span>
+                      )}
+                    </div>
+                    {!sidebarCollapsed && (
+                      <button
+                        onClick={handleViewAsExit}
+                        className="text-xs text-yellow-700 dark:text-yellow-300 hover:text-yellow-900 dark:hover:text-yellow-100 flex items-center space-x-1"
+                      >
+                        <ArrowUturnLeftIcon className="h-3 w-3" />
+                        <span>Exit</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* Navigation */}
           <nav className="flex-1 px-2 py-4 space-y-1">
             {navigation.map((item) => {
-              const isActive = location.pathname === item.href;
+              const isActiveItem = isActive(item.href);
               return (
                 <Link
                   key={item.name}
                   to={item.href}
                   className={`flex items-center ${sidebarCollapsed ? 'justify-center px-3' : 'space-x-3 px-3'} py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
+                    isActiveItem
                       ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
@@ -377,7 +318,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             })}
           </nav>
 
-          {/* Bottom Actions */}
+          {/* Bottom Menu */}
           <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
             <button
               onClick={toggleTheme}
@@ -418,13 +359,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       )}
 
       {/* Main Content */}
-      <div 
-        className="flex-1 flex flex-col overflow-hidden"
-        style={{ 
-          marginLeft: '0px',
-          transition: 'margin-left 0.3s ease-in-out'
-        }}
-      >
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
           <div className="px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -437,7 +372,22 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             
             <div className="flex-1 flex items-center">
               {/* Organization Badge in Header for non-teachers */}
-              {user.role !== 'teacher' && renderOrganizationBadge()}
+              {user.role !== 'teacher' && !loadingOrg && organization && (
+                <div className="hidden lg:flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 rounded-full px-3 py-1">
+                  {organization.logo ? (
+                    <img 
+                      src={organization.logo} 
+                      alt={organization.name} 
+                      className="h-6 w-6 rounded object-cover"
+                    />
+                  ) : (
+                    <BuildingOfficeIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                  )}
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {organization.name}
+                  </span>
+                </div>
+              )}
             </div>
             
             <div className="flex items-center space-x-3">

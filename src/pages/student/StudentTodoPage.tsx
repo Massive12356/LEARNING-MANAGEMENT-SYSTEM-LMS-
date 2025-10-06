@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { StudentTodo } from '../../components/student/StudentTodo';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 
 export const StudentTodoPage: React.FC = () => {
   const { user } = useAuth();

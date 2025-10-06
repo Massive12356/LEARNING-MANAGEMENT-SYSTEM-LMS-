@@ -1,11 +1,9 @@
-import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { UserRole } from '../types';
+import { useAuth } from '../hooks/useAuth';
+import { Navigate } from 'react-router-dom';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: UserRole[];
+  allowedRoles?: string[];
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
@@ -13,31 +11,33 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   allowedRoles 
 }) => {
   const { user, loading } = useAuth();
-  const location = useLocation();
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   if (!user) {
-    // Redirect to login with return url
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    // Redirect to appropriate dashboard if user doesn't have permission
-    const redirectPath = {
-      'student': '/student/dashboard',
-      'teacher': '/teacher/dashboard',
-      'admin': '/admin/dashboard',
-      'superuser': '/superuser/dashboard'
-    }[user.role];
-
-    return <Navigate to={redirectPath} replace />;
+    // Redirect to appropriate dashboard based on user role
+    switch (user.role) {
+      case 'student':
+        return <Navigate to="/student/dashboard" replace />;
+      case 'teacher':
+        return <Navigate to="/teacher/dashboard" replace />;
+      case 'admin':
+        return <Navigate to="/admin/dashboard" replace />;
+      case 'superuser':
+        return <Navigate to="/superuser/dashboard" replace />;
+      default:
+        return <Navigate to="/login" replace />;
+    }
   }
 
   return <>{children}</>;

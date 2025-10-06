@@ -1,25 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { Card, CardHeader, CardContent } from '../../components/ui/Card';
+import { useAuth } from '../../hooks/useAuth';
+import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
-import { DataTable, Column } from '../../components/ui/DataTable';
+import { DataTable } from '../../components/ui/DataTable';
 import { FileUploader } from '../../components/ui/FileUploader';
-import { EmptyState } from '../../components/ui/EmptyState';
 import { mockApi } from '../../services/mockApi';
 import { organizationService } from '../../services/organizationService';
 import { adminService } from '../../services/adminService';
-import { UploadResult } from '../../services/fileUploadService';
 import { User, Organization } from '../../types';
 import { 
   PlusIcon,
-  EyeIcon,
   UserGroupIcon,
   ArrowUpTrayIcon,
-  ArrowDownTrayIcon,
-  EllipsisVerticalIcon,
   BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
