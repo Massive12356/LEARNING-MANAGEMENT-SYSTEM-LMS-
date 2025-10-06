@@ -1,6 +1,5 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -8,7 +7,7 @@ import { TodoList } from '../../components/ui/TodoList';
 import { RichTextDisplay } from '../../components/ui/RichTextEditor';
 import { mockApi } from '../../services/mockApi';
 import { useTodos } from '../../hooks/useTodos';
-import { Course, Program, Organization } from '../../types';
+import { Course, Organization } from '../../types';
 import { organizationService } from '../../services/organizationService';
 import { 
   BookOpenIcon, 
@@ -20,13 +19,11 @@ import {
   PlusIcon,
   BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
-import toast from 'react-hot-toast';
 import { DetailedAnalytics } from '../../components/teacher/DetailedAnalytics';
 
 export function TeacherDashboard() {
   const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
-  const [programs, setPrograms] = useState<Program[]>([]);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'analytics'>('overview');
@@ -45,7 +42,7 @@ export function TeacherDashboard() {
         ]);
         
         setCourses(coursesData);
-        setPrograms(programsData);
+        // programsData is not used, so we don't need to store it
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
       } finally {
@@ -77,7 +74,6 @@ export function TeacherDashboard() {
   }
 
   const liveCourses = courses.filter(course => course.status === 'live');
-  const draftCourses = courses.filter(course => course.status === 'draft');
   const totalStudents = 156; // Mock data
   const avgCompletion = 78; // Mock data
 

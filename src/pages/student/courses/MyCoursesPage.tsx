@@ -20,6 +20,7 @@ export function MyCoursesPage() {
   const navigate = useNavigate();
   const [enrolledCourses, setEnrolledCourses] = useState<Course[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,12 +28,23 @@ export function MyCoursesPage() {
       if (!user) return;
       
       try {
-        // Mock data - in real app, fetch from API
-        const enrolled = await mockApi.getEnrolledCourses(user.id);
-        const enrollmentData = await mockApi.getEnrollments(user.id);
+        // First get user's enrollments
+        const enrollmentData = await mockApi.getUserEnrollments(user.id);
         
-        setEnrolledCourses(enrolled);
+        // Then get all courses (filtered by organization)
+        const coursesData = await mockApi.getCourses({ 
+          status: 'live',
+          organizationId: user.organizationId 
+        });
+        
+        // Filter courses to only include enrolled ones
+        const enrolled = coursesData.filter(course => 
+          enrollmentData.some(enrollment => enrollment.courseId === course.id)
+        );
+        
         setEnrollments(enrollmentData);
+        setAllCourses(coursesData);
+        setEnrolledCourses(enrolled);
       } catch (error) {
         console.error('Failed to load enrolled courses:', error);
       } finally {

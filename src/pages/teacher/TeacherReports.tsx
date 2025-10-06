@@ -4,7 +4,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { exportToCSV } from '../../utils/csvParser';
-import { mockApi } from '../../services/mockApi';
 import { 
   ChartBarIcon,
   BookOpenIcon,

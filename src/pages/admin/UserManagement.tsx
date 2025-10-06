@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
-import { DataTable } from '../../components/ui/DataTable';
+import { DataTable, Column } from '../../components/ui/DataTable';
 import { FileUploader } from '../../components/ui/FileUploader';
 import { mockApi } from '../../services/mockApi';
 import { organizationService } from '../../services/organizationService';
@@ -15,7 +15,9 @@ import {
   PlusIcon,
   UserGroupIcon,
   ArrowUpTrayIcon,
-  BuildingOfficeIcon
+  BuildingOfficeIcon,
+  EyeIcon,
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -47,7 +49,7 @@ const PendingUsersTable: React.FC<{
             <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-white sm:pl-6">
               User
             </th>
-            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">
+            <th scope="col" className="px-3 py-33.5 text-left text-sm font-semibold text-gray-900 dark:text-white">
               Requested Role
             </th>
             <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">
@@ -133,10 +135,21 @@ export function UserManagement() {
     role: 'student' as 'student' | 'teacher'
   });
 
+  const loadOrganization = useCallback(async () => {
+    if (!currentUser?.organizationId) return;
+    
+    try {
+      const orgData = await organizationService.getOrganizationById(currentUser.organizationId);
+      setOrganization(orgData);
+    } catch (error) {
+      console.error('Failed to load organization:', error);
+    }
+  }, [currentUser?.organizationId]);
+
   useEffect(() => {
     loadUsers();
     loadOrganization();
-  }, [currentUser]);
+  }, [currentUser, loadOrganization]);
 
   const loadUsers = async () => {
     if (!currentUser?.organizationId) return;
@@ -155,17 +168,6 @@ export function UserManagement() {
       toast.error('Failed to load users');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadOrganization = async () => {
-    if (!currentUser?.organizationId) return;
-    
-    try {
-      const orgData = await organizationService.getOrganizationById(currentUser.organizationId);
-      setOrganization(orgData);
-    } catch (error) {
-      console.error('Failed to load organization:', error);
     }
   };
 

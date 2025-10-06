@@ -33,6 +33,7 @@ import CertificateManagement from '../pages/teacher/CertificateManagement';
 import { ProgramBuilder } from '../pages/teacher/ProgramBuilder';
 import { TeacherReports } from '../pages/teacher/TeacherReports';
 import { NotificationManagement } from '../pages/notifications/NotificationManagement';
+import { TeacherSettings } from '../pages/teacher/TeacherSettings';
 
 // Admin Pages
 import { AdminDashboard } from '../pages/admin/AdminDashboard';
@@ -161,6 +162,7 @@ export const AppRoutes: React.FC = () => {
               <Route path="programs/new" element={<ProgramBuilder />} />
               <Route path="programs/:programId/edit" element={<ProgramBuilder />} />
               <Route path="reports" element={<TeacherReports />} />
+              <Route path="settings" element={<TeacherSettings />} />
             </Routes>
           </DashboardLayout>
         </ProtectedRoute>

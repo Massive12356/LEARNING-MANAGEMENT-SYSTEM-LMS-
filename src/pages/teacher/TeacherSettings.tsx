@@ -3,7 +3,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { mockApi } from '../../services/mockApi';
 import { organizationService } from '../../services/organizationService';
 import { settingsService, NotificationPreferences } from '../../services/settingsService';
 import { User, Organization } from '../../types';
