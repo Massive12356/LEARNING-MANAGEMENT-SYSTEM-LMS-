@@ -5,6 +5,8 @@ import { Input } from '../../components/ui/Input';
 import { VerificationCodePage } from './VerificationCodePage';
 import { mockApi } from '../../services/mockApi';
 import toast from 'react-hot-toast';
+import { authService } from '../../services/authService';
+import { AxiosError } from 'axios';
 
 export const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -34,14 +36,15 @@ export const ForgotPasswordPage: React.FC = () => {
     
     try {
       // Send verification code to the user's email
-      await mockApi.sendVerificationCode(email);
+      await authService.requestPasswordReset(email);
       console.log(`[FORGOT] Verification code sent successfully to: ${email}`);
       // Set showVerification to true to immediately show the verification code page
       setShowVerification(true);
       // We don't need isSubmitted anymore since we're showing the verification page directly
     } catch (error: any) {
-      console.error('[FORGOT] Password reset error:', error);
-      toast.error(error.message || 'Failed to send verification code. Please try again.');
+      const err = error as  AxiosError<{message?: string}>
+      console.error('[FORGOT] Password reset error:', err.response?.data || error.message);
+      toast.error(err.response?.data?.message || 'Failed to send verification code. Please try again.');
     } finally {
       setLoading(false);
     }

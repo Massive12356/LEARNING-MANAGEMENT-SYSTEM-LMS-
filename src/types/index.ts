@@ -20,6 +20,7 @@ export interface User {
   lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
+  accountType:UserRole;
 }
 
 export interface Organization {
@@ -364,10 +365,19 @@ export interface LoginForm {
 export interface RegisterForm {
   email: string;
   password: string;
+  firstName: string;
   confirmPassword: string;
+  lastName: string;
+  role: UserRole;
+}
+
+export interface RegisterPayload {
+  email: string;
+  password: string;
   firstName: string;
   lastName: string;
   role: UserRole;
+  organizationId: string;
 }
 
 export interface CourseForm {

@@ -14,7 +14,6 @@ import {
   BookOpenIcon,
   ChartBarIcon,
   ClockIcon,
-  ModalIcon
 } from '@heroicons/react/24/outline';
 import { Modal } from '../../components/ui/Modal';
 

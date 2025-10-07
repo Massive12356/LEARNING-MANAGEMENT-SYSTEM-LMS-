@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { mockApi } from '../../services/mockApi';
 import toast from 'react-hot-toast';
+import { authService } from '../../services/authService';
 
 interface VerificationCodePageProps {
   email: string;
@@ -80,11 +81,12 @@ export const VerificationCodePage: React.FC<VerificationCodePageProps> = ({ emai
     
     try {
       // Verify the code with the API
-      await mockApi.verifyCode(email, codeString);
-      console.log(`[UI] Code verification successful for ${email}`);
+      await authService.verifyForgotPasswordOtp(email,codeString);
+      console.log(`[UI] Code verification successful for ${codeString}`);
+      toast.success('Code verification successful');
       onCodeVerified(codeString);
     } catch (error: any) {
-      console.error(`[UI] Code verification failed for ${email}:`, error);
+      console.error(`[UI] Code verification failed for ${codeString}:`, error);
       console.error(`[UI] Error type:`, typeof error);
       console.error(`[UI] Error keys:`, Object.keys(error));
       toast.error(error.message || 'Invalid verification code. Please try again.');
