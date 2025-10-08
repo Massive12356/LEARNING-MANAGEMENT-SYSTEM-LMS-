@@ -3,13 +3,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { Eye, EyeOff } from 'lucide-react';
 import { RegisterForm, RegisterPayload } from '../../types';
 import toast from 'react-hot-toast';
 
 export const RegisterPage: React.FC = () => {
-  const [formData, setFormData] = useState<RegisterPayload & { organizationId: string }>({
+  const [formData, setFormData] = useState<RegisterForm & { organizationId: string }>({
     email: '',
     password: '',
+    confirmPassword: '',
     firstName: '',
     lastName: '',
     role: 'student',
@@ -18,6 +20,8 @@ export const RegisterPage: React.FC = () => {
   const [errors, setErrors] = useState<Partial<RegisterForm & { confirmPassword: string }>>({});
   const [loading, setLoading] = useState(false);
   const { register } = useAuthStore();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
 
   const validateForm = (): boolean => {
@@ -34,6 +38,12 @@ export const RegisterPage: React.FC = () => {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 8) {
       newErrors.password = 'Password must be at least 8 characters';
+    }
+
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
     }
 
     setErrors(newErrors);
@@ -152,28 +162,48 @@ export const RegisterPage: React.FC = () => {
           </select>
         </div>
 
-        <Input
-          name="password"
-          type="password"
-          label="Password"
-          value={formData.password}
-          onChange={handleChange}
-          error={errors.password}
-          autoComplete="new-password"
-          placeholder="Create a password"
-          helpText="Must be at least 8 characters"
-        />
+        {/* Password Field */}
+        <div className="relative">
+          <Input
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            label="Password"
+            value={formData.password}
+            onChange={handleChange}
+            error={errors.password}
+            autoComplete="new-password"
+            placeholder="Create a password"
+            helpText="Must be at least 8 characters"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(prev => !prev)}
+            className="absolute right-3 top-9 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none"
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
 
-        {/* <Input
-          name="confirmPassword"
-          type="password"
-          label="Confirm password"
-          value={formData.confirmPassword}
-          onChange={handleChange}
-          error={errors.confirmPassword}
-          autoComplete="new-password"
-          placeholder="Confirm your password"
-        /> */}
+        {/* Confirm Password Field */}
+        <div className="relative">
+          <Input
+            name="confirmPassword"
+            type={showConfirmPassword ? 'text' : 'password'}
+            label="Confirm password"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            error={errors.confirmPassword}
+            autoComplete="new-password"
+            placeholder="Confirm your password"
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword(prev => !prev)}
+            className="absolute right-3 top-9 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none"
+          >
+            {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
 
         <Button type="submit" className="w-full" loading={loading}>
           Create account

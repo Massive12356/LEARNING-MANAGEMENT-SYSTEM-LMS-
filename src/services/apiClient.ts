@@ -14,6 +14,13 @@ apiClient.interceptors.request.use(config => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+   console.log('🚀 [API REQUEST]', {
+     url: config.url,
+     hasToken: !!token,
+     token: token ? token.slice(0, 20) + '...' : 'NO TOKEN FOUND',
+   });
+
   return config;
 });
 

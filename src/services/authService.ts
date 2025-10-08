@@ -316,6 +316,10 @@ class AuthService {
       console.log('payload to the Backend', email);
       const response = await apiClient.post('/user/forgetPassword-otp', { email });
       console.log(`✅ Password reset OTP sent to ${email}`, response.data);
+      if (response.data.token) {
+        localStorage.setItem('resetToken', response.data.token);
+        console.log('🔐 Temporary reset token saved:', response.data.token);
+      }
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
       console.error('❌ Error sending password reset OTP:', err.response?.data || err.message);
@@ -323,6 +327,7 @@ class AuthService {
     }
   }
 
+    // verify One time Password
   async verifyForgotPasswordOtp(email: string, otp: string): Promise<void> {
     try {
       console.log('OTP TO THE BACKEND', otp, email);
@@ -330,7 +335,7 @@ class AuthService {
         email,
         otp
       });
-      console.log('✅ Password reset verified successfully:', response.data);
+      console.log('✅ OTP verified successfully:', response.data);
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
       console.error('❌ Error verifying password reset OTP:', err.response?.data || err.message);
@@ -338,9 +343,26 @@ class AuthService {
     }
   }
 
-  async resetPassword(token: string, newPassword: string): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    console.log(`Password reset for token: ${token}`);
+  // resend One time Password
+  async resendOtp(email: string):Promise<void>{
+    try {
+      const response = await apiClient.post('/user/resend-otp', { email });
+       console.log('✅ OTP resent successfully:', response.data);
+    } catch (error:any) {
+      console.error('❌ Error resending OTP:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.message || " Failed to resend OTP")
+    }
+  }
+  
+  async resetPassword(email: string, newPassword:string): Promise<void> {
+    try {
+      console.log("PAYLOAD TO THE BACKEND", email, newPassword )
+      const response = await apiClient.post('/user/newPassword', { email, newPassword });
+      console.log("RESPONSE FROM BACKEND : ", response.data)
+    } catch (error: any) {
+      console.log(" ERROR RESPONSE FROM BACKEND", error.response?.data || error.message )
+      throw new Error(error.response?.data?.message || " Failed to Reset Password")
+    }
   }
 
   // Dev function to reset organization for mock user

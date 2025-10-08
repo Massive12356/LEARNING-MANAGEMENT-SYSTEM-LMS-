@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { LoginForm } from '../../types';
 import { useAuthStore } from '../../stores/authStore';
+import { Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const LoginPage: React.FC = () => {
@@ -19,6 +20,7 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [loading, setLoading] = useState(false)
+  const [showPassword,setShowPassword]=useState(false);
   const from = (location.state as any)?.from?.pathname || '/';
 
   const validateForm = (): boolean => {
@@ -95,17 +97,27 @@ export const LoginPage: React.FC = () => {
           disabled={loading}
         />
 
-        <Input
-          name="password"
-          type="password"
-          label="Password"
-          value={formData.password}
-          onChange={handleChange}
-          error={errors.password}
-          autoComplete="current-password"
-          placeholder="Enter your password"
-          disabled={loading}
-        />
+        {/* Password Field */}
+        <div className="relative">
+          <Input
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            label="Password"
+            value={formData.password}
+            onChange={handleChange}
+            error={errors.password}
+            autoComplete="new-password"
+            placeholder="Create a password"
+            helpText="Must be at least 8 characters"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(prev => !prev)}
+            className="absolute right-3 top-9 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none"
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
 
         <div className="flex items-center justify-between">
           <div className="flex items-center">

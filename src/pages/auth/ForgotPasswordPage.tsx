@@ -50,21 +50,7 @@ export const ForgotPasswordPage: React.FC = () => {
     }
   };
 
-  const handleCodeVerified = async (code: string) => {
-    console.log(`[FORGOT] Verifying code: ${code} for email: ${email}`);
-    console.log(`[FORGOT] Email length:`, email.length);
-    console.log(`[FORGOT] Email type:`, typeof email);
-    try {
-      // Verify the code with the API
-      await mockApi.verifyCode(email, code);
-      console.log(`[FORGOT] Code verified successfully for ${email}`);
-      // Navigate to reset password page with email as state
-      navigate('/reset-password/verified', { state: { email, code } });
-    } catch (error: any) {
-      console.error(`[FORGOT] Code verification failed for ${email}:`, error);
-      toast.error(error.message || 'Invalid verification code. Please try again.');
-    }
-  };
+
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
@@ -78,7 +64,6 @@ export const ForgotPasswordPage: React.FC = () => {
     return (
       <VerificationCodePage 
         email={email} 
-        onCodeVerified={handleCodeVerified} 
       />
     );
   }

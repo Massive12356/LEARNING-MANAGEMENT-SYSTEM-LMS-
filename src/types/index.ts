@@ -362,14 +362,6 @@ export interface LoginForm {
   rememberMe?: boolean;
 }
 
-export interface RegisterForm {
-  email: string;
-  password: string;
-  firstName: string;
-  confirmPassword: string;
-  lastName: string;
-  role: UserRole;
-}
 
 export interface RegisterPayload {
   email: string;
@@ -377,9 +369,11 @@ export interface RegisterPayload {
   firstName: string;
   lastName: string;
   role: UserRole;
-  organizationId: string;
+  organizationId?: string;
 }
-
+export interface RegisterForm extends RegisterPayload {
+  confirmPassword: string;
+}
 export interface CourseForm {
   title: string;
   description: string;
