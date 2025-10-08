@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+// import { useAuth } from '../hooks/useAuth';
+import { useAuthStore } from '../stores/authStore';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { DashboardLayout } from '../layouts/DashboardLayout';
 import { AuthLayout } from '../layouts/AuthLayout';
@@ -64,7 +65,7 @@ import { NotFound } from '../pages/NotFound';
 import { Onboarding } from '../pages/Onboarding';
 
 export const AppRoutes: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, loading } = useAuthStore();
 
   if (loading) {
     return (
@@ -77,8 +78,9 @@ export const AppRoutes: React.FC = () => {
   // Redirect based on user role
   const getRoleBasedRedirect = () => {
     if (!user) return '/login';
-    
-    switch (user.role) {
+    // Normalize role from either 'role' or 'accountType'
+    const role = user.role || user.accountType;
+    switch (role) {
       case 'student':
         return '/student/dashboard';
       case 'teacher':

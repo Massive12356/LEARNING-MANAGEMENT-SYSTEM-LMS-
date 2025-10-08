@@ -7,7 +7,6 @@ import { AuthContextType } from '../types';
 export const useAuth = (): AuthContextType => {
   const {
     user,
-    loading,
     isViewingAs,
     originalUser,
     login,
@@ -21,14 +20,13 @@ export const useAuth = (): AuthContextType => {
 
   // Initialize auth on mount (similar to useEffect in AuthContext)
   useEffect(() => {
-    if (user === null && loading) {
+    if (user === null ) {
       initializeAuth();
     }
-  }, [user, loading, initializeAuth]);
+  }, [user, initializeAuth]);
 
   return {
     user,
-    loading,
     login,
     register,
     logout,

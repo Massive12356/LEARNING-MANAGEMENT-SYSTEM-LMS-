@@ -20,6 +20,7 @@ export interface User {
   lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
+  accountType:UserRole;
 }
 
 export interface Organization {
@@ -361,15 +362,18 @@ export interface LoginForm {
   rememberMe?: boolean;
 }
 
-export interface RegisterForm {
+
+export interface RegisterPayload {
   email: string;
   password: string;
-  confirmPassword: string;
   firstName: string;
   lastName: string;
   role: UserRole;
+  organizationId?: string;
 }
-
+export interface RegisterForm extends RegisterPayload {
+  confirmPassword: string;
+}
 export interface CourseForm {
   title: string;
   description: string;

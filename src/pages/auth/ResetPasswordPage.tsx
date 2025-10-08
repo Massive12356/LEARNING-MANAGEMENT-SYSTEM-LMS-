@@ -2,16 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { mockApi } from '../../services/mockApi';
 import toast from 'react-hot-toast';
+import { authService } from '../../services/authService';
 
 export const ResetPasswordPage: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const [formData, setFormData] = useState({
-    password: '',
-    confirmPassword: ''
+    newPassword: '',
+    confirmPassword: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -27,13 +27,13 @@ export const ResetPasswordPage: React.FC = () => {
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.password) {
+    if (!formData.newPassword) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
+    } else if (formData.newPassword.length < 8) {
       newErrors.password = 'Password must be at least 8 characters';
     }
 
-    if (formData.password !== formData.confirmPassword) {
+    if (formData.newPassword !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
 
@@ -50,7 +50,7 @@ export const ResetPasswordPage: React.FC = () => {
     
     try {
       // Reset the password using the mock API
-      await mockApi.resetPassword(email, formData.password);
+      await authService.resetPassword(email, formData.newPassword);
       
       toast.success('Password reset successfully!');
       navigate('/login');
@@ -73,9 +73,7 @@ export const ResetPasswordPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Reset your password
-        </h2>
+        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Reset your password</h2>
         {email && (
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             Reset password for <strong>{email}</strong>
@@ -90,10 +88,10 @@ export const ResetPasswordPage: React.FC = () => {
 
       <form className="space-y-6" onSubmit={handleSubmit}>
         <Input
-          name="password"
+          name="newPassword"
           type="password"
           label="New password"
-          value={formData.password}
+          value={formData.newPassword}
           onChange={handleChange}
           error={errors.password}
           autoComplete="new-password"
@@ -112,11 +110,7 @@ export const ResetPasswordPage: React.FC = () => {
           placeholder="Confirm your new password"
         />
 
-        <Button
-          type="submit"
-          className="w-full"
-          loading={loading}
-        >
+        <Button type="submit" className="w-full" loading={loading}>
           Reset password
         </Button>
       </form>
