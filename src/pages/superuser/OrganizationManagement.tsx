@@ -132,22 +132,26 @@ export function OrganizationManagement() {
     }
   };
 
-  const handleStatusChange = async (orgId: string, newStatus: 'active' | 'suspended') => {
+  const handleStatusChange = async (organizationId: string, newStatus: 'active' | 'suspended') => {
     try {
-      await organizationService.updateOrganization(orgId, { status: newStatus });
-      
-      setOrganizations(prev => prev.map(org => 
-        org.id === orgId ? { ...org, status: newStatus, updatedAt: new Date() } : org
-      ));
-      
-      toast.success(`Organization ${newStatus === 'active' ? 'activated' : 'suspended'} successfully`);
+      await organizationService.updateOrganization(organizationId, { status: newStatus });
+
+      setOrganizations(prev =>
+        prev.map(org =>
+          org.id === organizationId ? { ...org, status: newStatus, updatedAt: new Date() } : org
+        )
+      );
+
+      toast.success(
+        `Organization ${newStatus === 'active' ? 'activated' : 'suspended'} successfully`
+      );
     } catch (error) {
       toast.error('Failed to update organization status');
     }
   };
 
-  const openAssignAdminModal = (orgId: string) => {
-    setSelectedOrgId(orgId);
+  const openAssignAdminModal = (organizationId: string) => {
+    setSelectedOrgId(organizationId);
     setShowAssignAdminModal(true);
   };
 
@@ -174,13 +178,13 @@ export function OrganizationManagement() {
     }
   };
 
-  const handleGenerateJoinCode = async (orgId: string) => {
+  const handleGenerateJoinCode = async (organizationId: string) => {
     try {
       // For now, we'll use a mock user ID. In a real implementation, you'd get the current user ID.
       const code = await organizationCodeService.createOrganizationCode(
-        orgId, 
-        'superuser', 
-        codeConfig.expiryDays, 
+        organizationId,
+        'superuser',
+        codeConfig.expiryDays,
         codeConfig.maxUses
       );
       setGeneratedCode(code);

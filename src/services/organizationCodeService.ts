@@ -2,7 +2,7 @@ import { mockApi } from './mockApi';
 
 export interface OrganizationCode {
   id: string;
-  orgId: string;
+  organizationId: string;
   code: string;
   expiry: Date;
   maxUses: number;
@@ -25,10 +25,10 @@ class OrganizationCodeService {
   }
 
   // Create a new organization code
-  async createOrganizationCode(orgId: string, createdBy: string, expiryDays: number = 30, maxUses: number = 100): Promise<OrganizationCode> {
+  async createOrganizationCode(organizationId: string, createdBy: string, expiryDays: number = 30, maxUses: number = 100): Promise<OrganizationCode> {
     const code: OrganizationCode = {
       id: `code-${Date.now()}`,
-      orgId,
+      organizationId,
       code: this.generateUniqueCode(),
       expiry: new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000),
       maxUses,
@@ -45,7 +45,7 @@ class OrganizationCodeService {
   }
 
   // Validate an organization code
-  async validateOrganizationCode(code: string): Promise<{ valid: boolean; orgId?: string; orgName?: string }> {
+  async validateOrganizationCode(code: string): Promise<{ valid: boolean; organizationId?: string; orgName?: string }> {
     try {
       const result = await mockApi.validateOrganizationCode(code);
       return result;

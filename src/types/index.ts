@@ -20,7 +20,6 @@ export interface User {
   lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
-  accountType:UserRole;
 }
 
 export interface Organization {
@@ -389,7 +388,7 @@ export interface CourseForm {
 // Organization Code Types
 export interface OrganizationCode {
   id: string;
-  orgId: string;
+  organizationId: string;
   code: string;
   expiry: Date;
   maxUses: number;

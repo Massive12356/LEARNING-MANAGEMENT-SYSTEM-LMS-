@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthStore } from '../stores/authStore';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
@@ -9,7 +9,7 @@ import { Organization } from '../types';
 import toast from 'react-hot-toast';
 
 export const Onboarding = () => {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser } = useAuthStore();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [orgName, setOrgName] = useState('');

@@ -62,9 +62,11 @@ import ZustandTest from '../test/ZustandTest';
 // Common Pages
 import { NotFound } from '../pages/NotFound';
 import { Onboarding } from '../pages/Onboarding';
+import { useState } from 'react';
 
 export const AppRoutes: React.FC = () => {
-  const { user, loading } = useAuthStore();
+  const { user} = useAuthStore();
+  const [loading, setLoading] = useState(false)
 
   if (loading) {
     return (
@@ -78,7 +80,7 @@ export const AppRoutes: React.FC = () => {
   const getRoleBasedRedirect = () => {
     if (!user) return '/login';
     // Normalize role from either 'role' or 'accountType'
-    const role = user.role || user.accountType;
+    const role = user.role
     switch (role) {
       case 'student':
         return '/student/dashboard';

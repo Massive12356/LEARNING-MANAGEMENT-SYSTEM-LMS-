@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { useUI } from '../hooks/useUI';
+import { useAuthStore } from '../stores/authStore';
+import { useUIStore } from '../stores/uiStore';
 import { useNotifications } from '../hooks/useNotifications';
 import { organizationService } from '../services/organizationService';
 import { Organization } from '../types';
@@ -40,8 +40,8 @@ interface DashboardLayoutProps {
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
-  const { user, logout, isViewingAs, exitViewAs, originalUser } = useAuth();
-  const { theme, toggleTheme, sidebarCollapsed, toggleSidebar } = useUI();
+  const { user, logout, isViewingAs, exitViewAs, originalUser } = useAuthStore();
+  const { theme, toggleTheme, sidebarCollapsed, toggleSidebar } = useUIStore();
   const { unreadCount } = useNotifications(); // We only need unreadCount since NotificationBell uses it
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [organization, setOrganization] = useState<Organization | null>(null);

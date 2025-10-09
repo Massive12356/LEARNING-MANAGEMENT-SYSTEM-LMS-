@@ -1,4 +1,6 @@
+import { AxiosError } from 'axios';
 import { Organization } from '../types';
+import apiClient from './apiClient';
 import { mockApi } from './mockApi';
 
 class OrganizationService {
@@ -24,26 +26,23 @@ class OrganizationService {
 
   async createOrganization(orgData: Partial<Organization>): Promise<Organization> {
     try {
+      console.log("PAYLOAD TO THE BACKEND:", orgData)
       // In a real implementation, this would be a dedicated endpoint
-      // For now, we'll simulate the creation
-      const newOrg: Organization = {
-        id: `org-${Date.now()}`,
-        name: orgData.name || 'New Organization',
-        status: orgData.status || 'draft',
-        description: orgData.description || '',
-        primaryColor: orgData.primaryColor || '#3B82F6',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      // Add to mock data (in a real app, this would be handled by the API)
-      const organizations = await this.getOrganizations();
-      organizations.push(newOrg);
-      
-      return newOrg;
+     const response = await apiClient.post('/organization/create-organization', {
+       name: orgData.name,
+       status: orgData.status || 'active',
+       description: orgData.description || '',
+       primaryColor: orgData.primaryColor || '#3B82F6',
+     });
+     console.log("[OrganizationService] RESPONSE FROM BACKEND:", response.data)
+     return response.data
     } catch (error) {
-      console.error('Error creating organization:', error);
-      throw error;
+      const err = error as AxiosError<{message?: string}>
+      console.error(
+        '[OrganizationService] ERROR CREATING AN ORGANIZATION',
+        err.response?.data || err.message
+      );
+      throw err.response?.data?.message;
     }
   }
 
