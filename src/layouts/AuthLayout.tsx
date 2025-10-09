@@ -5,7 +5,7 @@ export const AuthLayout = ({ children }: { children: React.ReactNode }) => {
   const { theme, toggleTheme } = useUI();
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <div className={`min-h-screen flex items-center justify-center ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <div className="absolute top-4 right-4">
         <button
           onClick={toggleTheme}
@@ -19,7 +19,7 @@ export const AuthLayout = ({ children }: { children: React.ReactNode }) => {
           )}
         </button>
       </div>
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md px-4">
         {children}
       </div>
     </div>

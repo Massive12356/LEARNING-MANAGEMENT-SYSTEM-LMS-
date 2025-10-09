@@ -7,6 +7,7 @@ import { LoginForm } from '../../types';
 import { useAuthStore } from '../../stores/authStore';
 import { Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { AcademicCapIcon } from '@heroicons/react/24/outline';
 
 export const LoginPage: React.FC = () => {
   const [formData, setFormData] = useState<LoginForm>({
@@ -68,90 +69,104 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Sign in to your account
-        </h2>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Or{' '}
-          <Link
-            to="/register"
-            className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400"
-          >
-            create a new account
-          </Link>
-        </p>
-      </div>
-
-      <form className="space-y-6" onSubmit={handleSubmit}>
-        <Input
-          name="email"
-          type="email"
-          label="Email address"
-          value={formData.email}
-          onChange={handleChange}
-          error={errors.email}
-          autoComplete="email"
-          placeholder="Enter your email"
-          disabled={loading}
-        />
-
-        {/* Password Field */}
-        <div className="relative">
-          <Input
-            name="password"
-            type={showPassword ? 'text' : 'password'}
-            label="Password"
-            value={formData.password}
-            onChange={handleChange}
-            error={errors.password}
-            autoComplete="new-password"
-            placeholder="Create a password"
-            helpText="Must be at least 8 characters"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword(prev => !prev)}
-            className="absolute right-3 top-9 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none"
-          >
-            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
+    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <div className="mx-auto flex items-center justify-center">
+            <div className="p-2 bg-blue-600 rounded-lg">
+              <AcademicCapIcon className="h-10 w-10 text-white" />
+            </div>
+          </div>
+          <h1 className="mt-4 text-center text-2xl font-extrabold text-gray-900 dark:text-white">
+            LMS Platform
+          </h1>
+          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+            Sign in to your account
+          </p>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <input
-              id="remember-me"
-              name="rememberMe"
-              type="checkbox"
-              checked={formData.rememberMe}
+        <div className="mt-8 bg-white dark:bg-gray-800 py-6 px-6 rounded-lg shadow-md">
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <Input
+              name="email"
+              type="email"
+              label="Email address"
+              value={formData.email}
               onChange={handleChange}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              error={errors.email}
+              autoComplete="email"
+              placeholder="Enter your email"
               disabled={loading}
             />
-            <label
-              htmlFor="remember-me"
-              className="ml-2 block text-sm text-gray-900 dark:text-white"
-            >
-              Remember me
-            </label>
-          </div>
 
-          <div className="text-sm">
-            <Link
-              to="/forgot-password"
-              className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400"
-            >
-              Forgot your password?
-            </Link>
+            {/* Password Field */}
+            <div className="relative">
+              <Input
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                label="Password"
+                value={formData.password}
+                onChange={handleChange}
+                error={errors.password}
+                autoComplete="new-password"
+                placeholder="Enter your password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(prev => !prev)}
+                className="absolute right-3 top-9 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="rememberMe"
+                  type="checkbox"
+                  checked={formData.rememberMe}
+                  onChange={handleChange}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  disabled={loading}
+                />
+                <label
+                  htmlFor="remember-me"
+                  className="ml-2 block text-sm text-gray-900 dark:text-white"
+                >
+                  Remember me
+                </label>
+              </div>
+
+              <div className="text-sm">
+                <Link
+                  to="/forgot-password"
+                  className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+            </div>
+
+            <Button type="submit" className="w-full" loading={loading} disabled={loading}>
+              {loading ? 'Signing in...' : 'Sign in'}
+            </Button>
+          </form>
+
+          <div className="mt-4 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Don't have an account?{' '}
+              <Link
+                to="/register"
+                className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400"
+              >
+                Sign up
+              </Link>
+            </p>
           </div>
         </div>
-
-        <Button type="submit" className="w-full" loading={loading} disabled={loading}>
-          {loading ? 'Signing in...' : 'Sign in'}
-        </Button>
-      </form>
+      </div>
     </div>
   );
 };

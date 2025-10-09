@@ -7,4 +7,15 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'https://learning-management-system-jed6.onrender.com',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, '/api/V1'),
+      },
+    },
+  },
 });

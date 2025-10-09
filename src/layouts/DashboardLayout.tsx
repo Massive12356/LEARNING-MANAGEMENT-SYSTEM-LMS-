@@ -33,6 +33,7 @@ import {
   PresentationChartLineIcon
 } from '@heroicons/react/24/outline';
 import { NotificationBell } from '../components/ui/NotificationBell';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import toast from 'react-hot-toast';
 
 interface DashboardLayoutProps {
@@ -50,6 +51,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -95,12 +97,18 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   }, [user]);
 
   const handleLogout = async () => {
+    console.log('handleLogout called');
     try {
       await logout();
       navigate('/login');
     } catch (error) {
       toast.error('Failed to logout');
     }
+  };
+
+  const handleLogoutClick = () => {
+    console.log('handleLogoutClick called');
+    setShowLogoutConfirm(true);
   };
 
   const handleProfileClick = () => {
@@ -339,7 +347,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             </button>
             
             <button
-              onClick={handleLogout}
+              onClick={handleLogoutClick}
               className={`flex items-center ${sidebarCollapsed ? 'justify-center px-3' : 'space-x-3 px-3'} py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors`}
               title={sidebarCollapsed ? 'Sign Out' : undefined}
             >
@@ -468,7 +476,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                     {/* Sign Out */}
                     <div className="border-t border-gray-200 dark:border-gray-700 py-1">
                       <button
-                        onClick={handleLogout}
+                        onClick={handleLogoutClick}
                         className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                       >
                         <ArrowRightOnRectangleIcon className="h-5 w-5 mr-3" />
@@ -489,6 +497,18 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           </div>
         </main>
       </div>
+
+      {/* Logout Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={handleLogout}
+        title="Sign Out"
+        message="Are you sure you want to sign out? You will need to log back in to access your account."
+        confirmText="Sign Out"
+        cancelText="Cancel"
+        confirmVariant="danger"
+      />
     </div>
   );
 };

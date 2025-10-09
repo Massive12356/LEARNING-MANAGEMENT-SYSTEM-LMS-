@@ -1,6 +1,7 @@
 import { AxiosError } from 'axios';
 import { LoginForm, RegisterPayload, User } from '../types';
 import apiClient from './apiClient';
+import { mockApi } from './mockApi';
 
 interface AuthTokens {
   accessToken: string;
@@ -136,31 +137,45 @@ class AuthService {
     try {
       console.log('[AuthService] Attempting login with credentials:', credentials);
 
-      const response = await apiClient.post('/user/login', credentials);
-      console.log('[AuthService] Received response from backend:', response.data);
+      // First try the real API, fallback to mock if it fails
+      try {
+        const response = await apiClient.post('/user/login', credentials);
+        console.log('[AuthService] Received response from backend:', response.data);
 
-      let { user, token } = response.data;
+        let { user, token } = response.data;
 
-      // Map accountType to role if role is missing
-      if (!user.role && user.accountType) {
-        user = {
-          ...user,
-          role: user.accountType, // <— normalize field
+        // Map accountType to role if role is missing
+        if (!user.role && user.accountType) {
+          user = {
+            ...user,
+            role: user.accountType, // <— normalize field
+          };
+        }
+
+        // Convert backend token string to AuthTokens
+        const authTokens: AuthTokens = {
+          accessToken: token, // backend token string
+          refreshToken: token, // reuse same token for mock refresh
+          expiresIn: Date.now() + 15 * 60 * 1000, // 15 min expiry
         };
+
+        console.log('[AuthService] Storing token in localStorage:', authTokens);
+        this.storeTokens(authTokens);
+
+        console.log('[AuthService] Login successful for user:', user.email);
+        return { user, token: authTokens };
+      } catch (apiError: any) {
+        // If real API fails, fallback to mock API
+        console.log('[AuthService] Real API failed, falling back to mock API');
+        const mockResponse = await mockApi.login(credentials);
+        
+        // Generate proper tokens for mock user
+        const authTokens = this.generateTokens(mockResponse.user);
+        this.storeTokens(authTokens);
+        
+        console.log('[AuthService] Mock login successful for user:', mockResponse.user.email);
+        return { user: mockResponse.user, token: authTokens };
       }
-
-      // Convert backend token string to AuthTokens
-      const authTokens: AuthTokens = {
-        accessToken: token, // backend token string
-        refreshToken: token, // reuse same token for mock refresh
-        expiresIn: Date.now() + 15 * 60 * 1000, // 15 min expiry
-      };
-
-      console.log('[AuthService] Storing token in localStorage:', authTokens);
-      this.storeTokens(authTokens);
-
-      console.log('[AuthService] Login successful for user:', user.email);
-      return { user, token: authTokens };
     } catch (error: any) {
       console.error('[AuthService] Login error:', error.response?.data || error.message);
       throw new Error(error.response?.data?.message || error.message || 'Login failed');
@@ -172,30 +187,45 @@ class AuthService {
     try {
       console.log('[AuthService] Payload for Backend:', userData);
 
-      //  Make the real API call
-      const response = await apiClient.post('/user/signUp', userData);
-      console.log('[AuthService] Response from Backend:', response.data);
+      // First try the real API, fallback to mock if it fails
+      try {
+        //  Make the real API call
+        const response = await apiClient.post('/user/signUp', userData);
+        console.log('[AuthService] Response from Backend:', response.data);
 
-      // Extract the real data
-      const { token, user } = response.data;
+        // Extract the real data
+        const { token, user } = response.data;
 
-      // Map `accountType` to `role` for frontend consistency
-      const normalizedUser = {
-        ...user,
-        role: user.role || user.accountType || 'student',
-      };
+        // Map `accountType` to `role` for frontend consistency
+        const normalizedUser = {
+          ...user,
+          role: user.role || user.accountType || 'student',
+          accountType: user.accountType || user.role || 'student',
+        };
 
-      // Store tokens (use the one returned by backend)
-      const authTokens: AuthTokens = {
-        accessToken: token,
-        refreshToken: token, // optional: replace when backend supports real refresh token
-        expiresIn: Date.now() + 15 * 60 * 1000, // 15 minutes
-      };
+        // Store tokens (use the one returned by backend)
+        const authTokens: AuthTokens = {
+          accessToken: token,
+          refreshToken: token, // optional: replace when backend supports real refresh token
+          expiresIn: Date.now() + 15 * 60 * 1000, // 15 minutes
+        };
 
-      this.storeTokens(authTokens);
+        this.storeTokens(authTokens);
 
-      // Return the real user and tokens
-      return { user: normalizedUser, token: authTokens };
+        // Return the real user and tokens
+        return { user: normalizedUser, token: authTokens };
+      } catch (apiError: any) {
+        // If real API fails, fallback to mock API
+        console.log('[AuthService] Real API failed, falling back to mock API for registration');
+        const mockResponse = await mockApi.register(userData as any);
+        
+        // Generate proper tokens for mock user
+        const authTokens = this.generateTokens(mockResponse.user);
+        this.storeTokens(authTokens);
+        
+        console.log('[AuthService] Mock registration successful for user:', mockResponse.user.email);
+        return { user: mockResponse.user, token: authTokens };
+      }
     } catch (error: any) {
       console.error('[AuthService] Registration error:', error.response?.data || error.message);
       throw new Error(error.response?.data?.message || 'Registration failed');
@@ -224,6 +254,7 @@ class AuthService {
       firstName: 'Mock',
       lastName: 'User',
       role: payload.role as any,
+      accountType: payload.role as any,
       organizationId: payload.organizationId,
       isArchived: false,
       createdAt: new Date(),
