@@ -1,4 +1,6 @@
+import { AxiosError } from 'axios';
 import { Organization } from '../types';
+import apiClient from './apiClient';
 import { mockApi } from './mockApi';
 
 class OrganizationService {
@@ -22,28 +24,23 @@ class OrganizationService {
     }
   }
 
-  async createOrganization(orgData: Partial<Organization>): Promise<Organization> {
+  async createOrganization( formData: FormData
+  ): Promise<Organization> {
     try {
-      // In a real implementation, this would be a dedicated endpoint
-      // For now, we'll simulate the creation
-      const newOrg: Organization = {
-        id: `org-${Date.now()}`,
-        name: orgData.name || 'New Organization',
-        status: orgData.status || 'draft',
-        description: orgData.description || '',
-        primaryColor: orgData.primaryColor || '#3B82F6',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      // Add to mock data (in a real app, this would be handled by the API)
-      const organizations = await this.getOrganizations();
-      organizations.push(newOrg);
-      
-      return newOrg;
+      // real  endpoint
+      const response = await apiClient.post('organization/create-organization', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log("RESPONSE FROM BACKEND", response.data)
+      return response.data
     } catch (error) {
-      console.error('Error creating organization:', error);
-      throw error;
+      const err = error as AxiosError<{message?: string}>
+      console.error('[createOrganization] ERROR CREATING ORGANISATION', err.response?.data || err.message);
+      throw new Error(
+        err.response?.data?.message || '[createOrganization] ERROR CREATING ORGANISATION'
+      );
     }
   }
 
@@ -53,15 +50,15 @@ class OrganizationService {
       const updatedOrg = await mockApi.getOrganizationById(id);
       const organizations = await this.getOrganizations();
       const orgIndex = organizations.findIndex(org => org.id === id);
-      
+
       if (orgIndex !== -1) {
         organizations[orgIndex] = {
           ...organizations[orgIndex],
           ...orgData,
-          updatedAt: new Date()
+          updatedAt: new Date(),
         };
       }
-      
+
       return organizations[orgIndex];
     } catch (error) {
       console.error('Error updating organization:', error);
@@ -76,7 +73,7 @@ class OrganizationService {
       if (!user || !user.organizationId) {
         return null;
       }
-      
+
       // Then get the organization
       const organization = await this.getOrganizationById(user.organizationId);
       return organization;
