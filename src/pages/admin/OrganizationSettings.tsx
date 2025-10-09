@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -18,6 +19,8 @@ import toast from 'react-hot-toast';
 
 export function OrganizationSettings() {
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('general');
@@ -30,19 +33,42 @@ export function OrganizationSettings() {
     emailCopyBranding: ''
   });
 
+  // Extract organization ID from query parameters for superuser access
+  const urlParams = new URLSearchParams(location.search);
+  const orgIdFromQuery = urlParams.get('orgId');
+
   useEffect(() => {
     loadOrganization();
-  }, [user]);
+  }, [user, orgIdFromQuery]);
 
   const loadOrganization = async () => {
-    if (!user?.organizationId) {
-      toast.error('No organization assigned to your account');
-      setLoading(false);
-      return;
-    }
-    
     try {
-      const orgDataResult = await organizationService.getOrganizationById(user.organizationId);
+      let orgIdToLoad = null;
+      
+      // For superusers, use orgId from query params if provided
+      if (user?.role === 'superuser' && orgIdFromQuery) {
+        orgIdToLoad = orgIdFromQuery;
+      } 
+      // For other users, use their assigned organization
+      else if (user?.organizationId) {
+        orgIdToLoad = user.organizationId;
+      }
+      
+      if (!orgIdToLoad) {
+        toast.error('No organization specified');
+        setLoading(false);
+        return;
+      }
+      
+      const orgDataResult = await organizationService.getOrganizationById(orgIdToLoad);
+      
+      // Add null check
+      if (!orgDataResult) {
+        toast.error('Organization not found');
+        setLoading(false);
+        return;
+      }
+      
       setOrganization(orgDataResult);
       setOrgData({
         name: orgDataResult.name,
@@ -93,10 +119,10 @@ export function OrganizationSettings() {
       <div className="text-center py-12">
         <BuildingOfficeIcon className="h-12 w-12 mx-auto text-gray-400" />
         <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
-          No Organization Assigned
+          No Organization Found
         </h3>
         <p className="mt-2 text-gray-600 dark:text-gray-400">
-          You don't have an organization assigned to your account. Contact your administrator.
+          The specified organization could not be found.
         </p>
       </div>
     );
@@ -105,12 +131,21 @@ export function OrganizationSettings() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Organization Settings
-        </h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">
-          Manage your organization's settings and branding
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Organization Settings
+            </h1>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">
+              Manage your organization's settings and branding
+            </p>
+          </div>
+          {user?.role === 'superuser' && (
+            <Button variant="outline" onClick={() => navigate('/superuser/organizations')}>
+              Back to Organizations
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">

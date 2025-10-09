@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -404,25 +404,21 @@ export function OrganizationManagement() {
                   {/* Actions */}
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Button variant="outline" size="sm">
-                        <EyeIcon className="h-4 w-4 mr-1" />
-                        View
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <PencilIcon className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
+                      <Link to={`/admin/organization?orgId=${org.id}`}>
+                        <Button variant="outline" size="sm">
+                          <EyeIcon className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                      </Link>
+                      <Link to={`/admin/organization?orgId=${org.id}`}>
+                        <Button variant="outline" size="sm">
+                          <PencilIcon className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                      </Link>
                     </div>
                     
                     <div className="flex flex-wrap items-center gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => openAssignAdminModal(org.id)}
-                      >
-                        <UserPlusIcon className="h-4 w-4 mr-1" />
-                        Add Admin
-                      </Button>
                       <Button 
                         variant="outline" 
                         size="sm"
