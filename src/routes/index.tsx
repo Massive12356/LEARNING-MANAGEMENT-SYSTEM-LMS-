@@ -65,15 +65,8 @@ import { NotFound } from '../pages/NotFound';
 import { Onboarding } from '../pages/Onboarding';
 
 export const AppRoutes: React.FC = () => {
-  const { user, loading } = useAuthStore();
+  const { user} = useAuthStore();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
 
   // Redirect based on user role
   const getRoleBasedRedirect = () => {

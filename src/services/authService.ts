@@ -134,9 +134,7 @@ class AuthService {
 
   // login
   async login(credentials: LoginForm): Promise<AuthResponse> {
-    try {
       console.log('[AuthService] Attempting login with credentials:', credentials);
-
       // First try the real API, fallback to mock if it fails
       try {
         const response = await apiClient.post('/user/login', credentials);
@@ -144,6 +142,8 @@ class AuthService {
 
         let { user, token } = response.data;
 
+        // Save **just the access token** as a plain string in localStorage
+        localStorage.setItem('token', token);
         // Map accountType to role if role is missing
         if (!user.role && user.accountType) {
           user = {
@@ -151,7 +151,6 @@ class AuthService {
             role: user.accountType, // <— normalize field
           };
         }
-
         // Convert backend token string to AuthTokens
         const authTokens: AuthTokens = {
           accessToken: token, // backend token string
@@ -160,23 +159,11 @@ class AuthService {
         };
 
         console.log('[AuthService] Storing token in localStorage:', authTokens);
-        this.storeTokens(authTokens);
+        localStorage.setItem('authTokens', JSON.stringify(authTokens));
 
         console.log('[AuthService] Login successful for user:', user.email);
         return { user, token: authTokens };
-      } catch (apiError: any) {
-        // If real API fails, fallback to mock API
-        console.log('[AuthService] Real API failed, falling back to mock API');
-        const mockResponse = await mockApi.login(credentials);
-        
-        // Generate proper tokens for mock user
-        const authTokens = this.generateTokens(mockResponse.user);
-        this.storeTokens(authTokens);
-        
-        console.log('[AuthService] Mock login successful for user:', mockResponse.user.email);
-        return { user: mockResponse.user, token: authTokens };
-      }
-    } catch (error: any) {
+      } catch (error: any) {
       console.error('[AuthService] Login error:', error.response?.data || error.message);
       throw new Error(error.response?.data?.message || error.message || 'Login failed');
     }
