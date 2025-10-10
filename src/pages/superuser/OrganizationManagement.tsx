@@ -56,6 +56,9 @@ export function OrganizationManagement() {
     password: ''
   });
 
+  // Add loading state for create organization
+  const [creatingOrg, setCreatingOrg] = useState(false);
+
   // Mock organization stats
   const [orgStats, setOrgStats] = useState<Record<string, any>>({});
 
@@ -116,6 +119,7 @@ export function OrganizationManagement() {
     }
 
     try {
+      setCreatingOrg(true); // Set loading state
       await organizationService.createOrganization({
         name: newOrgData.name,
         description: newOrgData.description,
@@ -129,6 +133,8 @@ export function OrganizationManagement() {
       loadOrganizations();
     } catch (error) {
       toast.error('Failed to create organization');
+    } finally {
+      setCreatingOrg(false); // Reset loading state
     }
   };
 
@@ -406,16 +412,18 @@ export function OrganizationManagement() {
                     <div className="flex flex-wrap items-center gap-2">
                       <Link to={`/admin/organization?orgId=${org.id}`}>
                         <Button variant="outline" size="sm">
-                          <EyeIcon className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
-                      </Link>
-                      <Link to={`/admin/organization?orgId=${org.id}`}>
-                        <Button variant="outline" size="sm">
                           <PencilIcon className="h-4 w-4 mr-1" />
                           Edit
                         </Button>
                       </Link>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => openAssignAdminModal(org.id)}
+                      >
+                        <UserPlusIcon className="h-4 w-4 mr-1" />
+                        Add Admin
+                      </Button>
                     </div>
                     
                     <div className="flex flex-wrap items-center gap-2">
@@ -531,7 +539,10 @@ export function OrganizationManagement() {
             <Button variant="outline" onClick={() => setShowCreateModal(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreateOrganization}>
+            <Button 
+              onClick={handleCreateOrganization}
+              loading={creatingOrg} // Add loading state to button
+            >
               Create Organization
             </Button>
           </div>
