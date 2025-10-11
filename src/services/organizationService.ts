@@ -2,6 +2,7 @@ import { AxiosError } from 'axios';
 import { Organization } from '../types';
 import apiClient from './apiClient';
 import { mockApi } from './mockApi';
+import { CreateOrganizationResponse,GetOrganizationsResponse } from '../types';
 
 class OrganizationService {
   async getOrganizationById(id: string): Promise<Organization | null> {
@@ -14,13 +15,22 @@ class OrganizationService {
     }
   }
 
-  async getOrganizations(): Promise<Organization[]> {
+  async getOrganizations(): Promise<GetOrganizationsResponse> {
     try {
-      const organizations = await mockApi.getOrganizations();
-      return organizations;
+      const response = await apiClient.get<GetOrganizationsResponse>('/organization/All-organization');
+      console.log("[organizationService] RESPONSE FROM BACKEND:", response.data)
+      return response.data;
     } catch (error) {
-      console.error('Error fetching organizations:', error);
-      return [];
+      const err = error as AxiosError<{message?: string}>
+      console.error(
+        '[organizationService] Error fetching organizations:',
+        err.response?.data || err.message
+      );
+      throw new Error(
+        err.response?.data?.message ||
+          err.message ||
+          '[organizationService] Error fetching organizations:'
+      );
     }
   }
 
@@ -28,13 +38,17 @@ class OrganizationService {
   ): Promise<Organization> {
     try {
       // real  endpoint
-      const response = await apiClient.post('organization/create-organization', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await apiClient.post<CreateOrganizationResponse>(
+        'organization/create-organization',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
       console.log("RESPONSE FROM BACKEND", response.data)
-      return response.data
+      return response.data.Organization
     } catch (error) {
       const err = error as AxiosError<{message?: string}>
       console.error('[createOrganization] ERROR CREATING ORGANISATION', err.response?.data || err.message);

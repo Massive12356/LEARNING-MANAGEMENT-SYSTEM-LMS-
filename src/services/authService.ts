@@ -157,6 +157,7 @@ class AuthService {
           refreshToken: token, // reuse same token for mock refresh
           expiresIn: Date.now() + 15 * 60 * 1000, // 15 min expiry
         };
+        this.storeTokens(authTokens)
 
         console.log('[AuthService] Storing token in localStorage:', authTokens);
         localStorage.setItem('authTokens', JSON.stringify(authTokens));

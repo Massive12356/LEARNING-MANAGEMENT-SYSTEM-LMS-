@@ -1,8 +1,9 @@
-import { mockApi } from './mockApi';
+import { AxiosError } from 'axios';
+import apiClient from './apiClient';
 
 export interface OrganizationCode {
   id: string;
-  orgId: string;
+  organizationId: string;
   code: string;
   expiry: Date;
   maxUses: number;
@@ -12,7 +13,7 @@ export interface OrganizationCode {
 }
 
 class OrganizationCodeService {
-  // Generate a unique code
+  // Generate a unique fallback code (optional)
   generateUniqueCode(): string {
     const prefix = 'SYM-ORG';
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -24,33 +25,20 @@ class OrganizationCodeService {
     return `${prefix}-${code}-${year}`;
   }
 
-  // Create a new organization code
-  async createOrganizationCode(orgId: string, createdBy: string, expiryDays: number = 30, maxUses: number = 100): Promise<OrganizationCode> {
-    const code: OrganizationCode = {
-      id: `code-${Date.now()}`,
-      orgId,
-      code: this.generateUniqueCode(),
-      expiry: new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000),
-      maxUses,
-      usedCount: 0,
-      createdAt: new Date(),
-      createdBy
-    };
-
-    // In a real implementation, this would call an API
-    // For now, we'll store it in the mock API
-    const result = await mockApi.createOrganizationCode(code);
-    
-    return result;
-  }
-
-  // Validate an organization code
-  async validateOrganizationCode(code: string): Promise<{ valid: boolean; orgId?: string; orgName?: string }> {
+  // ✅ Create a new organization code using the real API
+  async createOrganizationCode(organizationName: string): Promise<any> {
     try {
-      const result = await mockApi.validateOrganizationCode(code);
-      return result;
+      const response = await apiClient.post(
+        '/organization/code-organization',
+        { organizationName }
+      );
+
+      console.log('[organizationCodeService] RESPONSE FROM BACKEND:', response.data);
+      return response.data;
     } catch (error) {
-      return { valid: false };
+      const err = error as AxiosError<{ message?: string }>;
+      console.error('[organizationCodeService] ERROR:', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || err.message || 'Failed to create organization code');
     }
   }
 }

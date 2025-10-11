@@ -3,7 +3,6 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { VerificationCodePage } from './VerificationCodePage';
-import { mockApi } from '../../services/mockApi';
 import toast from 'react-hot-toast';
 import { authService } from '../../services/authService';
 import { AxiosError } from 'axios';

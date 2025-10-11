@@ -35,6 +35,16 @@ export interface Organization {
   updatedAt: Date;
 }
 
+export interface CreateOrganizationResponse {
+  message: string;
+  Organization: Organization; // using your existing global Organization type
+}
+
+export interface GetOrganizationsResponse {
+  message?: string;
+  organizations: Organization[];
+}
+
 export interface Course {
   id: string;
   title: string;

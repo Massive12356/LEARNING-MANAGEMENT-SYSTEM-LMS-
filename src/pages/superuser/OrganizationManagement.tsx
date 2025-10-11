@@ -4,7 +4,6 @@ import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
-import { mockApi } from '../../services/mockApi';
 import { adminService } from '../../services/adminService';
 import { organizationService } from '../../services/organizationService';
 import { organizationCodeService } from '../../services/organizationCodeService';
@@ -29,7 +28,8 @@ import toast from 'react-hot-toast';
 export function OrganizationManagement() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [filteredOrganizations, setFilteredOrganizations] = useState<Organization[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [createdOrgName, setCreatedOrgName] = useState<string>('');
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -62,29 +62,32 @@ export function OrganizationManagement() {
   // Mock organization stats
   const [orgStats, setOrgStats] = useState<Record<string, any>>({});
 
-  useEffect(() => {
-    loadOrganizations();
-  }, []);
-
-  useEffect(() => {
-    filterOrganizations();
-  }, [organizations, searchTerm, statusFilter]);
+ 
 
   const loadOrganizations = async () => {
     try {
-      const orgsData = await organizationService.getOrganizations();
-      setOrganizations(orgsData);
-
-      // Mock stats for each organization
-      const stats: Record<string, any> = {};
-      orgsData.forEach(org => {
-        stats[org.id] = {
-          users: Math.floor(Math.random() * 1000) + 100,
-          courses: Math.floor(Math.random() * 50) + 10,
-          activeUsers: Math.floor(Math.random() * 500) + 50,
-        };
-      });
-      setOrgStats(stats);
+      setLoading(true)
+      const response = await organizationService.getOrganizations();
+      console.log(response)
+      const orgsData = response.organizations || [];
+      // Normalize backend data
+      const formattedOrgs = orgsData.map((org: any) => ({
+        ...org,
+        createdAt: new Date(org.createdAt),
+        updatedAt: org.updatedAt ? new Date(org.updatedAt) : null,
+      }));
+      
+      setOrganizations(formattedOrgs);
+      setFilteredOrganizations(formattedOrgs)
+      // const stats: Record<string, any> = {};
+      // orgsData.forEach(org => {
+      //   stats[org.id] = {
+      //     users: Math.floor(Math.random() * 1000) + 100,
+      //     courses: Math.floor(Math.random() * 50) + 10,
+      //     activeUsers: Math.floor(Math.random() * 500) + 50,
+      //   };
+      // });
+      // setOrgStats(stats);
     } catch (error) {
       console.error('Failed to load organizations:', error);
       toast.error('Failed to load organizations');
@@ -136,8 +139,11 @@ export function OrganizationManagement() {
     try {
       setLoading(true);
       console.log('PAYLOAD TO THE BACKEND', payload);
-      await organizationService.createOrganization(payload);
-      toast.success('Organization created successfully');
+       const response = await organizationService.createOrganization(payload);
+
+       const organizationName = response.name;
+       toast.success(`Organization ${organizationName} created successfully`);
+       setCreatedOrgName(organizationName);
       setNewOrgData({
         name: '',
         description: '',
@@ -200,29 +206,20 @@ export function OrganizationManagement() {
     }
   };
 
-  const handleGenerateJoinCode = async (orgId: string) => {
+  const handleGenerateJoinCode = async () => {
+     if (!createdOrgName) {
+       toast.error('Please create an organization first before generating a join code');
+       return;
+     }
     try {
       // For now, we'll use a mock user ID. In a real implementation, you'd get the current user ID.
-      const code = await organizationCodeService.createOrganizationCode(
-        orgId,
-        'superuser',
-        codeConfig.expiryDays,
-        codeConfig.maxUses
-      );
+      const code = await organizationCodeService.createOrganizationCode(createdOrgName);
       setGeneratedCode(code);
       setShowGenerateCodeModal(true);
     } catch (error) {
       toast.error('Failed to generate join code');
     }
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
 
   const totalUsers = Object.values(orgStats).reduce(
     (acc: number, stats: any) => acc + stats.users,
@@ -233,6 +230,22 @@ export function OrganizationManagement() {
     0
   );
   const activeOrgs = organizations.filter(org => org.status === 'active').length;
+
+   useEffect(() => {
+     loadOrganizations();
+   }, []);
+
+   useEffect(() => {
+     filterOrganizations();
+   }, [organizations, searchTerm, statusFilter]);
+
+     if (loading) {
+       return (
+         <div className="flex items-center justify-center min-h-96">
+           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+         </div>
+       );
+     }
 
   return (
     <div className="space-y-8">
