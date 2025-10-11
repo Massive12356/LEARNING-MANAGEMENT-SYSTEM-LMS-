@@ -7,7 +7,7 @@ import { Modal } from '../../components/ui/Modal';
 import { adminService } from '../../services/adminService';
 import { organizationService } from '../../services/organizationService';
 import { organizationCodeService } from '../../services/organizationCodeService';
-import { Organization, User } from '../../types';
+import { Organization, User,UserRole } from '../../types';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -28,7 +28,7 @@ import toast from 'react-hot-toast';
 export function OrganizationManagement() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [filteredOrganizations, setFilteredOrganizations] = useState<Organization[]>([]);
-  const [createdOrgName, setCreatedOrgName] = useState<string>('');
+  const [selectOrgName, setSelectOrgName] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
@@ -57,6 +57,7 @@ export function OrganizationManagement() {
     lastName: '',
     email: '',
     password: '',
+    role: 'admin'
   });
 
   // Add loading state for create organization
@@ -145,8 +146,8 @@ export function OrganizationManagement() {
        const response = await organizationService.createOrganization(payload);
 
        const organizationName = response.name;
+       console.log("NAME OF ORGANIZATION",organizationName)
        toast.success(`Organization ${organizationName} created successfully`);
-       setCreatedOrgName(organizationName);
       setNewOrgData({
         name: '',
         description: '',
@@ -183,44 +184,79 @@ export function OrganizationManagement() {
     }
   };
 
-  const openAssignAdminModal = (organizationId: string) => {
-    setSelectedOrgId(organizationId);
+  const openAssignAdminModal = (orgName: string) => {
+    setSelectOrgName(orgName);
     setShowAssignAdminModal(true);
   };
 
   const handleCreateAdmin = async () => {
-    if (!selectedOrgId) return;
-
-    if (!adminData.email || !adminData.firstName || !adminData.lastName || !adminData.password) {
-      toast.error('Please fill in all required fields');
+    if (!selectOrgName) {
+      toast.error('No organization selected for admin assignment.');
       return;
     }
 
-    try {
-      await adminService.createAdmin({
-        ...adminData,
-        organizationId: selectedOrgId,
-      });
+    const { firstName, lastName, email, password } = adminData;
 
-      toast.success('Admin user created and assigned successfully');
-      setAdminData({ firstName: '', lastName: '', email: '', password: '' });
+    // ✅ Validation rules
+    if (!firstName.trim()) return toast.error('First name is required.');
+    if (!lastName.trim()) return toast.error('Last name is required.');
+    if (!email.trim()) return toast.error('Email is required.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      return toast.error('Please enter a valid email address.');
+    if (!password.trim()) return toast.error('Password is required.');
+    if (password.length < 8) return toast.error('Password must be at least 8 characters long.');
+
+    const org = organizations.find(o => o.id === selectedOrgId); // map the id to the name
+    // ✅ Prepare the final payload for admin creation
+    const payload = {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.trim().toLowerCase(),
+      password: password,
+      role: 'admin' as UserRole, // Ensures it's an admin user
+      organizationName: org?.name, // Links admin to their organization
+    };
+   console.log('[DEBUG selectedOrgId]:', selectedOrgId, typeof selectedOrgId);
+
+    try {
+      toast.loading('Creating admin...', { id: 'admin-create' });
+
+      const createdAdmin = await adminService.createAdmin(payload);
+
+      toast.success(
+        `Admin ${createdAdmin.firstName} ${createdAdmin.lastName} created successfully.`,
+        { id: 'admin-create' }
+      );
+
+      // Reset form and close modal
+      setAdminData({ firstName: '', lastName: '', email: '', password: '', role: 'admin' });
       setShowAssignAdminModal(false);
       setSelectedOrgId(null);
-    } catch (error) {
-      toast.error('Failed to create admin user');
+
+      // Optionally refresh admin list if you have one
+      // loadAdmins(selectedOrgId);
+    } catch (error: any) {
+      console.error('[handleCreateAdmin] Error:', error);
+      toast.error(error.message || 'Failed to create admin user', { id: 'admin-create' });
     }
   };
 
-  const handleGenerateJoinCode = async () => {
-     if (!createdOrgName) {
+
+  const handleGenerateJoinCode = async (orgName: string) => {
+    // console.log("ORGANIZATION NAME:", orgName)
+     if (!orgName) {
        toast.error('Please create an organization first before generating a join code');
        return;
+     }else{
+      toast.loading(`Generating Code for ${orgName}`);
      }
+
     try {
-      // For now, we'll use a mock user ID. In a real implementation, you'd get the current user ID.
-      const code = await organizationCodeService.createOrganizationCode(createdOrgName);
+      const code = await organizationCodeService.createOrganizationCode(orgName);
+      console.log('[Generated Code API Response]', code);
       setGeneratedCode(code);
       setShowGenerateCodeModal(true);
+
     } catch (error) {
       toast.error('Failed to generate join code');
     }
@@ -448,10 +484,11 @@ export function OrganizationManagement() {
                           Edit
                         </Button>
                       </Link>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
-                        onClick={() => openAssignAdminModal(org.id)}
+                        onClick={() => openAssignAdminModal(org.name)
+                        }
                       >
                         <UserPlusIcon className="h-4 w-4 mr-1" />
                         Add Admin
@@ -462,7 +499,7 @@ export function OrganizationManagement() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleGenerateJoinCode(org.id)}
+                        onClick={() => handleGenerateJoinCode(org.name)}
                       >
                         <PlusIcon className="h-4 w-4 mr-1" />
                         Generate Code
@@ -615,7 +652,7 @@ export function OrganizationManagement() {
             <Button variant="outline" onClick={() => setShowCreateModal(false)}>
               Cancel
             </Button>
-            <Button 
+            <Button
               type="submit"
               loading={creatingOrg} // Add loading state to button
             >
@@ -711,13 +748,13 @@ export function OrganizationManagement() {
             <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <div className="flex items-center justify-between">
                 <code className="text-lg font-mono font-bold text-gray-900 dark:text-white">
-                  {generatedCode.code}
+                  {generatedCode.newJoinCode}
                 </code>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    navigator.clipboard.writeText(generatedCode.code);
+                    navigator.clipboard.writeText(generatedCode.newJoinCode);
                     toast.success('Code copied to clipboard');
                   }}
                 >
@@ -732,33 +769,17 @@ export function OrganizationManagement() {
                   Expires
                 </label>
                 <p className="text-gray-900 dark:text-white">
-                  {generatedCode.expiry.toLocaleDateString()}
+                  {generatedCode.logEntry?.expiryDay
+                    ? new Date(generatedCode.logEntry.expiryDay).toLocaleDateString()
+                    : 'N/A'}
                 </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Max Uses
                 </label>
-                <p className="text-gray-900 dark:text-white">{generatedCode.maxUses}</p>
+                <p className="text-gray-900 dark:text-white">{generatedCode.maxUses ?? 'N/A'}</p>
               </div>
-            </div>
-
-            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <p className="text-sm text-blue-700 dark:text-blue-300">
-                Share this code with users who want to join this organization. They'll need to enter
-                it during signup.
-              </p>
-            </div>
-
-            <div className="flex justify-end">
-              <Button
-                onClick={() => {
-                  setShowGenerateCodeModal(false);
-                  setGeneratedCode(null);
-                }}
-              >
-                Done
-              </Button>
             </div>
           </div>
         )}

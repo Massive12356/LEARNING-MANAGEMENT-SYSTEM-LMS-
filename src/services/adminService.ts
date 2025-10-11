@@ -1,25 +1,20 @@
 import { mockApi } from './mockApi';
-import { User, RegisterForm } from '../types';
+import { User, RegisterForm,RegisterPayload } from '../types';
+import apiClient from './apiClient';
+import { AxiosError } from 'axios';
 
 class AdminService {
-  async createAdmin(adminData: Partial<User> & { email: string; firstName: string; lastName: string; password: string }): Promise<User> {
-    // In a real implementation, this would be a dedicated endpoint
-    // For now, we'll use the mock API register function
-    const registerData: RegisterForm = {
-      email: adminData.email,
-      firstName: adminData.firstName,
-      lastName: adminData.lastName,
-      password: adminData.password,
-      confirmPassword: adminData.password,
-      role: 'admin'
-    };
-    
-    const response = await mockApi.register(registerData);
-    // Update the user's organization if provided
-    if (adminData.organizationId) {
-      return mockApi.updateUser(response.user.id, { organizationId: adminData.organizationId });
+  async createAdmin(adminData: Omit<RegisterPayload,'organizationId'>): Promise<User> {
+    try {
+      console.log('[AdminService] Sending payload:', adminData);
+      const response = await apiClient.post('/user/signUp-admin',adminData);
+      console.log("[AdminService]RESPONSE FROM BACKEND:", response.data)
+      return response.data.user || response.data;
+    } catch (error) {
+      const err = error as AxiosError<{message?: string}>
+      console.log("[AdminService]RESPONSE FROM BACKEND:", err.response?.data || err.message)
+      throw new Error(err.response?.data?.message|| 'Failed to create Admin')
     }
-    return response.user;
   }
 
   async createTeacher(teacherData: Partial<User> & { email: string; firstName: string; lastName: string; password: string }, orgId: string): Promise<User> {
