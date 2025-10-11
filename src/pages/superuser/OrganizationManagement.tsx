@@ -478,7 +478,7 @@ export function OrganizationManagement() {
                   {/* Actions */}
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link to={`/admin/organization?orgId=${org.id}`}>
+                      <Link to={`/superuser/organization?orgId=${org.id}`}>
                         <Button variant="outline" size="sm">
                           <PencilIcon className="h-4 w-4 mr-1" />
                           Edit
@@ -668,7 +668,7 @@ export function OrganizationManagement() {
         onClose={() => {
           setShowAssignAdminModal(false);
           setSelectedOrgId(null);
-          setAdminData({ firstName: '', lastName: '', email: '', password: '' });
+          setAdminData({ firstName: '', lastName: '', email: '', password: '', role: 'admin' });
         }}
         title="Create and Assign Admin"
       >
@@ -724,7 +724,7 @@ export function OrganizationManagement() {
               onClick={() => {
                 setShowAssignAdminModal(false);
                 setSelectedOrgId(null);
-                setAdminData({ firstName: '', lastName: '', email: '', password: '' });
+                setAdminData({ firstName: '', lastName: '', email: '', password: '', role: 'admin' });
               }}
             >
               Cancel
