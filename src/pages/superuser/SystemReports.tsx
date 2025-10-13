@@ -25,13 +25,17 @@ export function SystemReports() {
       totalCourses: 0,
       certificatesIssued: 0,
       uptime: '',
-      responseTime: ''
+      responseTime: '',
+      storageUsed: '',
+      bandwidthUsed: ''
     },
     systemMetrics: {
       avgResponseTime: '',
       activeConnections: 0,
       errorRate: '',
-      peakConcurrentUsers: 0
+      peakConcurrentUsers: 0,
+      databaseSize: '',
+      backupStatus: ''
     },
     organizationPerformance: [] as any[],
     usagePatterns: {
@@ -56,13 +60,17 @@ export function SystemReports() {
           totalCourses: 342,
           certificatesIssued: 1247,
           uptime: '99.9%',
-          responseTime: '120ms'
+          responseTime: '120ms',
+          storageUsed: '2.4TB',
+          bandwidthUsed: '1.2TB'
         },
         systemMetrics: {
           avgResponseTime: '120ms',
           activeConnections: 342,
           errorRate: '0.02%',
-          peakConcurrentUsers: 1247
+          peakConcurrentUsers: 1247,
+          databaseSize: '45GB',
+          backupStatus: 'Up to date'
         },
         organizationPerformance: [
           { name: 'Tech Academy', users: 1247, courses: 42, completions: 312, growth: '+12%', completionRate: '78%' },
@@ -599,28 +607,6 @@ export function SystemReports() {
           </CardContent>
         </Card>
       </div>
-
-      {/* System Analytics Chart */}
-      <Card>
-        <CardHeader>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Platform Growth Analytics
-          </h2>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-            <div className="text-center">
-              <ChartBarIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-600 dark:text-gray-400">
-                System-wide growth analytics placeholder
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
-                Connect analytics service for comprehensive platform insights
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

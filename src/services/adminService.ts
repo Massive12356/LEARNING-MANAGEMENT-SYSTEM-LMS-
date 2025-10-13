@@ -18,46 +18,48 @@ class AdminService {
   }
 
   async createTeacher(teacherData: Partial<User> & { email: string; firstName: string; lastName: string; password: string }, orgId: string): Promise<User> {
-    // In a real implementation, this would be a dedicated endpoint
-    // For now, we'll use the mock API register function
-    const registerData: RegisterForm = {
-      email: teacherData.email,
-      firstName: teacherData.firstName,
-      lastName: teacherData.lastName,
-      password: teacherData.password,
-      confirmPassword: teacherData.password,
-      role: 'teacher'
-    };
-    
-    const response = await mockApi.register(registerData);
-    // Update the user's organization
-    return mockApi.updateUser(response.user.id, { organizationId: orgId });
+    try {
+      // Create teacher with organization assignment
+      const payload = {
+        ...teacherData,
+        role: 'teacher',
+        organizationId: orgId
+      };
+      
+      const response = await apiClient.post('/user/signUp-teacher', payload);
+      console.log("[AdminService] Teacher creation response:", response.data)
+      return response.data.user || response.data;
+    } catch (error) {
+      const err = error as AxiosError<{message?: string}>
+      console.log("[AdminService] Teacher creation error:", err.response?.data || err.message)
+      throw new Error(err.response?.data?.message|| 'Failed to create Teacher')
+    }
   }
 
   async createStudent(studentData: Partial<User> & { email: string; firstName: string; lastName: string; password: string }, orgId: string): Promise<User> {
-    // In a real implementation, this would be a dedicated endpoint
-    // For now, we'll use the mock API register function
-    const registerData: RegisterForm = {
-      email: studentData.email,
-      firstName: studentData.firstName,
-      lastName: studentData.lastName,
-      password: studentData.password,
-      confirmPassword: studentData.password,
-      role: 'student'
-    };
-    
-    const response = await mockApi.register(registerData);
-    // Update the user's organization
-    return mockApi.updateUser(response.user.id, { organizationId: orgId });
+    try {
+      // Create student with organization assignment
+      const payload = {
+        ...studentData,
+        role: 'student',
+        organizationId: orgId
+      };
+      
+      const response = await apiClient.post('/user/signUp-student', payload);
+      console.log("[AdminService] Student creation response:", response.data)
+      return response.data.user || response.data;
+    } catch (error) {
+      const err = error as AxiosError<{message?: string}>
+      console.log("[AdminService] Student creation error:", err.response?.data || err.message)
+      throw new Error(err.response?.data?.message|| 'Failed to create Student')
+    }
   }
 
   async getAdminsByOrganization(orgId: string): Promise<User[]> {
     try {
-      const response = await mockApi.getUsers({ 
-        role: 'admin',
-        organizationId: orgId
-      });
-      return response.data;
+      // Use real API to fetch admins by organization
+      const response = await apiClient.get< { data: User[] }>(`/organization/${orgId}/admins`);
+      return response.data.data;
     } catch (error) {
       console.error('Error fetching admins:', error);
       return [];
@@ -66,11 +68,9 @@ class AdminService {
 
   async getTeachersByOrganization(orgId: string): Promise<User[]> {
     try {
-      const response = await mockApi.getUsers({ 
-        role: 'teacher',
-        organizationId: orgId
-      });
-      return response.data;
+      // Use real API to fetch teachers by organization
+      const response = await apiClient.get< { data: User[] }>(`/organization/${orgId}/teachers`);
+      return response.data.data;
     } catch (error) {
       console.error('Error fetching teachers:', error);
       return [];
@@ -79,11 +79,9 @@ class AdminService {
 
   async getStudentsByOrganization(orgId: string): Promise<User[]> {
     try {
-      const response = await mockApi.getUsers({ 
-        role: 'student',
-        organizationId: orgId
-      });
-      return response.data;
+      // Use real API to fetch students by organization
+      const response = await apiClient.get< { data: User[] }>(`/organization/${orgId}/students`);
+      return response.data.data;
     } catch (error) {
       console.error('Error fetching students:', error);
       return [];
@@ -92,13 +90,24 @@ class AdminService {
 
   async assignAdminToOrganization(adminId: string, orgId: string): Promise<User> {
     try {
-      // In a real implementation, this would be a dedicated endpoint
-      // For now, we'll update the user's organization
-      const updatedUser = await mockApi.updateUser(adminId, { organizationId: orgId });
-      return updatedUser;
+      // Use real API to assign admin to organization
+      const response = await apiClient.put<User>(`/user/${adminId}/assign-organization`, { organizationId: orgId });
+      return response.data;
     } catch (error) {
-      console.error('Error assigning admin to organization:', error);
-      throw error;
+      const err = error as AxiosError<{message?: string}>
+      console.error('Error assigning admin to organization:', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message|| 'Failed to assign admin to organization')
+    }
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    try {
+      // Use real API to fetch all users for superuser
+      const response = await apiClient.get<{ data: User[] }>(`/users`);
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching all users:', error);
+      throw new Error('Failed to fetch users');
     }
   }
 

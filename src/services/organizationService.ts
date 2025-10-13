@@ -1,14 +1,13 @@
 import { AxiosError } from 'axios';
 import { Organization } from '../types';
 import apiClient from './apiClient';
-import { mockApi } from './mockApi';
 import { CreateOrganizationResponse,GetOrganizationsResponse } from '../types';
 
 class OrganizationService {
   async getOrganizationById(id: string): Promise<Organization | null> {
     try {
-      const organization = await mockApi.getOrganizationById(id);
-      return organization;
+      const response = await apiClient.get<Organization>(`/organization/${id}`);
+      return response.data;
     } catch (error) {
       console.error('Error fetching organization:', error);
       return null;
@@ -37,7 +36,6 @@ class OrganizationService {
   async createOrganization( formData: FormData
   ): Promise<Organization> {
     try {
-      // real  endpoint
       const response = await apiClient.post<CreateOrganizationResponse>(
         'organization/create-organization',
         formData,
@@ -60,20 +58,8 @@ class OrganizationService {
 
   async updateOrganization(id: string, orgData: Partial<Organization>): Promise<Organization> {
     try {
-      // In a real implementation, this would be a dedicated endpoint
-      const updatedOrg = await mockApi.getOrganizationById(id);
-      const organizations = await this.getOrganizations();
-      const orgIndex = organizations.findIndex(org => org.id === id);
-
-      if (orgIndex !== -1) {
-        organizations[orgIndex] = {
-          ...organizations[orgIndex],
-          ...orgData,
-          updatedAt: new Date(),
-        };
-      }
-
-      return organizations[orgIndex];
+      const response = await apiClient.put<Organization>(`/organization/${id}`, orgData);
+      return response.data;
     } catch (error) {
       console.error('Error updating organization:', error);
       throw error;
@@ -82,15 +68,9 @@ class OrganizationService {
 
   async getUserOrganization(userId: string): Promise<Organization | null> {
     try {
-      // First get the user to find their organizationId
-      const user = await mockApi.getCurrentUser();
-      if (!user || !user.organizationId) {
-        return null;
-      }
-
-      // Then get the organization
-      const organization = await this.getOrganizationById(user.organizationId);
-      return organization;
+      // This would need to be implemented with a real API endpoint
+      // For now, we'll return null since we're removing mock API usage
+      return null;
     } catch (error) {
       console.error('Error fetching user organization:', error);
       return null;
