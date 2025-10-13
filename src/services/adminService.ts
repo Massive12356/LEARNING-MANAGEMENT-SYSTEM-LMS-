@@ -101,6 +101,18 @@ class AdminService {
       throw error;
     }
   }
+
+  async getUsers(){
+    try {
+      const response = await apiClient.get("/user/all-users");
+      console.log("[adminService]RESPONSE FROM BACKEND:", response.data.users)
+      return response.data.users
+    } catch (error) {
+      const err = error as AxiosError<{message?: string}>
+      console.log('[adminService] ERROR RESPONSE:', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || '[adminService] Failed to Fetch Users');
+    }
+  }
 }
 
 export const adminService = new AdminService();

@@ -134,86 +134,74 @@ class AuthService {
 
   // login
   async login(credentials: LoginForm): Promise<AuthResponse> {
-      console.log('[AuthService] Attempting login with credentials:', credentials);
-      // First try the real API, fallback to mock if it fails
-      try {
-        const response = await apiClient.post('/user/login', credentials);
-        console.log('[AuthService] Received response from backend:', response.data);
+    console.log('[AuthService] Attempting login with credentials:', credentials);
+    // First try the real API, fallback to mock if it fails
+    try {
+      const response = await apiClient.post('/user/login', credentials);
+      console.log('[AuthService] Received response from backend:', response.data);
 
-        let { user, token } = response.data;
+      let { user, token } = response.data;
 
-        // Save **just the access token** as a plain string in localStorage
-        localStorage.setItem('token', token);
-        // Map accountType to role if role is missing
-        if (!user.role && user.accountType) {
-          user = {
-            ...user,
-            role: user.accountType, // <— normalize field
-          };
-        }
-        // Convert backend token string to AuthTokens
-        const authTokens: AuthTokens = {
-          accessToken: token, // backend token string
-          refreshToken: token, // reuse same token for mock refresh
-          expiresIn: Date.now() + 15 * 60 * 1000, // 15 min expiry
+      // Save **just the access token** as a plain string in localStorage
+      localStorage.setItem('token', token);
+      // Map accountType to role if role is missing
+      if (!user.role && user.accountType) {
+        user = {
+          ...user,
+          role: user.accountType, // <— normalize field
         };
-        this.storeTokens(authTokens)
+      }
+      // Convert backend token string to AuthTokens
+      const authTokens: AuthTokens = {
+        accessToken: token, // backend token string
+        refreshToken: token, // reuse same token for mock refresh
+        expiresIn: Date.now() + 15 * 60 * 1000, // 15 min expiry
+      };
+      this.storeTokens(authTokens);
 
-        console.log('[AuthService] Storing token in localStorage:', authTokens);
-        localStorage.setItem('authTokens', JSON.stringify(authTokens));
+      console.log('[AuthService] Storing token in localStorage:', authTokens);
+      localStorage.setItem('authTokens', JSON.stringify(authTokens));
 
-        console.log('[AuthService] Login successful for user:', user.email);
-        return { user, token: authTokens };
-      } catch (error: any) {
+      console.log('[AuthService] Login successful for user:', user.email);
+      return { user, token: authTokens };
+    } catch (error: any) {
       console.error('[AuthService] Login error:', error.response?.data || error.message);
       throw new Error(error.response?.data?.message || error.message || 'Login failed');
     }
   }
 
   // register
+
   async register(userData: RegisterPayload): Promise<AuthResponse> {
     try {
       console.log('[AuthService] Payload for Backend:', userData);
 
-      // First try the real API, fallback to mock if it fails
-      try {
-        //  Make the real API call
-        const response = await apiClient.post('/user/signUp', userData);
-        console.log('[AuthService] Response from Backend:', response.data);
+      // Make the real API call
+      const response = await apiClient.post('/user/signUp', userData);
+      console.log('[AuthService] Response from Backend:', response.data);
 
-        // Extract the real data
-        const { token, user } = response.data;
+      // Extract the real data
+      const { token, user } = response.data;
 
-        // Map `accountType` to `role` for frontend consistency
-        const normalizedUser = {
-          ...user,
-          role: user.role || user.accountType || 'student',
-          accountType: user.accountType || user.role || 'student',
-        };
+      // Normalize the role field
+      const normalizedUser = {
+        ...user,
+        role: user.role || user.accountType || 'student',
+        accountType: user.accountType || user.role || 'student',
+      };
 
-        // Store tokens (use the one returned by backend)
-        const authTokens: AuthTokens = {
-          accessToken: token,
-          refreshToken: token, // optional: replace when backend supports real refresh token
-          expiresIn: Date.now() + 15 * 60 * 1000, // 15 minutes
-        };
+      // Store auth tokens
+      const authTokens: AuthTokens = {
+        accessToken: token,
+        refreshToken: token, // Replace when backend adds refresh token
+        expiresIn: Date.now() + 15 * 60 * 1000, // 15 minutes expiry
+      };
 
-        this.storeTokens(authTokens);
+      // Save tokens in localStorage (or Zustand)
+      this.storeTokens(authTokens);
 
-        // Return the real user and tokens
-        return { user: normalizedUser, token: authTokens };
-      } catch (apiError: any) {
-        // If real API fails, fallback to mock API
-        console.log('[AuthService] Real API failed, falling back to mock API for registration');
-        const mockResponse = await mockApi.register(userData as any);
-        
-        // Generate proper tokens for mock user
-        const authTokens = this.generateTokens(mockResponse.user);
-        this.storeTokens(authTokens);
-        
-        console.log('[AuthService] Mock registration successful for user:', mockResponse.user.email);
-        return { user: mockResponse.user, token: authTokens };
-      }
+      // Return response in a consistent format
+      return { user: normalizedUser, token: authTokens };
     } catch (error: any) {
       console.error('[AuthService] Registration error:', error.response?.data || error.message);
       throw new Error(error.response?.data?.message || 'Registration failed');
@@ -288,11 +276,36 @@ class AuthService {
   }
 
   // Logout
+  // Logout
   logout(): void {
-    this.clearTokens();
+    console.log('[AuthService] Logging out user...');
 
-    // In a real app, you might want to invalidate the refresh token on the server
-    // await this.revokeRefreshToken();
+    try {
+      // 1️⃣ Clear all stored tokens
+      this.clearTokens();
+
+      // 2️⃣ Remove any residual auth or user data
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('authTokens');
+      localStorage.removeItem('auth-storage'); // Zustand persisted store
+      localStorage.removeItem('resetToken');
+
+      // 3️⃣ Clear sessionStorage too
+      sessionStorage.clear();
+
+      // 4️⃣ Stop any pending refresh token timers
+      if (this.refreshTimeout) {
+        clearTimeout(this.refreshTimeout);
+      }
+
+      // 5️⃣ (Optional) Inform backend if logout API exists
+      // await apiClient.post('/user/logout');
+
+      console.log('[AuthService] All tokens and user data cleared.');
+    } catch (error) {
+      console.error('[AuthService] Logout failed:', error);
+    }
   }
 
   // Initialize auth state (call on app startup)
@@ -346,13 +359,13 @@ class AuthService {
     }
   }
 
-    // verify One time Password
+  // verify One time Password
   async verifyForgotPasswordOtp(email: string, otp: string): Promise<void> {
     try {
       console.log('OTP TO THE BACKEND', otp, email);
       const response = await apiClient.post('/user/verify-forgotPasswordOtp', {
         email,
-        otp
+        otp,
       });
       console.log('✅ OTP verified successfully:', response.data);
     } catch (error) {
@@ -363,24 +376,24 @@ class AuthService {
   }
 
   // resend One time Password
-  async resendOtp(email: string):Promise<void>{
+  async resendOtp(email: string): Promise<void> {
     try {
       const response = await apiClient.post('/user/resend-otp', { email });
-       console.log('✅ OTP resent successfully:', response.data);
-    } catch (error:any) {
+      console.log('✅ OTP resent successfully:', response.data);
+    } catch (error: any) {
       console.error('❌ Error resending OTP:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.message || " Failed to resend OTP")
+      throw new Error(error.response?.data?.message || ' Failed to resend OTP');
     }
   }
-  
-  async resetPassword(email: string, newPassword:string): Promise<void> {
+
+  async resetPassword(email: string, newPassword: string): Promise<void> {
     try {
-      console.log("PAYLOAD TO THE BACKEND", email, newPassword )
+      console.log('PAYLOAD TO THE BACKEND', email, newPassword);
       const response = await apiClient.post('/user/newPassword', { email, newPassword });
-      console.log("RESPONSE FROM BACKEND : ", response.data)
+      console.log('RESPONSE FROM BACKEND : ', response.data);
     } catch (error: any) {
-      console.log(" ERROR RESPONSE FROM BACKEND", error.response?.data || error.message )
-      throw new Error(error.response?.data?.message || " Failed to Reset Password")
+      console.log(' ERROR RESPONSE FROM BACKEND', error.response?.data || error.message);
+      throw new Error(error.response?.data?.message || ' Failed to Reset Password');
     }
   }
 

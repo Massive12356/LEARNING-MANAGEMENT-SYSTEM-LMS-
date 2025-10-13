@@ -30,6 +30,7 @@ export function OrganizationManagement() {
   const [filteredOrganizations, setFilteredOrganizations] = useState<Organization[]>([]);
   const [selectOrgName, setSelectOrgName] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [creatingAdmin, setCreatingAdmin]=useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -42,6 +43,7 @@ export function OrganizationManagement() {
     expiryDays: 30,
     maxUses: 100,
   });
+  const [allUsers,SetAllUsers]= useState<User[]>([]);
 
   const [newOrgData, setNewOrgData] = useState({
     name: '',
@@ -262,6 +264,16 @@ export function OrganizationManagement() {
     }
   };
 
+  const fetchUsers = async()=>{
+    try {
+      const response = await adminService.getUsers();
+      SetAllUsers(response);
+      console.log("RESPONSE FROM BACKEND",response)
+    } catch (error) {
+      console.log("ERROR RESPONSE FROM BACKEND", error)
+    }
+  }
+
   const totalUsers = Object.values(orgStats).reduce(
     (acc: number, stats: any) => acc + stats.users,
     0
@@ -274,6 +286,7 @@ export function OrganizationManagement() {
 
    useEffect(() => {
      loadOrganizations();
+     fetchUsers()
    }, []);
 
    useEffect(() => {
@@ -323,7 +336,7 @@ export function OrganizationManagement() {
             </div>
             <div className="ml-4">
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {organizations.length}
+                {organizations?.length ?? 0}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">Total Organizations</p>
             </div>
@@ -349,7 +362,7 @@ export function OrganizationManagement() {
             </div>
             <div className="ml-4">
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {totalUsers.toLocaleString()}
+                {allUsers?.length ?? 0}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">Total Users</p>
             </div>
@@ -405,9 +418,9 @@ export function OrganizationManagement() {
       </Card>
 
       {/* Organizations Grid */}
-      {filteredOrganizations.length > 0 ? (
+      {filteredOrganizations?.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredOrganizations.map(org => {
+          {filteredOrganizations?.map(org => {
             const stats = orgStats[org.id] || { users: 0, courses: 0, activeUsers: 0 };
 
             return (
@@ -417,13 +430,13 @@ export function OrganizationManagement() {
                     <div className="flex items-center space-x-3 min-w-0">
                       <div
                         className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: org.primaryColor }}
+                        style={{ backgroundColor: org?.primaryColor }}
                       >
                         <BuildingOfficeIcon className="h-6 w-6 text-white" />
                       </div>
                       <div className="min-w-0">
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
-                          {org.name}
+                          {org?.name ?? "N/A"}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
                           Created {org.createdAt.toLocaleDateString()}
@@ -433,20 +446,20 @@ export function OrganizationManagement() {
                     <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
                       <span
                         className={`px-2 py-1 text-xs rounded-full whitespace-nowrap ${
-                          org.status === 'active'
+                          org?.status === 'active'
                             ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
                             : org.status === 'suspended'
                             ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
                             : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
                         }`}
                       >
-                        {org.status}
+                        {org?.status ?? "active"}
                       </span>
                     </div>
                   </div>
 
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-3 min-h-[3rem]">
-                    {org.description || 'No description provided'}
+                    {org?.description ?? "N/A"}
                   </p>
 
                   {/* Organization Stats */}
@@ -668,7 +681,7 @@ export function OrganizationManagement() {
         onClose={() => {
           setShowAssignAdminModal(false);
           setSelectedOrgId(null);
-          setAdminData({ firstName: '', lastName: '', email: '', password: '' });
+          setAdminData({ firstName: '', lastName: '', email: '', password: '',role: 'admin' });
         }}
         title="Create and Assign Admin"
       >
@@ -724,7 +737,7 @@ export function OrganizationManagement() {
               onClick={() => {
                 setShowAssignAdminModal(false);
                 setSelectedOrgId(null);
-                setAdminData({ firstName: '', lastName: '', email: '', password: '' });
+                setAdminData({ firstName: '', lastName: '', email: '', password: '', role:"admin" });
               }}
             >
               Cancel
@@ -748,7 +761,7 @@ export function OrganizationManagement() {
             <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <div className="flex items-center justify-between">
                 <code className="text-lg font-mono font-bold text-gray-900 dark:text-white">
-                  {generatedCode.newJoinCode}
+                  {generatedCode?.newJoinCode ?? "N/A"}
                 </code>
                 <Button
                   variant="outline"
@@ -778,7 +791,7 @@ export function OrganizationManagement() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Max Uses
                 </label>
-                <p className="text-gray-900 dark:text-white">{generatedCode.maxUses ?? 'N/A'}</p>
+                <p className="text-gray-900 dark:text-white">{generatedCode?.logEntry?.maxUsers ?? 'N/A'}</p>
               </div>
             </div>
           </div>
