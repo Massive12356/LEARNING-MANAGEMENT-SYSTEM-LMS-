@@ -59,6 +59,7 @@ export function OrganizationManagement() {
     lastName: '',
     email: '',
     password: '',
+    organizationId: '',
     role: 'admin'
   });
 
@@ -197,7 +198,7 @@ export function OrganizationManagement() {
       return;
     }
 
-    const { firstName, lastName, email, password } = adminData;
+    const { firstName, lastName, email, password,organizationId } = adminData;
 
     // ✅ Validation rules
     if (!firstName.trim()) return toast.error('First name is required.');
@@ -207,8 +208,9 @@ export function OrganizationManagement() {
       return toast.error('Please enter a valid email address.');
     if (!password.trim()) return toast.error('Password is required.');
     if (password.length < 8) return toast.error('Password must be at least 8 characters long.');
+    if(!organizationId) return toast.error("Kindly Enter the Generated Code for the organization")
 
-    const org = organizations.find(o => o.id === selectedOrgId); // map the id to the name
+    // const org = organizations.find(o => o.id === selectedOrgId); // map the id to the name
     // ✅ Prepare the final payload for admin creation
     const payload = {
       firstName: firstName.trim(),
@@ -216,7 +218,7 @@ export function OrganizationManagement() {
       email: email.trim().toLowerCase(),
       password: password,
       role: 'admin' as UserRole, // Ensures it's an admin user
-      organizationName: org?.name, // Links admin to their organization
+      organizationId:organizationId.trim()  // Links admin to their organization
     };
    console.log('[DEBUG selectedOrgId]:', selectedOrgId, typeof selectedOrgId);
 
@@ -231,7 +233,7 @@ export function OrganizationManagement() {
       );
 
       // Reset form and close modal
-      setAdminData({ firstName: '', lastName: '', email: '', password: '', role: 'admin' });
+      setAdminData({ firstName: '', lastName: '', email: '', password: '', role: 'admin',organizationId:"" });
       setShowAssignAdminModal(false);
       setSelectedOrgId(null);
 
@@ -436,7 +438,7 @@ export function OrganizationManagement() {
                       </div>
                       <div className="min-w-0">
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
-                          {org?.name ?? "N/A"}
+                          {org?.name ?? 'N/A'}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
                           Created {org.createdAt.toLocaleDateString()}
@@ -453,13 +455,13 @@ export function OrganizationManagement() {
                             : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
                         }`}
                       >
-                        {org?.status ?? "active"}
+                        {org?.status ?? 'active'}
                       </span>
                     </div>
                   </div>
 
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-3 min-h-[3rem]">
-                    {org?.description ?? "N/A"}
+                    {org?.description ?? 'N/A'}
                   </p>
 
                   {/* Organization Stats */}
@@ -500,8 +502,7 @@ export function OrganizationManagement() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => openAssignAdminModal(org.name)
-                        }
+                        onClick={() => openAssignAdminModal(org.name)}
                       >
                         <UserPlusIcon className="h-4 w-4 mr-1" />
                         Add Admin
@@ -681,7 +682,14 @@ export function OrganizationManagement() {
         onClose={() => {
           setShowAssignAdminModal(false);
           setSelectedOrgId(null);
-          setAdminData({ firstName: '', lastName: '', email: '', password: '',role: 'admin', role: 'admin' });
+          setAdminData({
+            firstName: '',
+            lastName: '',
+            email: '',
+            password: '',
+            role: 'admin',
+            organizationId: '',
+          });
         }}
         title="Create and Assign Admin"
       >
@@ -720,6 +728,14 @@ export function OrganizationManagement() {
             placeholder="admin@organization.com"
             required
           />
+          <Input
+            label="Enter Generated Code for the organization"
+            type="text"
+            value={adminData.organizationId}
+            onChange={e => setAdminData(prev => ({ ...prev, organizationId: e.target.value }))}
+            placeholder="Enter code SYM-ORG-MOD9TTN-2025"
+            required
+          />
 
           <Input
             label="Password"
@@ -737,7 +753,14 @@ export function OrganizationManagement() {
               onClick={() => {
                 setShowAssignAdminModal(false);
                 setSelectedOrgId(null);
-                setAdminData({ firstName: '', lastName: '', email: '', password: '', role: 'admin', role:"admin" });
+                setAdminData({
+                  firstName: '',
+                  lastName: '',
+                  email: '',
+                  password: '',
+                  role: 'admin',
+                  organizationId: '',
+                });
               }}
             >
               Cancel
@@ -761,7 +784,7 @@ export function OrganizationManagement() {
             <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <div className="flex items-center justify-between">
                 <code className="text-lg font-mono font-bold text-gray-900 dark:text-white">
-                  {generatedCode?.newJoinCode ?? "N/A"}
+                  {generatedCode?.newJoinCode ?? 'N/A'}
                 </code>
                 <Button
                   variant="outline"
@@ -791,7 +814,9 @@ export function OrganizationManagement() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Max Uses
                 </label>
-                <p className="text-gray-900 dark:text-white">{generatedCode?.logEntry?.maxUsers ?? 'N/A'}</p>
+                <p className="text-gray-900 dark:text-white">
+                  {generatedCode?.logEntry?.maxUsers ?? 'N/A'}
+                </p>
               </div>
             </div>
           </div>

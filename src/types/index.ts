@@ -24,6 +24,7 @@ export interface User {
 }
 
 export interface Organization {
+  organizationCode: string | undefined;
   id: string;
   name: string;
   status: OrganizationStatus;
