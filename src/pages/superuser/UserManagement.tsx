@@ -44,7 +44,7 @@ export default function UserManagement() {
     try {
       setLoading(true);
       // Use real API endpoint to fetch all users for superuser
-      const allUsers = await adminService.getAllUsers();
+      const allUsers = await adminService.getUsers();
       setUsers(allUsers);
     } catch (error) {
       console.error('Failed to load users:', error);
@@ -173,7 +173,7 @@ export default function UserManagement() {
       key: 'organization',
       label: 'Organization',
       render: (_, user) => {
-        const org = organizations.find(o => o.id === user.organizationId);
+        const org = organizations.find(o => o.organizationCode === user.organizationId);
         return (
           <div className="flex items-center">
             <BuildingOfficeIcon className="h-4 w-4 text-gray-400 mr-1" />
@@ -259,7 +259,7 @@ export default function UserManagement() {
       <Card>
         <CardHeader>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            All Users ({filteredUsers.length})
+            All Users ({filteredUsers?.length ?? 0})
           </h2>
         </CardHeader>
         <CardContent>
@@ -267,7 +267,7 @@ export default function UserManagement() {
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
-          ) : filteredUsers.length === 0 ? (
+          ) : filteredUsers?.length === 0 ? (
             <div className="text-center py-12">
               <UserGroupIcon className="h-12 w-12 mx-auto text-gray-400" />
               <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">

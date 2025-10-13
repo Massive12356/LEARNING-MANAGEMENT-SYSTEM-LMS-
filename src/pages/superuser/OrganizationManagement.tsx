@@ -7,7 +7,7 @@ import { Modal } from '../../components/ui/Modal';
 import { adminService } from '../../services/adminService';
 import { organizationService } from '../../services/organizationService';
 import { organizationCodeService } from '../../services/organizationCodeService';
-import { Organization, User,UserRole } from '../../types';
+import { Organization, User, UserRole } from '../../types';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -30,7 +30,7 @@ export function OrganizationManagement() {
   const [filteredOrganizations, setFilteredOrganizations] = useState<Organization[]>([]);
   const [selectOrgName, setSelectOrgName] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [creatingAdmin, setCreatingAdmin]=useState(false);
+  const [creatingAdmin, setCreatingAdmin] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -43,7 +43,7 @@ export function OrganizationManagement() {
     expiryDays: 30,
     maxUses: 100,
   });
-  const [allUsers,SetAllUsers]= useState<User[]>([]);
+  const [allUsers, SetAllUsers] = useState<User[]>([]);
 
   const [newOrgData, setNewOrgData] = useState({
     name: '',
@@ -59,7 +59,8 @@ export function OrganizationManagement() {
     lastName: '',
     email: '',
     password: '',
-    role: 'admin'
+    organizationId: '',
+    role: 'admin',
   });
 
   // Add loading state for create organization
@@ -68,13 +69,11 @@ export function OrganizationManagement() {
   // Mock organization stats
   const [orgStats, setOrgStats] = useState<Record<string, any>>({});
 
- 
-
   const loadOrganizations = async () => {
     try {
-      setLoading(true)
+      setLoading(true);
       const response = await organizationService.getOrganizations();
-      console.log(response)
+      console.log(response);
       const orgsData = response.organizations || [];
       // Normalize backend data
       const formattedOrgs = orgsData.map((org: any) => ({
@@ -82,9 +81,9 @@ export function OrganizationManagement() {
         createdAt: new Date(org.createdAt),
         updatedAt: org.updatedAt ? new Date(org.updatedAt) : null,
       }));
-      
+
       setOrganizations(formattedOrgs);
-      setFilteredOrganizations(formattedOrgs)
+      setFilteredOrganizations(formattedOrgs);
       // const stats: Record<string, any> = {};
       // orgsData.forEach(org => {
       //   stats[org.id] = {
@@ -145,11 +144,11 @@ export function OrganizationManagement() {
     try {
       setCreatingOrg(true); // Set loading state
       console.log('PAYLOAD TO THE BACKEND', payload);
-       const response = await organizationService.createOrganization(payload);
+      const response = await organizationService.createOrganization(payload);
 
-       const organizationName = response.name;
-       console.log("NAME OF ORGANIZATION",organizationName)
-       toast.success(`Organization ${organizationName} created successfully`);
+      const organizationName = response.name;
+      console.log('NAME OF ORGANIZATION', organizationName);
+      toast.success(`Organization ${organizationName} created successfully`);
       setNewOrgData({
         name: '',
         description: '',
@@ -197,7 +196,7 @@ export function OrganizationManagement() {
       return;
     }
 
-    const { firstName, lastName, email, password } = adminData;
+    const { firstName, lastName, email, password, organizationId } = adminData;
 
     // ✅ Validation rules
     if (!firstName.trim()) return toast.error('First name is required.');
@@ -207,8 +206,9 @@ export function OrganizationManagement() {
       return toast.error('Please enter a valid email address.');
     if (!password.trim()) return toast.error('Password is required.');
     if (password.length < 8) return toast.error('Password must be at least 8 characters long.');
+    if (!organizationId) return toast.error('Kindly Enter the Generated Code for the organization');
 
-    const org = organizations.find(o => o.id === selectedOrgId); // map the id to the name
+    // const org = organizations.find(o => o.id === selectedOrgId); // map the id to the name
     // ✅ Prepare the final payload for admin creation
     const payload = {
       firstName: firstName.trim(),
@@ -216,9 +216,9 @@ export function OrganizationManagement() {
       email: email.trim().toLowerCase(),
       password: password,
       role: 'admin' as UserRole, // Ensures it's an admin user
-      organizationName: org?.name, // Links admin to their organization
+      organizationId: organizationId.trim(), // Links admin to their organization
     };
-   console.log('[DEBUG selectedOrgId]:', selectedOrgId, typeof selectedOrgId);
+    console.log('[DEBUG selectedOrgId]:', selectedOrgId, typeof selectedOrgId);
 
     try {
       toast.loading('Creating admin...', { id: 'admin-create' });
@@ -231,7 +231,14 @@ export function OrganizationManagement() {
       );
 
       // Reset form and close modal
-      setAdminData({ firstName: '', lastName: '', email: '', password: '', role: 'admin' });
+      setAdminData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        password: '',
+        role: 'admin',
+        organizationId: '',
+      });
       setShowAssignAdminModal(false);
       setSelectedOrgId(null);
 
@@ -243,36 +250,34 @@ export function OrganizationManagement() {
     }
   };
 
-
   const handleGenerateJoinCode = async (orgName: string) => {
     // console.log("ORGANIZATION NAME:", orgName)
-     if (!orgName) {
-       toast.error('Please create an organization first before generating a join code');
-       return;
-     }else{
+    if (!orgName) {
+      toast.error('Please create an organization first before generating a join code');
+      return;
+    } else {
       toast.loading(`Generating Code for ${orgName}`);
-     }
+    }
 
     try {
       const code = await organizationCodeService.createOrganizationCode(orgName);
       console.log('[Generated Code API Response]', code);
       setGeneratedCode(code);
       setShowGenerateCodeModal(true);
-
     } catch (error) {
       toast.error('Failed to generate join code');
     }
   };
 
-  const fetchUsers = async()=>{
+  const fetchUsers = async () => {
     try {
       const response = await adminService.getUsers();
       SetAllUsers(response);
-      console.log("RESPONSE FROM BACKEND",response)
+      console.log('RESPONSE FROM BACKEND', response);
     } catch (error) {
-      console.log("ERROR RESPONSE FROM BACKEND", error)
+      console.log('ERROR RESPONSE FROM BACKEND', error);
     }
-  }
+  };
 
   const totalUsers = Object.values(orgStats).reduce(
     (acc: number, stats: any) => acc + stats.users,
@@ -284,22 +289,22 @@ export function OrganizationManagement() {
   );
   const activeOrgs = organizations.filter(org => org.status === 'active').length;
 
-   useEffect(() => {
-     loadOrganizations();
-     fetchUsers()
-   }, []);
+  useEffect(() => {
+    loadOrganizations();
+    fetchUsers();
+  }, []);
 
-   useEffect(() => {
-     filterOrganizations();
-   }, [organizations, searchTerm, statusFilter]);
+  useEffect(() => {
+    filterOrganizations();
+  }, [organizations, searchTerm, statusFilter]);
 
-     if (loading) {
-       return (
-         <div className="flex items-center justify-center min-h-96">
-           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-         </div>
-       );
-     }
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -436,7 +441,7 @@ export function OrganizationManagement() {
                       </div>
                       <div className="min-w-0">
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
-                          {org?.name ?? "N/A"}
+                          {org?.name ?? 'N/A'}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
                           Created {org.createdAt.toLocaleDateString()}
@@ -453,13 +458,13 @@ export function OrganizationManagement() {
                             : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
                         }`}
                       >
-                        {org?.status ?? "active"}
+                        {org?.status ?? 'active'}
                       </span>
                     </div>
                   </div>
 
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-3 min-h-[3rem]">
-                    {org?.description ?? "N/A"}
+                    {org?.description ?? 'N/A'}
                   </p>
 
                   {/* Organization Stats */}
@@ -500,8 +505,7 @@ export function OrganizationManagement() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => openAssignAdminModal(org.name)
-                        }
+                        onClick={() => openAssignAdminModal(org.name)}
                       >
                         <UserPlusIcon className="h-4 w-4 mr-1" />
                         Add Admin
@@ -681,7 +685,14 @@ export function OrganizationManagement() {
         onClose={() => {
           setShowAssignAdminModal(false);
           setSelectedOrgId(null);
-          setAdminData({ firstName: '', lastName: '', email: '', password: '',role: 'admin' });
+          setAdminData({
+            firstName: '',
+            lastName: '',
+            email: '',
+            password: '',
+            role: 'admin',
+            organizationId: '',
+          });
         }}
         title="Create and Assign Admin"
       >
@@ -720,6 +731,14 @@ export function OrganizationManagement() {
             placeholder="admin@organization.com"
             required
           />
+          <Input
+            label="Enter Generated Code for the organization"
+            type="text"
+            value={adminData.organizationId}
+            onChange={e => setAdminData(prev => ({ ...prev, organizationId: e.target.value }))}
+            placeholder="Enter code SYM-ORG-MOD9TTN-2025"
+            required
+          />
 
           <Input
             label="Password"
@@ -737,7 +756,14 @@ export function OrganizationManagement() {
               onClick={() => {
                 setShowAssignAdminModal(false);
                 setSelectedOrgId(null);
-                setAdminData({ firstName: '', lastName: '', email: '', password: '', role:"admin" });
+                setAdminData({
+                  firstName: '',
+                  lastName: '',
+                  email: '',
+                  password: '',
+                  role: 'admin',
+                  organizationId: '',
+                });
               }}
             >
               Cancel
@@ -761,7 +787,7 @@ export function OrganizationManagement() {
             <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <div className="flex items-center justify-between">
                 <code className="text-lg font-mono font-bold text-gray-900 dark:text-white">
-                  {generatedCode?.newJoinCode ?? "N/A"}
+                  {generatedCode?.newJoinCode ?? 'N/A'}
                 </code>
                 <Button
                   variant="outline"
@@ -791,7 +817,9 @@ export function OrganizationManagement() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Max Uses
                 </label>
-                <p className="text-gray-900 dark:text-white">{generatedCode?.logEntry?.maxUsers ?? 'N/A'}</p>
+                <p className="text-gray-900 dark:text-white">
+                  {generatedCode?.logEntry?.maxUsers ?? 'N/A'}
+                </p>
               </div>
             </div>
           </div>

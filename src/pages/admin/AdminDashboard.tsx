@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { AnnouncementForm } from '../../components/admin/AnnouncementForm';
@@ -20,7 +20,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 export function AdminDashboard() {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [dashboardData, setDashboardData] = useState({
     totalUsers: 0,
