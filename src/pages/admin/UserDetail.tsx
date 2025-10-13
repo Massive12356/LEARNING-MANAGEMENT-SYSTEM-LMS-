@@ -26,6 +26,7 @@ import toast from 'react-hot-toast';
 export function UserDetail() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
   const { viewAsUser } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,6 +38,9 @@ export function UserDetail() {
     certificates: 2,
     lastLogin: new Date('2024-01-15')
   });
+
+  // Determine the base path based on current user's role
+  const basePath = currentUser?.role === 'superuser' ? '/superuser' : '/admin';
 
   const [editData, setEditData] = useState({
     firstName: '',
@@ -74,7 +78,7 @@ export function UserDetail() {
     } catch (error) {
       console.error('Failed to load user:', error);
       toast.error('Failed to load user details');
-      navigate('/admin/users');
+      navigate(`${basePath}/users`);
     } finally {
       setLoading(false);
     }
@@ -103,7 +107,7 @@ export function UserDetail() {
     try {
       await mockApi.archiveUser(user.id);
       toast.success('User archived successfully');
-      navigate('/admin/users');
+      navigate(`${basePath}/users`);
     } catch (error) {
       toast.error('Failed to archive user');
     }
@@ -119,7 +123,7 @@ export function UserDetail() {
     try {
       await mockApi.deleteUser(user.id);
       toast.success('User deleted successfully');
-      navigate('/admin/users');
+      navigate(`${basePath}/users`);
     } catch (error) {
       toast.error('Failed to delete user');
     }
@@ -160,7 +164,7 @@ export function UserDetail() {
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">User not found</h2>
-        <Link to="/admin/users" className="text-blue-600 hover:text-blue-500 mt-4 inline-block">
+        <Link to={`${basePath}/users`} className="text-blue-600 hover:text-blue-500 mt-4 inline-block">
           Return to User Management
         </Link>
       </div>
@@ -172,7 +176,7 @@ export function UserDetail() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Link to="/admin/users">
+          <Link to={`${basePath}/users`}>
             <Button variant="outline" size="sm">
               <ArrowLeftIcon className="h-4 w-4 mr-2" />
               Back to Users

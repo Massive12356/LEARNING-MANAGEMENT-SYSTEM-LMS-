@@ -194,6 +194,7 @@ export const AppRoutes: React.FC = () => {
               <Route path="organizations" element={<OrganizationManagement />} />
               <Route path="organization" element={<OrganizationSettings />} />
               <Route path="users" element={<SuperuserUserManagement />} />
+              <Route path="users/:userId" element={<UserDetail />} />
               <Route path="reports" element={<SystemReports />} />
               <Route path="settings" element={<SystemSettings />} />
             </Routes>

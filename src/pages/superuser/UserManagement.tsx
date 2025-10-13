@@ -189,7 +189,7 @@ export default function UserManagement() {
       label: 'Actions',
       render: (_, user) => (
         <div className="flex space-x-2">
-          <Link to={`/admin/users/${user.id}`}>
+          <Link to={`/superuser/users/${user.id}`}>
             <Button variant="outline" size="sm">
               <EyeIcon className="h-4 w-4" />
             </Button>
