@@ -626,6 +626,7 @@ export function OrganizationManagement() {
           </span>
 
           <Button
+          type='button'
             variant="outline"
             size="sm"
             disabled={currentPage === totalPages}
