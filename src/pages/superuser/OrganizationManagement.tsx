@@ -279,6 +279,13 @@ export function OrganizationManagement() {
       console.log('[Generated Code API Response]', code);
       setGeneratedCode(code);
       setShowGenerateCodeModal(true);
+
+      // Update the organization in the state with the new code
+      setOrganizations(prevOrgs =>
+        prevOrgs.map(org =>
+          org.name === orgName ? { ...org, organizationCode: code.newJoinCode } : org
+        )
+      );
     } catch (error) {
       toast.error('Failed to generate join code');
     }
@@ -571,6 +578,7 @@ export function OrganizationManagement() {
                         </Button>
                       )}
                     </div>
+                    <p className='font-medium'>Code: {org?.organizationCode ?? "N/A"}</p>
                   </div>
                 </CardContent>
               </Card>
