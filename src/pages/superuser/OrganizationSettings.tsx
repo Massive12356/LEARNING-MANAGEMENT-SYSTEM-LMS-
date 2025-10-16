@@ -4,7 +4,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { mockApi } from '../../services/mockApi';
 import { organizationService } from '../../services/organizationService';
 import { Organization } from '../../types';
 import { 
@@ -126,7 +125,7 @@ export function OrganizationSettings() {
         </p>
       </div>
     );
-  }
+
 
   return (
     <div className="space-y-8">

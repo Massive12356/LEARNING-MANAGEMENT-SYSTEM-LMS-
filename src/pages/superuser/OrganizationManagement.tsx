@@ -30,7 +30,7 @@ export function OrganizationManagement() {
   const [filteredOrganizations, setFilteredOrganizations] = useState<Organization[]>([]);
   const [selectOrgName, setSelectOrgName] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [creatingAdmin, setCreatingAdmin]=useState(false);
+  const [creatingAdmin, setCreatingAdmin] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -39,11 +39,8 @@ export function OrganizationManagement() {
   const [admins, setAdmins] = useState<User[]>([]);
   const [showGenerateCodeModal, setShowGenerateCodeModal] = useState(false);
   const [generatedCode, setGeneratedCode] = useState<any>(null);
-  const [codeConfig, setCodeConfig] = useState({
-    expiryDays: 30,
-    maxUses: 100,
-  });
-  const [allUsers,SetAllUsers]= useState<User[]>([]);
+  const [codeGenerate, setCodeGenerate] = useState<string | null>(null);
+  const [allUsers, SetAllUsers] = useState<User[]>([]);
   const [changingStatus, SetChangingStatus] = useState<string | null>(null);
 
   const [newOrgData, setNewOrgData] = useState({
@@ -61,7 +58,7 @@ export function OrganizationManagement() {
     email: '',
     password: '',
     organizationId: '',
-    role: 'admin'
+    role: 'admin',
   });
 
   // Add loading state for create organization
@@ -72,16 +69,14 @@ export function OrganizationManagement() {
   const [totalItems, setTotalItems] = useState<number>(0);
 
   const [currentPage, SetCurrentPage] = useState(1);
-  const [totalPages,SetTotalPages] = useState(1);
+  const [totalPages, SetTotalPages] = useState(1);
   const pageSize = 10;
 
- 
-
-  const loadOrganizations = async (page= 1) => {
+  const loadOrganizations = async (page = 1) => {
     try {
-      setLoading(true)
-      const response = await organizationService.getOrganizations(page,pageSize);
-      console.log(response)
+      setLoading(true);
+      const response = await organizationService.getOrganizations(page, pageSize);
+      console.log(response);
       const orgsData = response.organizations || [];
       // Normalize backend data
       const formattedOrgs = orgsData.map((org: any) => ({
@@ -91,11 +86,11 @@ export function OrganizationManagement() {
       }));
 
       setOrganizations(formattedOrgs);
-      setFilteredOrganizations(formattedOrgs)
+      setFilteredOrganizations(formattedOrgs);
 
-      // update pagination states 
+      // update pagination states
       SetCurrentPage(response.currentPage || 1);
-      SetTotalPages(response.totalPages || 1)
+      SetTotalPages(response.totalPages || 1);
       setTotalItems(response.totalItems || orgsData.length);
     } catch (error) {
       console.error('Failed to load organizations:', error);
@@ -162,7 +157,7 @@ export function OrganizationManagement() {
         maxUsers: '',
       });
       setShowCreateModal(false);
-      loadOrganizations();
+      await loadOrganizations();
     } catch (error: any) {
       console.error(error);
       toast.error(error.response?.data?.message || 'Failed to create organization');
@@ -173,7 +168,7 @@ export function OrganizationManagement() {
 
   const handleStatusChange = async (organizationId: string, newStatus: 'active' | 'suspended') => {
     try {
-      SetChangingStatus(organizationId)
+      SetChangingStatus(organizationId);
       await organizationService.updateOrganization(organizationId, { status: newStatus });
 
       setOrganizations(prev =>
@@ -187,7 +182,7 @@ export function OrganizationManagement() {
       );
     } catch (error) {
       toast.error('Failed to update organization status');
-    }finally{
+    } finally {
       SetChangingStatus(null);
     }
   };
@@ -215,9 +210,6 @@ export function OrganizationManagement() {
     if (!password.trim()) return toast.error('Password is required.');
     if (password.length < 8) return toast.error('Password must be at least 8 characters long.');
     if (!organizationId) return toast.error('Kindly Enter the Generated Code for the organization');
-
-    
-
 
     // ✅ Prepare the final payload for admin creation
     const payload = {
@@ -270,15 +262,15 @@ export function OrganizationManagement() {
     if (!orgName) {
       toast.error('Please create an organization first before generating a join code');
       return;
-    } else {
-      toast.loading(`Generating Code for ${orgName}`);
     }
 
     try {
+      setCodeGenerate(orgName)
       const code = await organizationCodeService.createOrganizationCode(orgName);
       console.log('[Generated Code API Response]', code);
       setGeneratedCode(code);
       setShowGenerateCodeModal(true);
+      toast.success("Code Generated")
 
       // Update the organization in the state with the new code
       setOrganizations(prevOrgs =>
@@ -288,42 +280,36 @@ export function OrganizationManagement() {
       );
     } catch (error) {
       toast.error('Failed to generate join code');
+    } finally{
+      setCodeGenerate(null)
     }
   };
 
-  const fetchUsers = async()=>{
+  const fetchUsers = async () => {
     try {
       const response = await adminService.getUsers();
       SetAllUsers(response);
-      console.log("RESPONSE FROM BACKEND",response)
+      console.log('RESPONSE FROM BACKEND', response);
     } catch (error) {
-      console.log("ERROR RESPONSE FROM BACKEND", error)
+      console.log('ERROR RESPONSE FROM BACKEND', error);
+      toast.error("failed to load Users data")
     }
-  }
+  };
 
-  
   const totalCourses = Object.values(orgStats).reduce(
     (acc: number, stats: any) => acc + stats.courses,
     0
   );
   const activeOrgs = organizations.filter(org => org.status === 'active').length;
 
-   useEffect(() => {
-     loadOrganizations(currentPage);
-     fetchUsers()
-   }, [currentPage]);
+  useEffect(() => {
+    loadOrganizations(currentPage);
+    fetchUsers();
+  }, [currentPage]);
 
   useEffect(() => {
     filterOrganizations();
   }, [organizations, searchTerm, statusFilter]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-8">
@@ -440,11 +426,31 @@ export function OrganizationManagement() {
       </Card>
 
       {/* Organizations Grid */}
-      {filteredOrganizations?.length > 0 ? (
+      {loading ? (
+        // Loading state: skeleton cards or spinner
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-6">
+                <div className="h-6 bg-gray-300 rounded w-3/4 mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2 mb-6"></div>
+                <div className="grid grid-cols-3 gap-4 mb-4 py-2">
+                  <div className="h-4 bg-gray-300 rounded"></div>
+                  <div className="h-4 bg-gray-300 rounded"></div>
+                  <div className="h-4 bg-gray-300 rounded"></div>
+                </div>
+                <div className="flex justify-between items-center mt-4">
+                  <div className="h-8 bg-gray-300 rounded w-24"></div>
+                  <div className="h-8 bg-gray-300 rounded w-24"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : filteredOrganizations?.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredOrganizations?.map(org => {
             const stats = orgStats[org.id] || { users: 0, courses: 0, activeUsers: 0 };
-
             return (
               <Card key={org.id} className="group hover:shadow-lg transition-shadow">
                 <CardContent className="p-6">
@@ -535,8 +541,17 @@ export function OrganizationManagement() {
                         size="sm"
                         onClick={() => handleGenerateJoinCode(org.name)}
                       >
-                        <PlusIcon className="h-4 w-4 mr-1" />
-                        Generate Code
+                        {codeGenerate ===org.name ? (
+                          <div className="flex items-center gap-2">
+                            <span className="h-4 w-4 border-2 border-t-transparent border-gray-500 rounded-full animate-spin"></span>
+                            <span>...</span>
+                          </div>
+                        ) : (
+                          <>
+                            <PlusIcon className="h-4 w-4 mr-1" />
+                            Generate Code
+                          </>
+                        )}
                       </Button>
                       {org.status === 'active' ? (
                         <Button
@@ -578,7 +593,7 @@ export function OrganizationManagement() {
                         </Button>
                       )}
                     </div>
-                    <p className='font-medium'>Code: {org?.organizationCode ?? "N/A"}</p>
+                    <p className="font-medium">Code: {org?.organizationCode ?? 'N/A'}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -626,7 +641,7 @@ export function OrganizationManagement() {
           </span>
 
           <Button
-          type='button'
+            type="button"
             variant="outline"
             size="sm"
             disabled={currentPage === totalPages}
@@ -834,7 +849,7 @@ export function OrganizationManagement() {
             >
               Cancel
             </Button>
-            <Button type='submit'  loading={creatingAdmin} disabled={creatingAdmin}>
+            <Button type="submit" loading={creatingAdmin} disabled={creatingAdmin}>
               {creatingAdmin ? 'creating Admin ...' : 'Create and Assign Admin'}{' '}
             </Button>
           </div>

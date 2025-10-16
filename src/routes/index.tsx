@@ -42,8 +42,8 @@ import { UserManagement } from '../pages/admin/UserManagement';
 import { UserDetail } from '../pages/admin/UserDetail';
 import AdminCourseList from '../pages/admin/CourseList';
 import { ProgramList as AdminProgramList } from '../pages/admin/ProgramList';
-import { OrganizationSettings } from '../pages/admin/OrganizationSettings';
-import { OrganizationAnalytics } from '../pages/admin/OrganizationAnalytics';
+import { OrganizationSettings } from '../pages/superuser/OrganizationSettings';
+import { OrganizationAnalytics } from '../pages/superuser/OrganizationAnalytics';
 import { EmailTemplateEditor } from '../pages/admin/EmailTemplateEditor';
 import { AdminReports } from '../pages/admin/AdminReports';
 
@@ -72,7 +72,7 @@ export const AppRoutes: React.FC = () => {
   const getRoleBasedRedirect = () => {
     if (!user) return '/login';
     // Normalize role from either 'role' or 'accountType'
-    const role = user.role || user.accountType;
+    const role = user.role
     switch (role) {
       case 'student':
         return '/student/dashboard';
