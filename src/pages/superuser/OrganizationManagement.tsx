@@ -30,7 +30,7 @@ export function OrganizationManagement() {
   const [filteredOrganizations, setFilteredOrganizations] = useState<Organization[]>([]);
   const [selectOrgName, setSelectOrgName] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [creatingAdmin, setCreatingAdmin] = useState(false);
+  const [creatingAdmin, setCreatingAdmin]=useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -61,7 +61,7 @@ export function OrganizationManagement() {
     email: '',
     password: '',
     organizationId: '',
-    role: 'admin',
+    role: 'admin'
   });
 
   // Add loading state for create organization
@@ -69,12 +69,19 @@ export function OrganizationManagement() {
 
   // Mock organization stats
   const [orgStats, setOrgStats] = useState<Record<string, any>>({});
+  const [totalItems, setTotalItems] = useState<number>(0);
 
-  const loadOrganizations = async () => {
+  const [currentPage, SetCurrentPage] = useState(1);
+  const [totalPages,SetTotalPages] = useState(1);
+  const pageSize = 10;
+
+ 
+
+  const loadOrganizations = async (page= 1) => {
     try {
-      setLoading(true);
-      const response = await organizationService.getOrganizations();
-      console.log(response);
+      setLoading(true)
+      const response = await organizationService.getOrganizations(page,pageSize);
+      console.log(response)
       const orgsData = response.organizations || [];
       // Normalize backend data
       const formattedOrgs = orgsData.map((org: any) => ({
@@ -84,16 +91,12 @@ export function OrganizationManagement() {
       }));
 
       setOrganizations(formattedOrgs);
-      setFilteredOrganizations(formattedOrgs);
-      // const stats: Record<string, any> = {};
-      // orgsData.forEach(org => {
-      //   stats[org.id] = {
-      //     users: Math.floor(Math.random() * 1000) + 100,
-      //     courses: Math.floor(Math.random() * 50) + 10,
-      //     activeUsers: Math.floor(Math.random() * 500) + 50,
-      //   };
-      // });
-      // setOrgStats(stats);
+      setFilteredOrganizations(formattedOrgs)
+
+      // update pagination states 
+      SetCurrentPage(response.currentPage || 1);
+      SetTotalPages(response.totalPages || 1)
+      setTotalItems(response.totalItems || orgsData.length);
     } catch (error) {
       console.error('Failed to load organizations:', error);
       toast.error('Failed to load organizations');
@@ -194,7 +197,8 @@ export function OrganizationManagement() {
     setShowAssignAdminModal(true);
   };
 
-  const handleCreateAdmin = async () => {
+  const handleCreateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!selectOrgName) {
       toast.error('No organization selected for admin assignment.');
       return;
@@ -212,7 +216,9 @@ export function OrganizationManagement() {
     if (password.length < 8) return toast.error('Password must be at least 8 characters long.');
     if (!organizationId) return toast.error('Kindly Enter the Generated Code for the organization');
 
-    // const org = organizations.find(o => o.id === selectedOrgId); // map the id to the name
+    
+
+
     // ✅ Prepare the final payload for admin creation
     const payload = {
       firstName: firstName.trim(),
@@ -225,7 +231,8 @@ export function OrganizationManagement() {
     console.log('[DEBUG selectedOrgId]:', selectedOrgId, typeof selectedOrgId);
 
     try {
-      toast.loading('Creating admin...', { id: 'admin-create' });
+      // toast.loading('Creating admin...', { id: 'admin-create' });
+      setCreatingAdmin(true);
 
       const createdAdmin = await adminService.createAdmin(payload);
 
@@ -234,6 +241,8 @@ export function OrganizationManagement() {
         { id: 'admin-create' }
       );
 
+      // ✅ Refresh users list
+      await fetchUsers();
       // Reset form and close modal
       setAdminData({
         firstName: '',
@@ -251,6 +260,8 @@ export function OrganizationManagement() {
     } catch (error: any) {
       console.error('[handleCreateAdmin] Error:', error);
       toast.error(error.message || 'Failed to create admin user', { id: 'admin-create' });
+    } finally {
+      setCreatingAdmin(false);
     }
   };
 
@@ -273,30 +284,27 @@ export function OrganizationManagement() {
     }
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = async()=>{
     try {
       const response = await adminService.getUsers();
       SetAllUsers(response);
-      console.log('RESPONSE FROM BACKEND', response);
+      console.log("RESPONSE FROM BACKEND",response)
     } catch (error) {
-      console.log('ERROR RESPONSE FROM BACKEND', error);
+      console.log("ERROR RESPONSE FROM BACKEND", error)
     }
-  };
+  }
 
-  const totalUsers = Object.values(orgStats).reduce(
-    (acc: number, stats: any) => acc + stats.users,
-    0
-  );
+  
   const totalCourses = Object.values(orgStats).reduce(
     (acc: number, stats: any) => acc + stats.courses,
     0
   );
   const activeOrgs = organizations.filter(org => org.status === 'active').length;
 
-  useEffect(() => {
-    loadOrganizations();
-    fetchUsers();
-  }, []);
+   useEffect(() => {
+     loadOrganizations(currentPage);
+     fetchUsers()
+   }, [currentPage]);
 
   useEffect(() => {
     filterOrganizations();
@@ -344,9 +352,7 @@ export function OrganizationManagement() {
               <BuildingOfficeIcon className="h-6 w-6 text-blue-600" />
             </div>
             <div className="ml-4">
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {organizations?.length ?? 0}
-              </p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalItems}</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">Total Organizations</p>
             </div>
           </CardContent>
@@ -595,6 +601,33 @@ export function OrganizationManagement() {
         </Card>
       )}
 
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center space-x-2 mt-8">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={currentPage === 1}
+            onClick={() => SetCurrentPage(prev => Math.max(prev - 1, 1))}
+          >
+            Previous
+          </Button>
+
+          <span className="text-gray-700 dark:text-gray-300 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={currentPage === totalPages}
+            onClick={() => SetCurrentPage(prev => Math.min(prev + 1, totalPages))}
+          >
+            Next
+          </Button>
+        </div>
+      )}
+
       {/* Create Organization Modal */}
       <Modal
         isOpen={showCreateModal}
@@ -720,7 +753,7 @@ export function OrganizationManagement() {
         }}
         title="Create and Assign Admin"
       >
-        <div className="space-y-4">
+        <form className="space-y-4" onSubmit={handleCreateAdmin}>
           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <div className="flex items-start">
               <ShieldCheckIcon className="h-5 w-5 text-blue-600 mt-0.5 mr-2" />
@@ -792,9 +825,11 @@ export function OrganizationManagement() {
             >
               Cancel
             </Button>
-            <Button onClick={handleCreateAdmin}>Create and Assign Admin</Button>
+            <Button type='submit'  loading={creatingAdmin} disabled={creatingAdmin}>
+              {creatingAdmin ? 'creating Admin ...' : 'Create and Assign Admin'}{' '}
+            </Button>
           </div>
-        </div>
+        </form>
       </Modal>
 
       {/* Generate Join Code Modal */}
