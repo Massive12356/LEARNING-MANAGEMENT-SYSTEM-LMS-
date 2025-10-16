@@ -20,7 +20,6 @@ export interface User {
   lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
-  accountType:UserRole;
 }
 
 export interface Organization {
@@ -429,3 +428,74 @@ export interface AuthContextType {
   isViewingAs: boolean;
   originalUser: User | null;
 }
+
+export interface ActiveOrganizationStats {
+  totalOrganizations: number;
+  activeOrganizations: number;
+  message?: string;
+}
+
+export interface ActiveUserStats{
+  activeUsers: number,
+  totalUsers: number,
+  message?:string
+}
+
+export interface SystemHealthStats{
+message?: string,
+readableUptime: string,
+systemHealthPercentage:number,
+totalUptimeSeconds:number
+}
+
+export interface OrganizationSummary {
+  id: number;
+  name: string;
+  registeredUsers: number;
+  createdAt: string;
+  CreatorDetails: {
+    id: number;
+    name: string;
+    email: string;
+  };
+}
+
+export interface RecentOrganizationStats {
+  count: number;
+  message?: string;
+  recentOrganizations: OrganizationSummary[];
+}
+
+export interface PlatformStatsResponse {
+  message: string;
+  systemHealth: SystemHealth;
+  responseTime: ResponseTime;
+  activeUsers: number;
+  storage: StorageStats;
+}
+
+export interface SystemHealth {
+  percentage: number;
+  readableUptime: string;
+}
+
+export interface ResponseTime {
+  value: number; // numeric, e.g., 0.12
+  unit: string; // e.g., "ms"
+}
+
+export interface StorageStats {
+  nodeProcessMemory: NodeProcessMemory;
+  systemMemory: SystemMemory;
+}
+
+export interface NodeProcessMemory {
+  totalHeap: string; // e.g., "32.25 MB"
+  usedHeap: string; // e.g., "30.26 MB"
+}
+
+export interface SystemMemory {
+  freeSystemMemory: string; // e.g., "14.2 GB"
+  totalSystemMemory: string; // e.g., "30.65 GB"
+}
+

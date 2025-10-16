@@ -461,10 +461,6 @@ class MockApiService {
     this.organizations.push(organization);
   }
 
-  // Add a method to add organizations to the mock data
-  addOrganization(organization: Organization): void {
-    this.organizations.push(organization);
-  }
 
   // Enrollments Management
   async enrollUser(userId: string, courseId?: string, programId?: string): Promise<Enrollment> {

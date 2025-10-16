@@ -1,7 +1,7 @@
 import { AxiosError } from 'axios';
 import { Organization } from '../types';
 import apiClient from './apiClient';
-import { CreateOrganizationResponse,GetOrganizationsResponse } from '../types';
+import { CreateOrganizationResponse,GetOrganizationsResponse, ActiveOrganizationStats,RecentOrganizationStats } from '../types';
 
 class OrganizationService {
   async getOrganizationById(id: string): Promise<Organization | null> {
@@ -16,11 +16,13 @@ class OrganizationService {
 
   async getOrganizations(): Promise<GetOrganizationsResponse> {
     try {
-      const response = await apiClient.get<GetOrganizationsResponse>('/organization/All-organization');
-      console.log("[organizationService] RESPONSE FROM BACKEND:", response.data)
+      const response = await apiClient.get<GetOrganizationsResponse>(
+        '/organization/All-organization'
+      );
+      console.log('[organizationService] RESPONSE FROM BACKEND:', response.data);
       return response.data;
     } catch (error) {
-      const err = error as AxiosError<{message?: string}>
+      const err = error as AxiosError<{ message?: string }>;
       console.error(
         '[organizationService] Error fetching organizations:',
         err.response?.data || err.message
@@ -33,8 +35,7 @@ class OrganizationService {
     }
   }
 
-  async createOrganization( formData: FormData
-  ): Promise<Organization> {
+  async createOrganization(formData: FormData): Promise<Organization> {
     try {
       const response = await apiClient.post<CreateOrganizationResponse>(
         'organization/create-organization',
@@ -45,11 +46,14 @@ class OrganizationService {
           },
         }
       );
-      console.log("RESPONSE FROM BACKEND", response.data)
-      return response.data.Organization
+      console.log('RESPONSE FROM BACKEND', response.data);
+      return response.data.Organization;
     } catch (error) {
-      const err = error as AxiosError<{message?: string}>
-      console.error('[createOrganization] ERROR CREATING ORGANISATION', err.response?.data || err.message);
+      const err = error as AxiosError<{ message?: string }>;
+      console.error(
+        '[createOrganization] ERROR CREATING ORGANISATION',
+        err.response?.data || err.message
+      );
       throw new Error(
         err.response?.data?.message || '[createOrganization] ERROR CREATING ORGANISATION'
       );
@@ -58,11 +62,16 @@ class OrganizationService {
 
   async updateOrganization(id: string, orgData: Partial<Organization>): Promise<Organization> {
     try {
-      const response = await apiClient.put<Organization>(`/organization/${id}`, orgData);
+      const response = await apiClient.put<Organization>(
+        `/organization/change/status/${id}`,
+        orgData
+      );
+      console.log('[updateOrganization] RESPONSE FROM BACKEND:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error updating organization:', error);
-      throw error;
+      const err = error as AxiosError<{ message?: string }>;
+      console.error('Error updating organization:', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to change Status');
     }
   }
 
@@ -74,6 +83,31 @@ class OrganizationService {
     } catch (error) {
       console.error('Error fetching user organization:', error);
       return null;
+    }
+  }
+
+  async getTotalOrganizationActiveOnes(): Promise<ActiveOrganizationStats>{
+    try {
+      const response = await apiClient.get('/organization/Total/Active');
+      console.log("[organizationService]:RESPONSE FROM BACKEND:", response.data)
+      return response.data
+    } catch (error) {
+      const err = error as AxiosError<{message?:string}>
+      console.log('[organizationService]:ERROR RESPONSE FROM BACKEND:', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || "Failed to fetch data")
+    }
+  }
+
+  async getRecentOrganization():Promise<RecentOrganizationStats>{
+    try {
+      const response = await apiClient.get('/organization/recent/created');
+      console.log('[organizationService]:RESPONSE FROM BACKEND:',response.data);
+      return response.data
+    } catch (error) {
+      const err = error as AxiosError<{message?:string}>
+      console.log(
+        '[organizationService]:ERROR RESPONSE FROM BACKEND:',err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to fetch data');
     }
   }
 }

@@ -1,5 +1,5 @@
 import { mockApi } from './mockApi';
-import { User, RegisterForm,RegisterPayload } from '../types';
+import { User,RegisterPayload,ActiveUserStats,SystemHealthStats,PlatformStatsResponse } from '../types';
 import apiClient from './apiClient';
 import { AxiosError } from 'axios';
 
@@ -120,6 +120,41 @@ class AdminService {
       const err = error as AxiosError<{message?: string}>
       console.log('[adminService] ERROR RESPONSE:', err.response?.data || err.message);
       throw new Error(err.response?.data?.message || '[adminService] Failed to Fetch Users');
+    }
+  }
+  async getTotalUsers():Promise<ActiveUserStats>{
+    try {
+      const response = await apiClient.get('/user/Total/Active');
+      console.log("[adminService]: RESPONSE FROM BACKEND", response.data)
+      return response.data
+    } catch (error) {
+      const err = error as AxiosError<{message?:string}>
+      console.log('[adminService]: ERROR RESPONSE FROM BACKEND', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || "Failed to load Data")
+    }
+  }
+
+  async systemHealthCheck():Promise<SystemHealthStats>{
+    try {
+      const response = await apiClient.get('/system/health-check');
+      console.log('[adminService]: RESPONSE FROM BACKEND', response.data);
+      return response.data
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log('[adminService]: ERROR RESPONSE FROM BACKEND', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to load Data');
+    }
+  }
+
+  async platformStats():Promise<PlatformStatsResponse>{
+    try {
+      const response = await apiClient.get("/system/platform/statistics")
+       console.log('[adminService]: RESPONSE FROM BACKEND', response.data);
+       return response.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log('[adminService]: ERROR RESPONSE FROM BACKEND', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to load Data');
     }
   }
 }
