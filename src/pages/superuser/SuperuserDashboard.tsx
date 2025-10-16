@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { 
+import {
   BuildingOfficeIcon,
   UserGroupIcon,
   BookOpenIcon,
@@ -11,122 +11,231 @@ import {
   ExclamationTriangleIcon,
   CheckCircleIcon,
   ClockIcon,
-  GlobeAltIcon
+  GlobeAltIcon,
 } from '@heroicons/react/24/outline';
+import { adminService } from '../../services/adminService';
+import { organizationService } from '../../services/organizationService';
+import toast from 'react-hot-toast';
+import {
+  ActiveOrganizationStats,
+  ActiveUserStats,
+  SystemHealthStats,
+  RecentOrganizationStats,
+  PlatformStatsResponse,
+} from '../../types';
 
 export function SuperuserDashboard() {
-  const { user } = useAuth();
-  const [dashboardData, setDashboardData] = useState({
+  const { user } = useAuthStore();
+
+  // Independent loading states
+  const [userLoading, setUserLoading] = useState(true);
+  const [systemHealthLoading, setSystemHealthLoading] = useState(true);
+  const [platformLoading, setPlatformLoading] = useState(true);
+  const [orgLoading, setOrgLoading] = useState(true);
+  const [recentOrgLoading, setRecentOrgLoading] = useState(true);
+
+  // Dashboard data states
+  const [userStats, setUsersStats] = useState<ActiveUserStats>({
+    activeUsers: 0,
+    totalUsers: 0,
+    message: '',
+  });
+  const [systemHealth, setSystemHealth] = useState<SystemHealthStats>({
+    message: '',
+    readableUptime: '',
+    systemHealthPercentage: 0,
+    totalUptimeSeconds: 0,
+  });
+  const [platformHealth, setPlatformHealth] = useState<PlatformStatsResponse>({
+    message: '',
+    systemHealth: { percentage: 0, readableUptime: '' },
+    responseTime: { value: 0, unit: 'ms' },
+    activeUsers: 0,
+    storage: {
+      nodeProcessMemory: { totalHeap: '', usedHeap: '' },
+      systemMemory: { freeSystemMemory: '', totalSystemMemory: '' },
+    },
+  });
+  const [activeOrganization, setActiveOrganization] = useState<ActiveOrganizationStats>({
     totalOrganizations: 0,
     activeOrganizations: 0,
-    totalUsers: 0,
-    totalCourses: 0,
-    systemHealth: 'healthy' as 'healthy' | 'warning' | 'critical',
-    recentOrganizations: [] as any[],
-    systemAlerts: [] as any[],
-    platformStats: {
-      uptime: '99.9%',
-      responseTime: '120ms',
-      activeUsers: 0,
-      storageUsed: '2.4TB'
-    }
+    message: '',
   });
-  const [loading, setLoading] = useState(true);
+  const [recentOrganizations, setRecentOrganization] = useState<RecentOrganizationStats>({
+    count: 0,
+    message: '',
+    recentOrganizations: [],
+  });
+
+  // ---- Fetch Functions ----
+   const loadTotalActiveUsers = async () => {
+     setUserLoading(true);
+     try {
+       const response: ActiveUserStats = await adminService.getTotalUsers();
+       setUsersStats(response);
+     } catch (error) {
+       console.log(error);
+       toast.error('Failed to load user data');
+     } finally {
+       setUserLoading(false);
+     }
+   };
+
+const loadSystemHealth = async () => {
+  setSystemHealthLoading(true);
+  try {
+    const response: SystemHealthStats = await adminService.systemHealthCheck();
+    setSystemHealth(response);
+  } catch (error) {
+    console.log(error);
+    toast.error('Failed to load system health data');
+  } finally {
+    setSystemHealthLoading(false);
+  }
+};
+
+const loadPlatformHealth = async () => {
+  setPlatformLoading(true);
+  try {
+    const response: PlatformStatsResponse = await adminService.platformStats();
+    setPlatformHealth(response);
+  } catch (error) {
+    console.log(error);
+    toast.error('Failed to load platform data');
+  } finally {
+    setPlatformLoading(false);
+  }
+};
+
+const loadActiveOrganizations = async () => {
+  setOrgLoading(true);
+  try {
+    const response: ActiveOrganizationStats =
+      await organizationService.getTotalOrganizationActiveOnes();
+    setActiveOrganization(response);
+  } catch (error) {
+    console.log(error);
+    toast.error('Failed to load organization data');
+  } finally {
+    setOrgLoading(false);
+  }
+};
+
+const loadRecentOrganizations = async () => {
+  setRecentOrgLoading(true);
+  try {
+    const response: RecentOrganizationStats = await organizationService.getRecentOrganization();
+    setRecentOrganization(response);
+  } catch (error) {
+    console.log(error);
+    toast.error('Failed to load recent organizations');
+  } finally {
+    setRecentOrgLoading(false);
+  }
+};
+
 
   useEffect(() => {
-    loadDashboardData();
+    loadTotalActiveUsers();
+    loadSystemHealth();
+    loadPlatformHealth();
+    loadActiveOrganizations();
+    loadRecentOrganizations();
   }, [user]);
 
-  const loadDashboardData = async () => {
-    try {
-      // Mock data - replace with real API calls
-      const mockData = {
-        totalOrganizations: 24,
-        activeOrganizations: 22,
-        totalUsers: 5847,
-        totalCourses: 342,
-        systemHealth: 'healthy' as const,
-        recentOrganizations: [
-          { id: '1', name: 'TechEd Academy', status: 'active', users: 1247, createdAt: new Date('2024-01-15') },
-          { id: '2', name: 'Business Skills Institute', status: 'active', users: 892, createdAt: new Date('2024-01-12') },
-          { id: '3', name: 'Creative Learning Hub', status: 'active', users: 634, createdAt: new Date('2024-01-10') },
-          { id: '4', name: 'Healthcare Training Center', status: 'suspended', users: 445, createdAt: new Date('2024-01-08') }
-        ],
-        systemAlerts: [
-          { type: 'info', message: 'Scheduled maintenance this weekend', time: '2 hours ago' },
-          { type: 'warning', message: 'High storage usage detected', time: '1 day ago' }
-        ],
-        platformStats: {
-          uptime: '99.9%',
-          responseTime: '120ms',
-          activeUsers: 3421,
-          storageUsed: '2.4TB'
-        }
-      };
+  
 
-      setDashboardData(mockData);
-    } catch (error) {
-      console.error('Failed to load dashboard data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const systemAlerts = [];
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+  if (systemHealth.systemHealthPercentage < 50) {
+    systemAlerts.push({
+      type: 'warning',
+      message: '⚠️ Critical: System health below 50%. Immediate attention required!',
+      time: new Date().toLocaleString(),
+    });
+  } else if (systemHealth.systemHealthPercentage < 90) {
+    systemAlerts.push({
+      type: 'warning',
+      message: '⚠️ System experiencing moderate instability.',
+      time: new Date().toLocaleString(),
+    });
+  } else if (systemHealth.systemHealthPercentage < 100) {
+    systemAlerts.push({
+      type: 'info',
+      message: '🟡 Minor issues detected. Monitoring performance.',
+      time: new Date().toLocaleString(),
+    });
+  } else {
+    systemAlerts.push({
+      type: 'info',
+      message: '✅ System operating at full health.',
+      time: new Date().toLocaleString(),
+    });
   }
 
   const stats = [
     {
       name: 'Organizations',
-      value: dashboardData.totalOrganizations.toString(),
-      subValue: `${dashboardData.activeOrganizations} active`,
+      value: orgLoading ? '...' : activeOrganization.totalOrganizations.toString(),
+      subValue: orgLoading ? 'Loading...' : `${activeOrganization.activeOrganizations} active`,
       icon: BuildingOfficeIcon,
       color: 'text-blue-600',
       bgColor: 'bg-blue-100 dark:bg-blue-900',
-      href: '/superuser/organizations'
+      href: '/superuser/organizations',
     },
     {
       name: 'Total Users',
-      value: dashboardData.totalUsers.toLocaleString(),
-      subValue: `${dashboardData.platformStats.activeUsers} active`,
+      value: userLoading ? '...' : userStats.totalUsers.toLocaleString(),
+      subValue: userLoading ? 'Loading...' : `${userStats.activeUsers} active`,
       icon: UserGroupIcon,
       color: 'text-green-600',
       bgColor: 'bg-green-100 dark:bg-green-900',
-      href: '/superuser/reports'
-    },
-    {
-      name: 'Total Courses',
-      value: dashboardData.totalCourses.toString(),
-      subValue: 'Across all orgs',
-      icon: BookOpenIcon,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-100 dark:bg-purple-900',
-      href: '/superuser/reports'
+      href: '/superuser/reports',
     },
     {
       name: 'System Health',
-      value: dashboardData.systemHealth === 'healthy' ? 'Healthy' : 'Issues',
-      subValue: `${dashboardData.platformStats.uptime} uptime`,
-      icon: dashboardData.systemHealth === 'healthy' ? CheckCircleIcon : ExclamationTriangleIcon,
-      color: dashboardData.systemHealth === 'healthy' ? 'text-green-600' : 'text-yellow-600',
-      bgColor: dashboardData.systemHealth === 'healthy' ? 'bg-green-100 dark:bg-green-900' : 'bg-yellow-100 dark:bg-yellow-900',
-      href: '/superuser/settings'
-    }
+      value: systemHealthLoading
+        ? 'Loading...'
+        : systemHealth.systemHealthPercentage === 100
+        ? 'Healthy'
+        : systemHealth.systemHealthPercentage >= 90
+        ? 'Minor Issues'
+        : 'Critical Issues',
+      subValue: systemHealthLoading ? '...' : `${systemHealth.systemHealthPercentage}% uptime`,
+      icon: systemHealth.systemHealthPercentage === 100 ? CheckCircleIcon : ExclamationTriangleIcon,
+      color:
+        systemHealth.systemHealthPercentage === 100
+          ? 'text-green-600'
+          : systemHealth.systemHealthPercentage >= 90
+          ? 'text-yellow-600'
+          : 'text-red-600',
+      bgColor:
+        systemHealth.systemHealthPercentage === 100
+          ? 'bg-green-100 dark:bg-green-900'
+          : systemHealth.systemHealthPercentage >= 90
+          ? 'bg-yellow-100 dark:bg-yellow-900'
+          : 'bg-red-100 dark:bg-red-900',
+      href: '/superuser/settings',
+    },
+    // {
+    //   name: 'Total Courses',
+    //   value: dashboardData.totalCourses.toString(),
+    //   subValue: 'Across all orgs',
+    //   icon: BookOpenIcon,
+    //   color: 'text-purple-600',
+    //   bgColor: 'bg-purple-100 dark:bg-purple-900',
+    //   href: '/superuser/reports',
+    // },
+
   ];
+
 
   return (
     <div className="space-y-8">
       {/* Header with Global View Context */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            System Overview
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">System Overview</h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
             Monitor and manage the entire LMS platform
           </p>
@@ -152,31 +261,40 @@ export function SuperuserDashboard() {
       </div>
 
       {/* System Alerts */}
-      {dashboardData.systemAlerts.length > 0 && (
+      {systemAlerts.length > 0 && (
         <div className="space-y-3">
-          {dashboardData.systemAlerts.map((alert, index) => (
-            <div key={index} className={`p-4 rounded-lg border ${
-              alert.type === 'warning' 
-                ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
-                : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-            }`}>
+          {systemAlerts.map((alert, index) => (
+            <div
+              key={index}
+              className={`p-4 rounded-lg border ${
+                alert.type === 'warning'
+                  ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                  : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+              }`}
+            >
               <div className="flex items-center">
-                <ExclamationTriangleIcon className={`h-5 w-5 mr-3 ${
-                  alert.type === 'warning' ? 'text-yellow-600' : 'text-blue-600'
-                }`} />
+                <ExclamationTriangleIcon
+                  className={`h-5 w-5 mr-3 ${
+                    alert.type === 'warning' ? 'text-yellow-600' : 'text-blue-600'
+                  }`}
+                />
                 <div className="flex-1">
-                  <p className={`text-sm font-medium ${
-                    alert.type === 'warning' 
-                      ? 'text-yellow-800 dark:text-yellow-200'
-                      : 'text-blue-800 dark:text-blue-200'
-                  }`}>
+                  <p
+                    className={`text-sm font-medium ${
+                      alert.type === 'warning'
+                        ? 'text-yellow-800 dark:text-yellow-200'
+                        : 'text-blue-800 dark:text-blue-200'
+                    }`}
+                  >
                     {alert.message}
                   </p>
-                  <p className={`text-xs mt-1 ${
-                    alert.type === 'warning'
-                      ? 'text-yellow-600 dark:text-yellow-400'
-                      : 'text-blue-600 dark:text-blue-400'
-                  }`}>
+                  <p
+                    className={`text-xs mt-1 ${
+                      alert.type === 'warning'
+                        ? 'text-yellow-600 dark:text-yellow-400'
+                        : 'text-blue-600 dark:text-blue-400'
+                    }`}
+                  >
                     {alert.time}
                   </p>
                 </div>
@@ -188,7 +306,7 @@ export function SuperuserDashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => {
+        {stats.map(stat => {
           const Icon = stat.icon;
           return (
             <Link key={stat.name} to={stat.href}>
@@ -198,12 +316,8 @@ export function SuperuserDashboard() {
                     <Icon className={`h-6 w-6 ${stat.color}`} />
                   </div>
                   <div className="ml-4">
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {stat.value}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {stat.subValue}
-                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{stat.subValue}</p>
                     <p className="text-xs font-medium text-gray-900 dark:text-white mt-1">
                       {stat.name}
                     </p>
@@ -222,41 +336,46 @@ export function SuperuserDashboard() {
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               Recent Organizations
             </h2>
-            <Link to="/superuser/organizations" className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+            <Link
+              to="/superuser/organizations"
+              className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+            >
               View all
             </Link>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {dashboardData.recentOrganizations.map((org) => (
-              <div 
-                key={org.id} 
-                className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-medium text-gray-900 dark:text-white">
-                      {org.name}
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      {org.users} users
-                    </p>
+          {recentOrgLoading ? (
+            <div className="flex justify-center py-6">
+              <div className="h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {recentOrganizations.recentOrganizations?.map(org => (
+                <div
+                  key={org.id}
+                  className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-medium text-gray-900 dark:text-white">
+                        {org?.name ?? 'N/A'}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        {org?.registeredUsers ?? 0} users
+                      </p>
+                    </div>
+                    <span className="px-2 py-1 text-xs rounded-full bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                      Active
+                    </span>
                   </div>
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    org.status === 'active' 
-                      ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                      : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
-                  }`}>
-                    {org.status}
-                  </span>
+                  <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                    Created {new Date(org?.createdAt ?? 'N/A').toLocaleDateString()}
+                  </div>
                 </div>
-                <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                  Created {org.createdAt.toLocaleDateString()}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -268,40 +387,40 @@ export function SuperuserDashboard() {
           </h2>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {dashboardData.platformStats.uptime}
+          {platformLoading ? (
+            <div className="flex justify-center py-6">
+              <div className="h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {platformHealth.systemHealth.percentage ?? 'N/A'}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Uptime</div>
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Uptime
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {platformHealth.responseTime?.value ?? 'N/A'}{' '}
+                  {platformHealth.responseTime?.unit ?? 'N/A'}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Response Time</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {platformHealth.activeUsers?.toLocaleString() ?? 0}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Active Users</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {platformHealth.storage?.nodeProcessMemory?.usedHeap ?? 'N/A'} /{' '}
+                  {platformHealth.storage?.nodeProcessMemory?.totalHeap ?? 'N/A'}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Node Memory Usage</div>
               </div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {dashboardData.platformStats.responseTime}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Response Time
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {dashboardData.platformStats.activeUsers.toLocaleString()}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Active Users
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {dashboardData.platformStats.storageUsed}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Storage Used
-              </div>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -318,7 +437,9 @@ export function SuperuserDashboard() {
               <div className="p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer">
                 <div className="text-center">
                   <BuildingOfficeIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                  <h3 className="font-medium text-gray-900 dark:text-white">Manage Organizations</h3>
+                  <h3 className="font-medium text-gray-900 dark:text-white">
+                    Manage Organizations
+                  </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                     Create and configure organizations
                   </p>

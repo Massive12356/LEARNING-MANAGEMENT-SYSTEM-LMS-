@@ -44,6 +44,7 @@ export function OrganizationManagement() {
     maxUses: 100,
   });
   const [allUsers,SetAllUsers]= useState<User[]>([]);
+  const [changingStatus, SetChangingStatus] = useState<string | null>(null);
 
   const [newOrgData, setNewOrgData] = useState({
     name: '',
@@ -171,6 +172,7 @@ export function OrganizationManagement() {
 
   const handleStatusChange = async (organizationId: string, newStatus: 'active' | 'suspended') => {
     try {
+      SetChangingStatus(organizationId)
       await organizationService.updateOrganization(organizationId, { status: newStatus });
 
       setOrganizations(prev =>
@@ -184,6 +186,8 @@ export function OrganizationManagement() {
       );
     } catch (error) {
       toast.error('Failed to update organization status');
+    }finally{
+      SetChangingStatus(null);
     }
   };
 
@@ -523,18 +527,38 @@ export function OrganizationManagement() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleStatusChange(org.id, 'suspended')}
+                          disabled={changingStatus === org.id} // disable while loading
                         >
-                          <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
-                          Suspend
+                          {changingStatus === org.id ? (
+                            <div className="flex items-center gap-2">
+                              <span className="h-4 w-4 border-2 border-t-transparent border-gray-500 rounded-full animate-spin"></span>
+                              <span>...</span>
+                            </div>
+                          ) : (
+                            <>
+                              <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
+                              Suspend
+                            </>
+                          )}
                         </Button>
                       ) : (
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleStatusChange(org.id, 'active')}
+                          disabled={changingStatus === org.id}
                         >
-                          <CheckCircleIcon className="h-4 w-4 mr-1" />
-                          Activate
+                          {changingStatus === org.id ? (
+                            <div className="flex items-center gap-2">
+                              <span className="h-4 w-4 border-2 border-t-transparent border-gray-500 rounded-full animate-spin"></span>
+                              <span>...</span>
+                            </div>
+                          ) : (
+                            <>
+                              <CheckCircleIcon className="h-4 w-4 mr-1" />
+                              Activate
+                            </>
+                          )}
                         </Button>
                       )}
                     </div>
