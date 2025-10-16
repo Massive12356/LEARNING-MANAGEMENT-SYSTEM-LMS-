@@ -14,10 +14,10 @@ class OrganizationService {
     }
   }
 
-  async getOrganizations(): Promise<GetOrganizationsResponse> {
+  async getOrganizations(page=1, pageSize= 10 ): Promise<GetOrganizationsResponse> {
     try {
       const response = await apiClient.get<GetOrganizationsResponse>(
-        '/organization/All-organization'
+        `/organization/All-organization?page=${page}&pageSize${pageSize}`
       );
       console.log('[organizationService] RESPONSE FROM BACKEND:', response.data);
       return response.data;

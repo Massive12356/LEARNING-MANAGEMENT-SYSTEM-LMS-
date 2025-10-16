@@ -43,6 +43,11 @@ export interface CreateOrganizationResponse {
 export interface GetOrganizationsResponse {
   message?: string;
   organizations: Organization[];
+  currentPage: number;
+  totalPages: number;
+  pageSize: number;
+  totalCount: number;
+  totalItems: number;
 }
 
 export interface Course {
