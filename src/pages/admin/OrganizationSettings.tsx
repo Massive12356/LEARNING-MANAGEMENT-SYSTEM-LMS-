@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../stores/authStore';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -17,7 +17,7 @@ import {
 import toast from 'react-hot-toast';
 
 export function OrganizationSettings() {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
   const [organization, setOrganization] = useState<Organization | null>(null);
@@ -34,7 +34,10 @@ export function OrganizationSettings() {
 
   // Extract organization ID from query parameters for superuser access
   const urlParams = new URLSearchParams(location.search);
-  const orgIdFromQuery = urlParams.get('orgId');
+  const orgIdFromQuery = urlParams.get('organizationId');
+
+  console.log('Loaded user:', user);
+  console.log('Query param orgId:', orgIdFromQuery);
 
   useEffect(() => {
     loadOrganization();
@@ -125,7 +128,7 @@ export function OrganizationSettings() {
         </p>
       </div>
     );
-
+  }
 
   return (
     <div className="space-y-8">

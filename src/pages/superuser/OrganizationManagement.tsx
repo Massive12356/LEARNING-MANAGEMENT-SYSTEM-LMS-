@@ -91,7 +91,7 @@ export function OrganizationManagement() {
       // update pagination states
       SetCurrentPage(response.currentPage || 1);
       SetTotalPages(response.totalPages || 1);
-      setTotalItems(response.totalItems || orgsData.length);
+      setTotalItems(response.totalOrganizations || orgsData.length);
     } catch (error) {
       console.error('Failed to load organizations:', error);
       toast.error('Failed to load organizations');
@@ -289,7 +289,7 @@ export function OrganizationManagement() {
     try {
       const response = await adminService.getUsers();
       SetAllUsers(response);
-      console.log('RESPONSE FROM BACKEND', response);
+      console.log('RESPONSE FROM BACKEND[FETCH USERS]', response);
     } catch (error) {
       console.log('ERROR RESPONSE FROM BACKEND', error);
       toast.error("failed to load Users data")
@@ -519,7 +519,7 @@ export function OrganizationManagement() {
                   {/* Actions */}
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link to={`/superuser/organization?orgId=${org.id}`}>
+                      <Link to={`/superuser/organization?organizationId=${org.id}`}>
                         <Button variant="outline" size="sm">
                           <PencilIcon className="h-4 w-4 mr-1" />
                           Edit
@@ -541,7 +541,7 @@ export function OrganizationManagement() {
                         size="sm"
                         onClick={() => handleGenerateJoinCode(org.name)}
                       >
-                        {codeGenerate ===org.name ? (
+                        {codeGenerate === org.name ? (
                           <div className="flex items-center gap-2">
                             <span className="h-4 w-4 border-2 border-t-transparent border-gray-500 rounded-full animate-spin"></span>
                             <span>...</span>

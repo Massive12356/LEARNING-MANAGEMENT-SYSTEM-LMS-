@@ -50,7 +50,10 @@ export function SuperuserDashboard() {
     message: '',
     systemHealth: { percentage: 0, readableUptime: '' },
     responseTime: { value: 0, unit: 'ms' },
-    activeUsers: 0,
+    userStatistics: {
+      activeUsers: 0,
+      totalUsers:0,
+    },
     storage: {
       nodeProcessMemory: { totalHeap: '', usedHeap: '' },
       systemMemory: { freeSystemMemory: '', totalSystemMemory: '' },
@@ -395,7 +398,7 @@ const loadRecentOrganizations = async () => {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="text-center">
                 <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {platformHealth.systemHealth.percentage ?? 'N/A'}
+                  {platformHealth.systemHealth?.percentage ?? 'N/A'}
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">Uptime</div>
               </div>
@@ -408,7 +411,7 @@ const loadRecentOrganizations = async () => {
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {platformHealth.activeUsers?.toLocaleString() ?? 0}
+                  {platformHealth.userStatistics?.activeUsers?.toLocaleString() ?? 0}
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">Active Users</div>
               </div>

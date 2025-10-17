@@ -47,7 +47,7 @@ export interface GetOrganizationsResponse {
   totalPages: number;
   pageSize: number;
   totalCount: number;
-  totalItems: number;
+  totalOrganizations: number;
 }
 
 export interface Course {
@@ -471,14 +471,18 @@ export interface RecentOrganizationStats {
   recentOrganizations: OrganizationSummary[];
 }
 
+export interface userStats{
+totalUsers: number,
+activeUsers:number,
+}
+
 export interface PlatformStatsResponse {
   message: string;
   systemHealth: SystemHealth;
   responseTime: ResponseTime;
-  activeUsers: number;
+  userStatistics: userStats;
   storage: StorageStats;
 }
-
 export interface SystemHealth {
   percentage: number;
   readableUptime: string;
