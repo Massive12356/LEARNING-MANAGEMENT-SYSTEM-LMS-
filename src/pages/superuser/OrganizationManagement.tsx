@@ -7,7 +7,14 @@ import { Modal } from '../../components/ui/Modal';
 import { adminService } from '../../services/adminService';
 import { organizationService } from '../../services/organizationService';
 import { organizationCodeService } from '../../services/organizationCodeService';
-import { Organization, User, UserRole } from '../../types';
+import { formatNumber } from '../../utils/numberFormatter';
+import {
+  Organization,
+  User,
+  UserRole,
+  ActiveUserStats,
+  ActiveOrganizationStats,
+} from '../../types';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -41,7 +48,7 @@ export function OrganizationManagement() {
   const [showGenerateCodeModal, setShowGenerateCodeModal] = useState(false);
   const [generatedCode, setGeneratedCode] = useState<any>(null);
   const [codeGenerate, setCodeGenerate] = useState<string | null>(null);
-  const [allUsers, SetAllUsers] = useState<User[]>([]);
+  const [allUsers, SetAllUsers] = useState<ActiveUserStats |null >(null);
   const [changingStatus, SetChangingStatus] = useState<string | null>(null);
   const [selectedOrgForEdit, setSelectedOrgForEdit] = useState<Organization | null>(null);
 
@@ -77,7 +84,7 @@ export function OrganizationManagement() {
 
   // Mock organization stats
   const [orgStats, setOrgStats] = useState<Record<string, any>>({});
-  const [totalItems, setTotalItems] = useState<number>(0);
+  const [totalItems, setTotalItems] = useState<ActiveOrganizationStats | null>(null);
 
   const [currentPage, SetCurrentPage] = useState(1);
   const [totalPages, SetTotalPages] = useState(1);
@@ -96,13 +103,24 @@ export function OrganizationManagement() {
         updatedAt: org.updatedAt ? new Date(org.updatedAt) : null,
       }));
 
+      // Create a stats record for quick lookup
+      const statsMap = formattedOrgs.reduce((acc, org) => {
+        acc[org.id] = {
+          registeredUsers: org.registeredUsers || 0,
+          totalActiveUsers: org.totalActiveUsers || 0,
+          maxUsers: org.maxUsers || 0,
+          courses: org.courses || 0,
+        };
+        return acc;
+      }, {} as Record<string, any>);
+
       setOrganizations(formattedOrgs);
       setFilteredOrganizations(formattedOrgs);
+      setOrgStats(statsMap);
 
       // update pagination states
       SetCurrentPage(response.currentPage || 1);
       SetTotalPages(response.totalPages || 1);
-      setTotalItems(response.totalOrganizations || orgsData.length);
     } catch (error) {
       console.error('Failed to load organizations:', error);
       toast.error('Failed to load organizations');
@@ -365,7 +383,7 @@ export function OrganizationManagement() {
 
   const fetchUsers = async () => {
     try {
-      const response = await adminService.getUsers();
+      const response = await adminService.getTotalUsers();
       SetAllUsers(response);
       console.log('RESPONSE FROM BACKEND[FETCH USERS]', response);
     } catch (error) {
@@ -374,15 +392,26 @@ export function OrganizationManagement() {
     }
   };
 
-  const totalCourses = Object.values(orgStats).reduce(
+  const loadActiveOrganizations = async () => {
+    try {
+      const response: ActiveOrganizationStats =
+        await organizationService.getTotalOrganizationActiveOnes();
+      setTotalItems(response);
+    } catch (error) {
+      console.log(error);
+      toast.error('Failed to load organization data');
+    }
+  };
+
+  const totalCourses = Object.values(Number(orgStats)).reduce(
     (acc: number, stats: any) => acc + stats.courses,
     0
   );
-  const activeOrgs = organizations.filter(org => org.status === 'active').length;
 
   useEffect(() => {
     loadOrganizations(currentPage);
     fetchUsers();
+    loadActiveOrganizations()
   }, [currentPage]);
 
   useEffect(() => {
@@ -423,7 +452,7 @@ export function OrganizationManagement() {
               <BuildingOfficeIcon className="h-6 w-6 text-blue-600" />
             </div>
             <div className="ml-4">
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalItems}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalItems?.totalOrganizations ?? 0}</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">Total Organizations</p>
             </div>
           </CardContent>
@@ -435,7 +464,7 @@ export function OrganizationManagement() {
               <CheckCircleIcon className="h-6 w-6 text-green-600" />
             </div>
             <div className="ml-4">
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{activeOrgs}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalItems?.activeOrganizations ?? 0}</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">Active Organizations</p>
             </div>
           </CardContent>
@@ -448,7 +477,7 @@ export function OrganizationManagement() {
             </div>
             <div className="ml-4">
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {allUsers?.length ?? 0}
+                {allUsers?.totalUsers ?? 0}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">Total Users</p>
             </div>
@@ -572,13 +601,13 @@ export function OrganizationManagement() {
                   <div className="grid grid-cols-3 gap-4 mb-4 py-2">
                     <div className="text-center">
                       <div className="text-lg font-bold text-gray-900 dark:text-white">
-                        {stats.users}
+                        {formatNumber(stats?.registeredUsers ?? 0)}
                       </div>
                       <div className="text-xs text-gray-600 dark:text-gray-400 truncate">Users</div>
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-bold text-gray-900 dark:text-white">
-                        {stats.courses}
+                        {stats?.courses ?? 0}
                       </div>
                       <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
                         Courses
@@ -586,10 +615,19 @@ export function OrganizationManagement() {
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-bold text-gray-900 dark:text-white">
-                        {stats.activeUsers}
+                        {formatNumber(stats?.totalActiveUsers ?? 0)}
                       </div>
                       <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
                         Active
+                      </div>
+                    </div>
+
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-gray-900 dark:text-white">
+                        {formatNumber(stats?.maxUsers ?? 0)}
+                      </div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                        MaxUsers
                       </div>
                     </div>
                   </div>
@@ -597,8 +635,8 @@ export function OrganizationManagement() {
                   {/* Actions */}
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => {
                           // Set the selected organization for editing

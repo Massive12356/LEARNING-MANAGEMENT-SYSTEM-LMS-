@@ -27,6 +27,11 @@ export default function UserManagement() {
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  
+   const [currentPage, SetCurrentPage] = useState(1);
+  const [totalPages, SetTotalPages] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const pageSize = 10;
 
   const [newUserData, setNewUserData] = useState({
     email: '',
@@ -44,25 +49,35 @@ export default function UserManagement() {
     organizationId: ''
   });
 
-  useEffect(() => {
-    loadUsers();
-    loadOrganizations();
-  }, []);
+ 
 
-  const loadUsers = async () => {
+  const loadUsers = async (page = 1) => {
     try {
       setLoading(true);
-      // Use real API endpoint to fetch all users for superuser
-      const allUsers = await adminService.getUsers();
-      setUsers(allUsers);
+      const response = await adminService.getUsers(page, pageSize);
+      console.log('✅ Full API Response:', response);
+
+      // Sometimes the real data may be in response.data — handle both cases safely
+      const data = response?.data ? response.data : response;
+
+      console.log('✅ Parsed data:', data);
+
+      setUsers(data?.users || []);
+      SetCurrentPage(data?.currentPage || 1);
+      SetTotalPages(data?.totalPages || 1);
+      setTotalUsers(data?.totalUsers || 0);
+
+      console.log('✅ Loaded users:', data?.users?.length);
     } catch (error) {
-      console.error('Failed to load users:', error);
+      console.error('❌ Failed to load users:', error);
       toast.error('Failed to load users');
       setUsers([]);
     } finally {
       setLoading(false);
     }
   };
+
+
 
   const loadOrganizations = async () => {
     try {
@@ -195,16 +210,27 @@ export default function UserManagement() {
 
   // Filter users based on search term, role, and organization
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
+    const matchesSearch =
+      user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    
-    const matchesOrg = orgFilter === 'all' || user.organizationId === orgFilter;
-    
+
+    const matchesOrg =
+      orgFilter === 'all' ||
+      user.organizationId === orgFilter ||
+      organizations.find(o => o.id === orgFilter)?.organizationCode === user.organizationId;
+
     return matchesSearch && matchesRole && matchesOrg;
   });
+
+
+   useEffect(() => {
+     loadUsers();
+     loadOrganizations();
+   }, []);
+
 
   const columns: Column<User>[] = [
     {
@@ -287,14 +313,55 @@ export default function UserManagement() {
     }
   ];
 
+  const renderPagination = () => {
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(
+        <Button
+          key={i}
+          variant={i === currentPage ? 'primary' : 'secondary'}
+          size="sm"
+          onClick={() => loadUsers(i)}
+        >
+          {i}
+        </Button>
+      );
+    }
+
+    return (
+      <div className="flex justify-between items-center mt-6">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Page {currentPage} of {totalPages} • Total Users: {totalUsers}
+        </p>
+        <div className="flex space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={currentPage === 1}
+            onClick={() => loadUsers(currentPage - 1)}
+          >
+            Previous
+          </Button>
+          {pages}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={currentPage === totalPages}
+            onClick={() => loadUsers(currentPage + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            User Management
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">User Management</h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
             Manage all users across all organizations
           </p>
@@ -312,12 +379,12 @@ export default function UserManagement() {
             <Input
               placeholder="Search users..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
               className="md:col-span-2"
             />
             <select
               value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value as any)}
+              onChange={e => setRoleFilter(e.target.value as any)}
               className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white sm:text-sm"
             >
               <option value="all">All Roles</option>
@@ -328,12 +395,14 @@ export default function UserManagement() {
             </select>
             <select
               value={orgFilter}
-              onChange={(e) => setOrgFilter(e.target.value)}
+              onChange={e => setOrgFilter(e.target.value)}
               className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white sm:text-sm"
             >
               <option value="all">All Organizations</option>
               {organizations.map(org => (
-                <option key={org.id} value={org.id}>{org.name}</option>
+                <option key={org.id} value={org.id}>
+                  {org.name}
+                </option>
               ))}
             </select>
           </div>
@@ -344,7 +413,7 @@ export default function UserManagement() {
       <Card>
         <CardHeader>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            All Users ({filteredUsers?.length ?? 0})
+            All Users ({totalUsers})
           </h2>
         </CardHeader>
         <CardContent>
@@ -363,11 +432,10 @@ export default function UserManagement() {
               </p>
             </div>
           ) : (
-            <DataTable 
-              data={filteredUsers} 
-              columns={columns}
-              pagination
-            />
+            <>
+              <DataTable data={filteredUsers} columns={columns} pagination />
+              {renderPagination()}
+            </>
           )}
         </CardContent>
       </Card>
@@ -383,22 +451,22 @@ export default function UserManagement() {
             <Input
               label="First Name"
               value={newUserData.firstName}
-              onChange={(e) => setNewUserData(prev => ({ ...prev, firstName: e.target.value }))}
+              onChange={e => setNewUserData(prev => ({ ...prev, firstName: e.target.value }))}
               placeholder="John"
             />
             <Input
               label="Last Name"
               value={newUserData.lastName}
-              onChange={(e) => setNewUserData(prev => ({ ...prev, lastName: e.target.value }))}
+              onChange={e => setNewUserData(prev => ({ ...prev, lastName: e.target.value }))}
               placeholder="Doe"
             />
           </div>
-          
+
           <Input
             label="Email Address"
             type="email"
             value={newUserData.email}
-            onChange={(e) => setNewUserData(prev => ({ ...prev, email: e.target.value }))}
+            onChange={e => setNewUserData(prev => ({ ...prev, email: e.target.value }))}
             placeholder="john.doe@example.com"
           />
 
@@ -408,7 +476,7 @@ export default function UserManagement() {
             </label>
             <select
               value={newUserData.role}
-              onChange={(e) => setNewUserData(prev => ({ ...prev, role: e.target.value as any }))}
+              onChange={e => setNewUserData(prev => ({ ...prev, role: e.target.value as any }))}
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="student">Student</option>
@@ -424,12 +492,14 @@ export default function UserManagement() {
             </label>
             <select
               value={newUserData.organizationId}
-              onChange={(e) => setNewUserData(prev => ({ ...prev, organizationId: e.target.value }))}
+              onChange={e => setNewUserData(prev => ({ ...prev, organizationId: e.target.value }))}
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Select an organization</option>
               {organizations.map(org => (
-                <option key={org.id} value={org.id}>{org.name}</option>
+                <option key={org.id} value={org.id}>
+                  {org.name}
+                </option>
               ))}
             </select>
           </div>
@@ -438,9 +508,7 @@ export default function UserManagement() {
             <Button variant="outline" onClick={() => setShowAddUserModal(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddUser}>
-              Create User
-            </Button>
+            <Button onClick={handleAddUser}>Create User</Button>
           </div>
         </div>
       </Modal>
@@ -451,7 +519,13 @@ export default function UserManagement() {
         onClose={() => {
           setShowEditUserModal(false);
           setSelectedUser(null);
-          setEditUserData({ email: '', firstName: '', lastName: '', role: 'student', organizationId: '' });
+          setEditUserData({
+            email: '',
+            firstName: '',
+            lastName: '',
+            role: 'student',
+            organizationId: '',
+          });
         }}
         title="Edit User"
       >
@@ -460,22 +534,22 @@ export default function UserManagement() {
             <Input
               label="First Name"
               value={editUserData.firstName}
-              onChange={(e) => setEditUserData(prev => ({ ...prev, firstName: e.target.value }))}
+              onChange={e => setEditUserData(prev => ({ ...prev, firstName: e.target.value }))}
               placeholder="John"
             />
             <Input
               label="Last Name"
               value={editUserData.lastName}
-              onChange={(e) => setEditUserData(prev => ({ ...prev, lastName: e.target.value }))}
+              onChange={e => setEditUserData(prev => ({ ...prev, lastName: e.target.value }))}
               placeholder="Doe"
             />
           </div>
-          
+
           <Input
             label="Email Address"
             type="email"
             value={editUserData.email}
-            onChange={(e) => setEditUserData(prev => ({ ...prev, email: e.target.value }))}
+            onChange={e => setEditUserData(prev => ({ ...prev, email: e.target.value }))}
             placeholder="john.doe@example.com"
           />
 
@@ -485,15 +559,13 @@ export default function UserManagement() {
             </label>
             <select
               value={editUserData.role}
-              onChange={(e) => setEditUserData(prev => ({ ...prev, role: e.target.value as any }))}
+              onChange={e => setEditUserData(prev => ({ ...prev, role: e.target.value as any }))}
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="student">Student</option>
               <option value="teacher">Teacher</option>
               <option value="admin">Admin</option>
-              {selectedUser?.role === 'superuser' && (
-                <option value="superuser">Superuser</option>
-              )}
+              {selectedUser?.role === 'superuser' && <option value="superuser">Superuser</option>}
             </select>
           </div>
 
@@ -503,27 +575,36 @@ export default function UserManagement() {
             </label>
             <select
               value={editUserData.organizationId}
-              onChange={(e) => setEditUserData(prev => ({ ...prev, organizationId: e.target.value }))}
+              onChange={e => setEditUserData(prev => ({ ...prev, organizationId: e.target.value }))}
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Select an organization</option>
               {organizations.map(org => (
-                <option key={org.id} value={org.id}>{org.name}</option>
+                <option key={org.id} value={org.id}>
+                  {org.name}
+                </option>
               ))}
             </select>
           </div>
 
           <div className="flex justify-end space-x-3">
-            <Button variant="outline" onClick={() => {
-              setShowEditUserModal(false);
-              setSelectedUser(null);
-              setEditUserData({ email: '', firstName: '', lastName: '', role: 'student', organizationId: '' });
-            }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowEditUserModal(false);
+                setSelectedUser(null);
+                setEditUserData({
+                  email: '',
+                  firstName: '',
+                  lastName: '',
+                  role: 'student',
+                  organizationId: '',
+                });
+              }}
+            >
               Cancel
             </Button>
-            <Button onClick={handleEditUser}>
-              Update User
-            </Button>
+            <Button onClick={handleEditUser}>Update User</Button>
           </div>
         </div>
       </Modal>

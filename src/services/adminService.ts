@@ -4,61 +4,77 @@ import apiClient from './apiClient';
 import { AxiosError } from 'axios';
 
 class AdminService {
-  async createAdmin(adminData: Omit<RegisterPayload,'organizationId'>): Promise<User> {
+  async createAdmin(adminData: Omit<RegisterPayload, 'organizationId'>): Promise<User> {
     try {
       console.log('[AdminService] Sending payload:', adminData);
-      const response = await apiClient.post('/user/signUp-admin',adminData);
-      console.log("[AdminService]RESPONSE FROM BACKEND:", response.data)
+      const response = await apiClient.post('/user/signUp-admin', adminData);
+      console.log('[AdminService]RESPONSE FROM BACKEND:', response.data);
       return response.data.user || response.data;
     } catch (error) {
-      const err = error as AxiosError<{message?: string}>
-      console.log("[AdminService]RESPONSE FROM BACKEND:", err.response?.data || err.message)
-      throw new Error(err.response?.data?.message|| 'Failed to create Admin')
+      const err = error as AxiosError<{ message?: string }>;
+      console.log('[AdminService]RESPONSE FROM BACKEND:', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to create Admin');
     }
   }
 
-  async createTeacher(teacherData: Partial<User> & { email: string; firstName: string; lastName: string; password: string }, orgId: string): Promise<User> {
+  async createTeacher(
+    teacherData: Partial<User> & {
+      email: string;
+      firstName: string;
+      lastName: string;
+      password: string;
+    },
+    orgId: string
+  ): Promise<User> {
     try {
       // Create teacher with organization assignment
       const payload = {
         ...teacherData,
         role: 'teacher',
-        organizationId: orgId
+        organizationId: orgId,
       };
-      
+
       const response = await apiClient.post('/user/signUp-teacher', payload);
-      console.log("[AdminService] Teacher creation response:", response.data)
+      console.log('[AdminService] Teacher creation response:', response.data);
       return response.data.user || response.data;
     } catch (error) {
-      const err = error as AxiosError<{message?: string}>
-      console.log("[AdminService] Teacher creation error:", err.response?.data || err.message)
-      throw new Error(err.response?.data?.message|| 'Failed to create Teacher')
+      const err = error as AxiosError<{ message?: string }>;
+      console.log('[AdminService] Teacher creation error:', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to create Teacher');
     }
   }
 
-  async createStudent(studentData: Partial<User> & { email: string; firstName: string; lastName: string; password: string }, orgId: string): Promise<User> {
+  async createStudent(
+    studentData: Partial<User> & {
+      email: string;
+      firstName: string;
+      lastName: string;
+      password: string;
+    },
+    orgId: string
+  ): Promise<User> {
     try {
       // Create student with organization assignment
       const payload = {
         ...studentData,
         role: 'student',
-        organizationId: orgId
+        organizationId: orgId,
       };
-      
+
       const response = await apiClient.post('/user/signUp-student', payload);
-      console.log("[AdminService] Student creation response:", response.data)
+      console.log('[AdminService] Student creation response:', response.data);
       return response.data.user || response.data;
     } catch (error) {
-      const err = error as AxiosError<{message?: string}>
-      console.log("[AdminService] Student creation error:", err.response?.data || err.message)
-      throw new Error(err.response?.data?.message|| 'Failed to create Student')
+      const err = error as AxiosError<{ message?: string }>;
+      console.log('[AdminService] Student creation error:', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to create Student');
     }
   }
 
   async getAdminsByOrganization(orgId: string): Promise<User[]> {
     try {
       // Use real API to fetch admins by organization
-      const response = await apiClient.get< { data: User[] }>(`/organization/${orgId}/admins`);
+      const response = await apiClient.get<{ data: User[] }>(`/organization/${orgId}/admins`);
       return response.data.data;
     } catch (error) {
       console.error('Error fetching admins:', error);
@@ -69,7 +85,7 @@ class AdminService {
   async getTeachersByOrganization(orgId: string): Promise<User[]> {
     try {
       // Use real API to fetch teachers by organization
-      const response = await apiClient.get< { data: User[] }>(`/organization/${orgId}/teachers`);
+      const response = await apiClient.get<{ data: User[] }>(`/organization/${orgId}/teachers`);
       return response.data.data;
     } catch (error) {
       console.error('Error fetching teachers:', error);
@@ -80,7 +96,7 @@ class AdminService {
   async getStudentsByOrganization(orgId: string): Promise<User[]> {
     try {
       // Use real API to fetch students by organization
-      const response = await apiClient.get< { data: User[] }>(`/organization/${orgId}/students`);
+      const response = await apiClient.get<{ data: User[] }>(`/organization/${orgId}/students`);
       return response.data.data;
     } catch (error) {
       console.error('Error fetching students:', error);
@@ -91,12 +107,14 @@ class AdminService {
   async assignAdminToOrganization(adminId: string, orgId: string): Promise<User> {
     try {
       // Use real API to assign admin to organization
-      const response = await apiClient.put<User>(`/user/${adminId}/assign-organization`, { organizationId: orgId });
+      const response = await apiClient.put<User>(`/user/${adminId}/assign-organization`, {
+        organizationId: orgId,
+      });
       return response.data;
     } catch (error) {
-      const err = error as AxiosError<{message?: string}>
+      const err = error as AxiosError<{ message?: string }>;
       console.error('Error assigning admin to organization:', err.response?.data || err.message);
-      throw new Error(err.response?.data?.message|| 'Failed to assign admin to organization')
+      throw new Error(err.response?.data?.message || 'Failed to assign admin to organization');
     }
   }
 
@@ -111,13 +129,15 @@ class AdminService {
     }
   }
 
-  async getUsers(){
+  async getUsers(page = 1, pageSize = 10) {
     try {
-      const response = await apiClient.get("/user/all-users");
-      console.log("[adminService]RESPONSE FROM BACKEND:", response.data.users)
-      return response.data.users
+      const response = await apiClient.get(`/user/all-users?page=${page}&pageSize=${pageSize}`);
+      console.log('[adminService] RESPONSE FROM BACKEND:', response.data);
+
+      // Return the full data object (not just users)
+      return response.data;
     } catch (error) {
-      const err = error as AxiosError<{message?: string}>
+      const err = error as AxiosError<{ message?: string }>;
       console.log('[adminService] ERROR RESPONSE:', err.response?.data || err.message);
       throw new Error(err.response?.data?.message || '[adminService] Failed to Fetch Users');
     }
@@ -129,29 +149,17 @@ class AdminService {
       const response = await apiClient.put<User>(`/user/${userId}`, userData);
       return response.data;
     } catch (error) {
-      const err = error as AxiosError<{message?: string}>
+      const err = error as AxiosError<{ message?: string }>;
       console.error('Error updating user:', err.response?.data || err.message);
-      throw new Error(err.response?.data?.message|| 'Failed to update user');
+      throw new Error(err.response?.data?.message || 'Failed to update user');
     }
   }
 
-  async getTotalUsers():Promise<ActiveUserStats>{
+  async getTotalUsers(): Promise<ActiveUserStats> {
     try {
       const response = await apiClient.get('/user/Total/Active');
-      console.log("[adminService]: RESPONSE FROM BACKEND", response.data)
-      return response.data
-    } catch (error) {
-      const err = error as AxiosError<{message?:string}>
-      console.log('[adminService]: ERROR RESPONSE FROM BACKEND', err.response?.data || err.message);
-      throw new Error(err.response?.data?.message || "Failed to load Data")
-    }
-  }
-
-  async systemHealthCheck():Promise<SystemHealthStats>{
-    try {
-      const response = await apiClient.get('/system/health-check');
       console.log('[adminService]: RESPONSE FROM BACKEND', response.data);
-      return response.data
+      return response.data;
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
       console.log('[adminService]: ERROR RESPONSE FROM BACKEND', err.response?.data || err.message);
@@ -159,11 +167,23 @@ class AdminService {
     }
   }
 
-  async platformStats():Promise<PlatformStatsResponse>{
+  async systemHealthCheck(): Promise<SystemHealthStats> {
     try {
-      const response = await apiClient.get("/system/platform/statistics")
-       console.log('[adminService]: RESPONSE FROM BACKEND', response.data);
-       return response.data;
+      const response = await apiClient.get('/system/health-check');
+      console.log('[adminService]: RESPONSE FROM BACKEND', response.data);
+      return response.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log('[adminService]: ERROR RESPONSE FROM BACKEND', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to load Data');
+    }
+  }
+
+  async platformStats(): Promise<PlatformStatsResponse> {
+    try {
+      const response = await apiClient.get('/system/platform/statistics');
+      console.log('[adminService]: RESPONSE FROM BACKEND', response.data);
+      return response.data;
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
       console.log('[adminService]: ERROR RESPONSE FROM BACKEND', err.response?.data || err.message);
