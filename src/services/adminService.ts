@@ -122,6 +122,19 @@ class AdminService {
       throw new Error(err.response?.data?.message || '[adminService] Failed to Fetch Users');
     }
   }
+
+  async updateUser(userId: string, userData: Partial<User>): Promise<User> {
+    try {
+      // Use real API to update user
+      const response = await apiClient.put<User>(`/user/${userId}`, userData);
+      return response.data;
+    } catch (error) {
+      const err = error as AxiosError<{message?: string}>
+      console.error('Error updating user:', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message|| 'Failed to update user');
+    }
+  }
+
   async getTotalUsers():Promise<ActiveUserStats>{
     try {
       const response = await apiClient.get('/user/Total/Active');

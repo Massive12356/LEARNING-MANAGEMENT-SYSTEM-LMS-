@@ -62,16 +62,68 @@ class OrganizationService {
 
   async updateOrganization(id: string, orgData: Partial<Organization>): Promise<Organization> {
     try {
-      const response = await apiClient.put<Organization>(
-        `/organization/change/status/${id}`,
-        orgData
-      );
-      console.log('[updateOrganization] RESPONSE FROM BACKEND:', response.data);
-      return response.data;
+      console.log(`[updateOrganization] Attempting to update organization ${id} with data:`, orgData);
+      
+      // Try different common RESTful patterns for updating resources
+      // Based on the pattern in adminService, let's try these specific patterns
+      const endpointsToTry = [
+        { url: `/organization/${id}`, method: 'put' },              // Standard REST pattern
+        { url: `/organization/${id}`, method: 'patch' },            // PATCH for partial updates
+        { url: `/organization/update/${id}`, method: 'put' },       // Update with ID in path (based on create pattern)
+        { url: `/organization/${id}/update`, method: 'put' },       // Update as sub-resource (based on assign pattern)
+        { url: `/organization/${id}/update`, method: 'patch' },     // Update as sub-resource with PATCH
+        { url: `/organizations/${id}`, method: 'put' },             // Plural form
+        { url: `/org/${id}`, method: 'put' },                       // Short form
+        { url: `/api/organization/${id}`, method: 'put' },          // With /api prefix
+      ];
+      
+      for (const { url, method } of endpointsToTry) {
+        try {
+          console.log(`[updateOrganization] Trying ${method.toUpperCase()} ${url}`);
+          let response;
+          
+          if (method === 'put') {
+            response = await apiClient.put<Organization>(url, orgData);
+          } else if (method === 'patch') {
+            response = await apiClient.patch<Organization>(url, orgData);
+          }
+          
+          console.log('[updateOrganization] RESPONSE FROM BACKEND:', response?.data);
+          return response?.data!;
+        } catch (endpointError) {
+          const endpointErr = endpointError as AxiosError;
+          console.log(`[updateOrganization] ${method.toUpperCase()} ${url} failed with status:`, endpointErr.response?.status);
+          
+          // If this is the last endpoint and it failed, re-throw the error
+          if (url === endpointsToTry[endpointsToTry.length - 1].url && 
+              method === endpointsToTry[endpointsToTry.length - 1].method) {
+            throw endpointErr;
+          }
+          
+          // For other endpoints, continue to the next one
+          continue;
+        }
+      }
+      
+      // This should never be reached due to the loop logic, but just in case
+      throw new Error('All update endpoints failed');
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
       console.error('Error updating organization:', err.response?.data || err.message);
-      throw new Error(err.response?.data?.message || 'Failed to change Status');
+      
+      // Log more detailed error information
+      if (err.response) {
+        console.error('Error status:', err.response.status);
+        console.error('Error data:', err.response.data);
+        console.error('Error headers:', err.response.headers);
+      }
+      
+      // If we get a 404, let's try to provide a more helpful error message
+      if (err.response?.status === 404) {
+        throw new Error(`Organization update functionality is not yet implemented in the backend API. Please contact the development team to implement the organization update endpoints.`);
+      }
+      
+      throw new Error(err.response?.data?.message || 'Failed to update organization. The backend API might not support organization updates yet.');
     }
   }
 

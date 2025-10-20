@@ -6,12 +6,11 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { DataTable, Column } from '../../components/ui/DataTable';
-import { User, Organization } from '../../types';
+import { User, Organization, UserRole } from '../../types';
 import { adminService } from '../../services/adminService';
 import { organizationService } from '../../services/organizationService';
 import { 
   PlusIcon,
-  EyeIcon,
   UserGroupIcon,
   BuildingOfficeIcon,
   PencilIcon
@@ -26,12 +25,22 @@ export default function UserManagement() {
   const [roleFilter, setRoleFilter] = useState<'all' | 'student' | 'teacher' | 'admin' | 'superuser'>('all');
   const [orgFilter, setOrgFilter] = useState<'all' | string>('all');
   const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   const [newUserData, setNewUserData] = useState({
     email: '',
     firstName: '',
     lastName: '',
-    role: 'student' as 'student' | 'teacher' | 'admin',
+    role: 'student' as 'student' | 'teacher' | 'admin' | 'superuser',
+    organizationId: ''
+  });
+
+  const [editUserData, setEditUserData] = useState({
+    email: '',
+    firstName: '',
+    lastName: '',
+    role: 'student' as 'student' | 'teacher' | 'admin' | 'superuser',
     organizationId: ''
   });
 
@@ -75,7 +84,16 @@ export default function UserManagement() {
       let createdUser: User;
       
       // Create user based on role using real API
-      if (newUserData.role === 'admin') {
+      if (newUserData.role === 'superuser') {
+        // Superusers typically don't belong to an organization
+        createdUser = await adminService.createAdmin({
+          email: newUserData.email,
+          firstName: newUserData.firstName,
+          lastName: newUserData.lastName,
+          password: 'TempPass123!', // In a real app, this would be a generated password
+          role: 'superuser'
+        });
+      } else if (newUserData.role === 'admin') {
         // Create admin without organizationId first
         createdUser = await adminService.createAdmin({
           email: newUserData.email,
@@ -109,14 +127,69 @@ export default function UserManagement() {
         );
       }
       
-      toast.success(`${newUserData.role.charAt(0).toUpperCase() + newUserData.role.slice(1)} created successfully`);
+      const roleDisplay = newUserData.role === 'superuser' ? 'Superuser' : newUserData.role.charAt(0).toUpperCase() + newUserData.role.slice(1);
+      toast.success(`${roleDisplay} created successfully`);
       setNewUserData({ email: '', firstName: '', lastName: '', role: 'student', organizationId: '' });
       setShowAddUserModal(false);
       // Reload users after creating a new user
       loadUsers();
     } catch (error) {
       console.error('Error creating user:', error);
-      toast.error(`Failed to create ${newUserData.role}`);
+      const roleDisplay = newUserData.role === 'superuser' ? 'Superuser' : newUserData.role;
+      toast.error(`Failed to create ${roleDisplay}`);
+    }
+  };
+
+  const handleEditUser = async () => {
+    if (!editUserData.email || !editUserData.firstName || !editUserData.lastName || !editUserData.organizationId) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    if (!selectedUser) {
+      toast.error('No user selected for editing');
+      return;
+    }
+
+    try {
+      // Check if role has changed
+      const roleChanged = selectedUser.role !== editUserData.role;
+      
+      // If role changed and the new role is superuser, we might need special handling
+      if (roleChanged && editUserData.role === 'superuser') {
+        toast.error('Cannot change user to superuser role');
+        return;
+      }
+
+      // Prepare the data for update (only include changed fields)
+      const userData: Partial<User> = {};
+      if (selectedUser.email !== editUserData.email) userData.email = editUserData.email;
+      if (selectedUser.firstName !== editUserData.firstName) userData.firstName = editUserData.firstName;
+      if (selectedUser.lastName !== editUserData.lastName) userData.lastName = editUserData.lastName;
+      if (selectedUser.organizationId !== editUserData.organizationId) userData.organizationId = editUserData.organizationId;
+      
+      // Only include role if it's different and not superuser
+      if (roleChanged && editUserData.role !== 'superuser') {
+        userData.role = editUserData.role as UserRole;
+      }
+
+      // Only make API call if there are changes
+      if (Object.keys(userData).length > 0) {
+        // Update the user using the adminService
+        await adminService.updateUser(selectedUser.id, userData);
+        toast.success(`User ${editUserData.firstName} ${editUserData.lastName} updated successfully`);
+      } else {
+        toast.success('No changes to update');
+      }
+      
+      setShowEditUserModal(false);
+      setSelectedUser(null);
+      setEditUserData({ email: '', firstName: '', lastName: '', role: 'student', organizationId: '' });
+      // Reload users after updating
+      loadUsers();
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast.error('Failed to update user');
     }
   };
 
@@ -189,12 +262,24 @@ export default function UserManagement() {
       label: 'Actions',
       render: (_, user) => (
         <div className="flex space-x-2">
-          <Link to={`/superuser/users/${user.id}`}>
-            <Button variant="outline" size="sm">
-              <EyeIcon className="h-4 w-4" />
-            </Button>
-          </Link>
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => {
+              // Set the selected user for editing
+              setSelectedUser(user);
+              // Pre-fill the edit form with user data
+              setEditUserData({
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                role: user.role as 'student' | 'teacher' | 'admin' | 'superuser',
+                organizationId: user.organizationId || ''
+              });
+              // Open the edit modal
+              setShowEditUserModal(true);
+            }}
+          >
             <PencilIcon className="h-4 w-4" />
           </Button>
         </div>
@@ -329,6 +414,7 @@ export default function UserManagement() {
               <option value="student">Student</option>
               <option value="teacher">Teacher</option>
               <option value="admin">Admin</option>
+              <option value="superuser">Superuser</option>
             </select>
           </div>
 
@@ -354,6 +440,89 @@ export default function UserManagement() {
             </Button>
             <Button onClick={handleAddUser}>
               Create User
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit User Modal */}
+      <Modal
+        isOpen={showEditUserModal}
+        onClose={() => {
+          setShowEditUserModal(false);
+          setSelectedUser(null);
+          setEditUserData({ email: '', firstName: '', lastName: '', role: 'student', organizationId: '' });
+        }}
+        title="Edit User"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="First Name"
+              value={editUserData.firstName}
+              onChange={(e) => setEditUserData(prev => ({ ...prev, firstName: e.target.value }))}
+              placeholder="John"
+            />
+            <Input
+              label="Last Name"
+              value={editUserData.lastName}
+              onChange={(e) => setEditUserData(prev => ({ ...prev, lastName: e.target.value }))}
+              placeholder="Doe"
+            />
+          </div>
+          
+          <Input
+            label="Email Address"
+            type="email"
+            value={editUserData.email}
+            onChange={(e) => setEditUserData(prev => ({ ...prev, email: e.target.value }))}
+            placeholder="john.doe@example.com"
+          />
+
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Role
+            </label>
+            <select
+              value={editUserData.role}
+              onChange={(e) => setEditUserData(prev => ({ ...prev, role: e.target.value as any }))}
+              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="student">Student</option>
+              <option value="teacher">Teacher</option>
+              <option value="admin">Admin</option>
+              {selectedUser?.role === 'superuser' && (
+                <option value="superuser">Superuser</option>
+              )}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Organization
+            </label>
+            <select
+              value={editUserData.organizationId}
+              onChange={(e) => setEditUserData(prev => ({ ...prev, organizationId: e.target.value }))}
+              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select an organization</option>
+              {organizations.map(org => (
+                <option key={org.id} value={org.id}>{org.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex justify-end space-x-3">
+            <Button variant="outline" onClick={() => {
+              setShowEditUserModal(false);
+              setSelectedUser(null);
+              setEditUserData({ email: '', firstName: '', lastName: '', role: 'student', organizationId: '' });
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditUser}>
+              Update User
             </Button>
           </div>
         </div>

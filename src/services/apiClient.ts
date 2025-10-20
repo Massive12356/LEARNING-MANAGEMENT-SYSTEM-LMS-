@@ -17,11 +17,36 @@ apiClient.interceptors.request.use(config => {
 
    console.log('🚀 [API REQUEST]', {
      url: config.url,
+     method: config.method,
+     baseURL: config.baseURL,
+     fullURL: (config.baseURL || '') + (config.url || ''),
      hasToken: !!token,
      token: token ? token.slice(0, 20) + '...' : 'NO TOKEN FOUND',
    });
 
   return config;
 });
+
+// Log responses
+apiClient.interceptors.response.use(
+  response => {
+    console.log('✅ [API RESPONSE]', {
+      url: response.config.url,
+      status: response.status,
+      data: response.data,
+    });
+    return response;
+  },
+  error => {
+    console.error('❌ [API ERROR]', {
+      url: error.config?.url,
+      method: error.config?.method,
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+    });
+    return Promise.reject(error);
+  }
+);
 
 export default apiClient;

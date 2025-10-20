@@ -34,6 +34,7 @@ export function OrganizationManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showAssignAdminModal, setShowAssignAdminModal] = useState(false);
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [admins, setAdmins] = useState<User[]>([]);
@@ -42,6 +43,7 @@ export function OrganizationManagement() {
   const [codeGenerate, setCodeGenerate] = useState<string | null>(null);
   const [allUsers, SetAllUsers] = useState<User[]>([]);
   const [changingStatus, SetChangingStatus] = useState<string | null>(null);
+  const [selectedOrgForEdit, setSelectedOrgForEdit] = useState<Organization | null>(null);
 
   const [newOrgData, setNewOrgData] = useState({
     name: '',
@@ -50,6 +52,14 @@ export function OrganizationManagement() {
     primaryColor: '#3B82F6',
     expiryDay: '',
     maxUsers: '',
+  });
+
+  // Add this state for edit organization data
+  const [editOrgData, setEditOrgData] = useState({
+    name: '',
+    description: '',
+    status: 'active' as 'active' | 'suspended',
+    primaryColor: '#3B82F6',
   });
 
   const [adminData, setAdminData] = useState({
@@ -63,6 +73,7 @@ export function OrganizationManagement() {
 
   // Add loading state for create organization
   const [creatingOrg, setCreatingOrg] = useState(false);
+  const [updatingOrg, setUpdatingOrg] = useState(false);
 
   // Mock organization stats
   const [orgStats, setOrgStats] = useState<Record<string, any>>({});
@@ -163,6 +174,73 @@ export function OrganizationManagement() {
       toast.error(error.response?.data?.message || 'Failed to create organization');
     } finally {
       setCreatingOrg(false); // Reset loading state
+    }
+  };
+
+  // Add this function for handling organization updates
+  const handleUpdateOrganization = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedOrgForEdit) return;
+    
+    const { name, description, status, primaryColor } = editOrgData;
+
+    // Validation
+    if (!name.trim()) return toast.error('Organization name is required');
+    if (name.trim().length < 3) return toast.error('Name must be at least 3 characters long');
+    if (!description.trim()) return toast.error('Description is required');
+
+    try {
+      setUpdatingOrg(true);
+      
+      // Prepare the data for update
+      const orgData = {
+        name,
+        description,
+        status,
+        primaryColor,
+      };
+      
+      console.log(`[handleUpdateOrganization] Updating organization ${selectedOrgForEdit.id} with data:`, orgData);
+      const updatedOrg = await organizationService.updateOrganization(selectedOrgForEdit.id, orgData);
+      console.log(`[handleUpdateOrganization] Successfully updated organization:`, updatedOrg);
+      
+      // Update the organization in the state
+      setOrganizations(prev =>
+        prev.map(org =>
+          org.id === selectedOrgForEdit.id ? { ...updatedOrg, updatedAt: new Date() } : org
+        )
+      );
+      
+      toast.success(`Organization ${updatedOrg.name} updated successfully`);
+      setShowEditModal(false);
+      setSelectedOrgForEdit(null);
+      setEditOrgData({
+        name: '',
+        description: '',
+        status: 'active',
+        primaryColor: '#3B82F6',
+      });
+    } catch (error: any) {
+      console.error('[handleUpdateOrganization] Error:', error);
+      // Provide more specific error messages
+      if (error.message.includes('not found') || error.message.includes('endpoint')) {
+        toast.error('Organization update functionality is not yet implemented in the backend API. Please contact the development team.');
+      } else if (error.message.includes('failed')) {
+        toast.error('Unable to update organization. Please try again or contact support.');
+      } else if (error.response?.status === 404) {
+        toast.error('Organization update functionality is not yet available. The backend API has not implemented this feature.');
+      } else if (error.response?.status === 403) {
+        toast.error('Access denied. You may not have permission to update organizations.');
+      } else if (error.response?.status === 500) {
+        toast.error('Server error occurred while updating organization. Please try again later.');
+      } else if (error.code === 'ERR_NETWORK') {
+        toast.error('Network error. Please check your internet connection and try again.');
+      } else {
+        toast.error(error.response?.data?.message || error.message || 'Failed to update organization. The backend API might not support organization updates yet.');
+      }
+    } finally {
+      setUpdatingOrg(false);
     }
   };
 
@@ -467,7 +545,7 @@ export function OrganizationManagement() {
                           {org?.name ?? 'N/A'}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                          Created {org.createdAt.toLocaleDateString()}
+                          Created {org.createdAt ? org.createdAt.toLocaleDateString() : 'N/A'}
                         </p>
                       </div>
                     </div>
@@ -519,12 +597,26 @@ export function OrganizationManagement() {
                   {/* Actions */}
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link to={`/superuser/organization?organizationId=${org.id}`}>
-                        <Button variant="outline" size="sm">
-                          <PencilIcon className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                      </Link>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          // Set the selected organization for editing
+                          setSelectedOrgForEdit(org);
+                          // Pre-fill the edit form with organization data
+                          setEditOrgData({
+                            name: org.name,
+                            description: org.description,
+                            status: org.status as 'active' | 'suspended',
+                            primaryColor: org.primaryColor || '#3B82F6',
+                          });
+                          // Open the edit modal
+                          setShowEditModal(true);
+                        }}
+                      >
+                        <PencilIcon className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -755,6 +847,107 @@ export function OrganizationManagement() {
               loading={creatingOrg} // Add loading state to button
             >
               Create Organization
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Organization Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setSelectedOrgForEdit(null);
+          setEditOrgData({
+            name: '',
+            description: '',
+            status: 'active',
+            primaryColor: '#3B82F6',
+          });
+        }}
+        title="Edit Organization"
+      >
+        <form className="space-y-4" onSubmit={handleUpdateOrganization}>
+          {/* Name */}
+          <Input
+            label="Organization Name"
+            value={editOrgData.name}
+            onChange={e => setEditOrgData(prev => ({ ...prev, name: e.target.value }))}
+            placeholder="Enter organization name"
+            required
+          />
+
+          {/* Status */}
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Status
+            </label>
+            <select
+              value={editOrgData.status}
+              onChange={e => setEditOrgData(prev => ({ ...prev, status: e.target.value as 'active' | 'suspended' }))}
+              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </div>
+
+          {/* Description */}
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Description
+            </label>
+            <textarea
+              value={editOrgData.description}
+              onChange={e => setEditOrgData(prev => ({ ...prev, description: e.target.value }))}
+              rows={3}
+              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Describe the organization's purpose"
+            />
+          </div>
+
+          {/* Primary Color */}
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Primary Color
+            </label>
+            <div className="flex items-center space-x-3">
+              <input
+                type="color"
+                value={editOrgData.primaryColor}
+                onChange={e => setEditOrgData(prev => ({ ...prev, primaryColor: e.target.value }))}
+                className="w-12 h-12 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer"
+              />
+              <Input
+                value={editOrgData.primaryColor}
+                onChange={e => setEditOrgData(prev => ({ ...prev, primaryColor: e.target.value }))}
+                placeholder="#3B82F6"
+                className="flex-1"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowEditModal(false);
+                setSelectedOrgForEdit(null);
+                setEditOrgData({
+                  name: '',
+                  description: '',
+                  status: 'active',
+                  primaryColor: '#3B82F6',
+                });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              loading={updatingOrg}
+            >
+              Update Organization
             </Button>
           </div>
         </form>
