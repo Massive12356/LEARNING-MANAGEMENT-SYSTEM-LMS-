@@ -273,6 +273,8 @@ export function OrganizationManagement() {
         )
       );
 
+      await loadActiveOrganizations();
+
       toast.success(
         `Organization ${newStatus === 'active' ? 'activated' : 'suspended'} successfully`
       );
