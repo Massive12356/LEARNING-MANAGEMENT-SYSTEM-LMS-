@@ -51,6 +51,12 @@ export function OrganizationManagement() {
   const [allUsers, SetAllUsers] = useState<ActiveUserStats |null >(null);
   const [changingStatus, SetChangingStatus] = useState<string | null>(null);
   const [selectedOrgForEdit, setSelectedOrgForEdit] = useState<Organization | null>(null);
+  const [orgLoading, setOrgLoading]= useState(false);
+  const [userLoading,setUserLoading]=useState(false);
+  const [searchMode, setSearchMode] = useState(false);
+
+
+
 
   const [newOrgData, setNewOrgData] = useState({
     name: '',
@@ -67,6 +73,8 @@ export function OrganizationManagement() {
     description: '',
     status: 'active' as 'active' | 'suspended',
     primaryColor: '#3B82F6',
+    expiryDay: '',
+    maxUsers: 0,
   });
 
   const [adminData, setAdminData] = useState({
@@ -129,25 +137,25 @@ export function OrganizationManagement() {
     }
   };
 
-  const filterOrganizations = () => {
-    let filtered = [...organizations];
+  // const filterOrganizations = () => {
+  //   let filtered = [...organizations];
 
-    // Apply search filter
-    if (searchTerm) {
-      filtered = filtered.filter(
-        org =>
-          org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          org.description.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+  //   // Apply search filter
+  //   if (searchTerm) {
+  //     filtered = filtered.filter(
+  //       org =>
+  //         org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //         org.description.toLowerCase().includes(searchTerm.toLowerCase())
+  //     );
+  //   }
 
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(org => org.status === statusFilter);
-    }
+  //   // Apply status filter
+  //   if (statusFilter !== 'all') {
+  //     filtered = filtered.filter(org => org.status === statusFilter);
+  //   }
 
-    setFilteredOrganizations(filtered);
-  };
+  //   setFilteredOrganizations(filtered);
+  // };
 
   const handleCreateOrganization = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,13 +209,14 @@ export function OrganizationManagement() {
     
     if (!selectedOrgForEdit) return;
     
-    const { name, description, status, primaryColor } = editOrgData;
+    const { name, description, status, primaryColor,expiryDay,maxUsers } = editOrgData;
 
     // Validation
     if (!name.trim()) return toast.error('Organization name is required');
     if (name.trim().length < 3) return toast.error('Name must be at least 3 characters long');
     if (!description.trim()) return toast.error('Description is required');
-
+    if(!maxUsers) return toast.error("Maximum Users are Required")
+    if(!expiryDay) return toast.error("Date is Required")
     try {
       setUpdatingOrg(true);
       
@@ -217,10 +226,12 @@ export function OrganizationManagement() {
         description,
         status,
         primaryColor,
+        expiryDay: new Date(expiryDay),
+        maxUsers,
       };
       
       console.log(`[handleUpdateOrganization] Updating organization ${selectedOrgForEdit.id} with data:`, orgData);
-      const updatedOrg = await organizationService.updateOrganization(selectedOrgForEdit.id, orgData);
+      const updatedOrg = await organizationService.updateOrganizationData(selectedOrgForEdit.id, orgData);
       console.log(`[handleUpdateOrganization] Successfully updated organization:`, updatedOrg);
       
       // Update the organization in the state
@@ -231,6 +242,7 @@ export function OrganizationManagement() {
       );
       
       toast.success(`Organization ${updatedOrg.name} updated successfully`);
+      loadOrganizations();
       setShowEditModal(false);
       setSelectedOrgForEdit(null);
       setEditOrgData({
@@ -238,25 +250,12 @@ export function OrganizationManagement() {
         description: '',
         status: 'active',
         primaryColor: '#3B82F6',
+        expiryDay: '',
+        maxUsers: 0
       });
     } catch (error: any) {
       console.error('[handleUpdateOrganization] Error:', error);
-      // Provide more specific error messages
-      if (error.message.includes('not found') || error.message.includes('endpoint')) {
-        toast.error('Organization update functionality is not yet implemented in the backend API. Please contact the development team.');
-      } else if (error.message.includes('failed')) {
-        toast.error('Unable to update organization. Please try again or contact support.');
-      } else if (error.response?.status === 404) {
-        toast.error('Organization update functionality is not yet available. The backend API has not implemented this feature.');
-      } else if (error.response?.status === 403) {
-        toast.error('Access denied. You may not have permission to update organizations.');
-      } else if (error.response?.status === 500) {
-        toast.error('Server error occurred while updating organization. Please try again later.');
-      } else if (error.code === 'ERR_NETWORK') {
-        toast.error('Network error. Please check your internet connection and try again.');
-      } else {
-        toast.error(error.response?.data?.message || error.message || 'Failed to update organization. The backend API might not support organization updates yet.');
-      }
+     toast.error(`Update Organization Failed`);
     } finally {
       setUpdatingOrg(false);
     }
@@ -385,23 +384,29 @@ export function OrganizationManagement() {
 
   const fetchUsers = async () => {
     try {
+      setUserLoading(true);
       const response = await adminService.getTotalUsers();
       SetAllUsers(response);
       console.log('RESPONSE FROM BACKEND[FETCH USERS]', response);
     } catch (error) {
       console.log('ERROR RESPONSE FROM BACKEND', error);
       toast.error("failed to load Users data")
+    }finally{
+      setUserLoading(false)
     }
   };
 
   const loadActiveOrganizations = async () => {
     try {
+      setOrgLoading(true)
       const response: ActiveOrganizationStats =
         await organizationService.getTotalOrganizationActiveOnes();
       setTotalItems(response);
     } catch (error) {
       console.log(error);
       toast.error('Failed to load organization data');
+    }finally{
+      setOrgLoading(false)
     }
   };
 
@@ -410,15 +415,54 @@ export function OrganizationManagement() {
     0
   );
 
+ const handleSearchOrganization = async () => {
+   if (!searchTerm.trim()) {
+     toast.error('Please enter a search term');
+     return;
+   }
+
+   try {
+    setSearchMode(true);
+     setLoading(true);
+
+     const term = searchTerm.trim();
+
+     // ✅ Detect whether the user typed a code (starts with "SYM-ORG-") or a name
+     const query = term.toUpperCase().startsWith('SYM-ORG-')
+       ? { organizationCode: term }
+       : { name: term };
+
+     console.log('[Search Query Sent]', query);
+
+     const result = await organizationService.searchOrganizations(query);
+     console.log('[Search Result]', result);
+
+     // ✅ Handle empty or undefined data
+     if (!Array.isArray(result) || result.length === 0) {
+       setFilteredOrganizations([]);
+       toast.error('No organization found');
+     } else {
+       setFilteredOrganizations(result);
+       toast.success(`Found ${result.length} organization(s)`);
+     }
+   } catch (error: any) {
+     console.error('Error searching organizations:', error);
+     toast.error(error.message || 'Failed to search organizations');
+   } finally {
+     setLoading(false);
+   }
+ };
+
+
   useEffect(() => {
     loadOrganizations(currentPage);
     fetchUsers();
     loadActiveOrganizations()
   }, [currentPage]);
 
-  useEffect(() => {
-    filterOrganizations();
-  }, [organizations, searchTerm, statusFilter]);
+  // useEffect(() => {
+  //   filterOrganizations();
+  // }, [organizations, searchTerm, statusFilter]);
 
   return (
     <div className="space-y-8">
@@ -454,7 +498,13 @@ export function OrganizationManagement() {
               <BuildingOfficeIcon className="h-6 w-6 text-blue-600" />
             </div>
             <div className="ml-4">
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalItems?.totalOrganizations ?? 0}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {orgLoading ? (
+                  <p className="text-sm text-gray-400"> Loading ...</p>
+                ) : (
+                  totalItems?.totalOrganizations ?? 0
+                )}
+              </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">Total Organizations</p>
             </div>
           </CardContent>
@@ -466,7 +516,13 @@ export function OrganizationManagement() {
               <CheckCircleIcon className="h-6 w-6 text-green-600" />
             </div>
             <div className="ml-4">
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalItems?.activeOrganizations ?? 0}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {orgLoading ? (
+                  <p className="text-sm text-gray-400"> Loading ...</p>
+                ) : (
+                  totalItems?.activeOrganizations ?? 0
+                )}
+              </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">Active Organizations</p>
             </div>
           </CardContent>
@@ -479,7 +535,11 @@ export function OrganizationManagement() {
             </div>
             <div className="ml-4">
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {allUsers?.totalUsers ?? 0}
+                {userLoading ? (
+                  <p className="text-sm text-gray-400"> Loading ...</p>
+                ) : (
+                  allUsers?.totalUsers ?? 0
+                )}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">Total Users</p>
             </div>
@@ -504,19 +564,36 @@ export function OrganizationManagement() {
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
-              <div className="relative">
+              <div className="relative w-[50%]">
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Search organizations..."
                   value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
+                  onChange={e => {
+                    const value = e.target.value;
+                    setSearchTerm(value);
+                    if (!value.trim()) {
+                      // reset to full list if cleared
+                      setFilteredOrganizations(organizations);
+                    }
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') handleSearchOrganization();
+                  }}
                   className="pl-10 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
+                <button
+                  type="button"
+                  onClick={handleSearchOrganization}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                >
+                  <MagnifyingGlassIcon className="h-5 w-5 text-blue-500" />
+                </button>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
+            {/* <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <FunnelIcon className="h-4 w-4 text-gray-400" />
                 <select
@@ -529,7 +606,7 @@ export function OrganizationManagement() {
                   <option value="suspended">Suspended</option>
                 </select>
               </div>
-            </div>
+            </div> */}
           </div>
         </CardContent>
       </Card>
@@ -649,6 +726,10 @@ export function OrganizationManagement() {
                             description: org.description,
                             status: org.status as 'active' | 'suspended',
                             primaryColor: org.primaryColor || '#3B82F6',
+                            maxUsers: org.maxUsers,
+                            expiryDay: org.expiryDay
+                              ? new Date(org.expiryDay).toISOString().split('T')[0]
+                              : '', // Convert Date → 'YYYY-MM-DD'
                           });
                           // Open the edit modal
                           setShowEditModal(true);
@@ -757,7 +838,7 @@ export function OrganizationManagement() {
       )}
 
       {/* Pagination Controls */}
-      {totalPages > 1 && (
+      {!searchMode && totalPages > 1 && (
         <div className="flex justify-center items-center space-x-2 mt-8">
           <Button
             variant="outline"
@@ -903,6 +984,8 @@ export function OrganizationManagement() {
             description: '',
             status: 'active',
             primaryColor: '#3B82F6',
+            expiryDay: '',
+            maxUsers: 0,
           });
         }}
         title="Edit Organization"
@@ -924,7 +1007,12 @@ export function OrganizationManagement() {
             </label>
             <select
               value={editOrgData.status}
-              onChange={e => setEditOrgData(prev => ({ ...prev, status: e.target.value as 'active' | 'suspended' }))}
+              onChange={e =>
+                setEditOrgData(prev => ({
+                  ...prev,
+                  status: e.target.value as 'active' | 'suspended',
+                }))
+              }
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="active">Active</option>
@@ -967,9 +1055,39 @@ export function OrganizationManagement() {
             </div>
           </div>
 
+          {/* Expiry Date */}
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Expiry Date
+            </label>
+            <input
+              type="date"
+              value={editOrgData.expiryDay}
+              onChange={e => setEditOrgData(prev => ({ ...prev, expiryDay: e.target.value }))}
+              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Max Users */}
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Maximum Users
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={editOrgData.maxUsers}
+              onChange={e =>
+                setEditOrgData(prev => ({ ...prev, maxUsers: Number(e.target.value) }))
+              }
+              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter max number of users"
+            />
+          </div>
+
           <div className="flex justify-end space-x-3">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setShowEditModal(false);
                 setSelectedOrgForEdit(null);
@@ -978,15 +1096,14 @@ export function OrganizationManagement() {
                   description: '',
                   status: 'active',
                   primaryColor: '#3B82F6',
+                  expiryDay: '',
+                  maxUsers: 0,
                 });
               }}
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              loading={updatingOrg}
-            >
+            <Button type="submit" loading={updatingOrg}>
               Update Organization
             </Button>
           </div>

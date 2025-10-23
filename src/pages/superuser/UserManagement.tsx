@@ -27,6 +27,8 @@ export default function UserManagement() {
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [searchMode, setSearchMode] = useState(false);
+  const [creatingUser, setCreatingUser]= useState(false);
   
    const [currentPage, SetCurrentPage] = useState(1);
   const [totalPages, SetTotalPages] = useState(1);
@@ -37,6 +39,7 @@ export default function UserManagement() {
     email: '',
     firstName: '',
     lastName: '',
+    password: "",
     role: 'student' as 'student' | 'teacher' | 'admin' | 'superuser',
     organizationId: ''
   });
@@ -81,7 +84,7 @@ export default function UserManagement() {
 
   const loadOrganizations = async () => {
     try {
-      const response = await organizationService.getOrganizations();
+      const response = await organizationService.getFullOrganizations();
       setOrganizations(response.organizations || []);
     } catch (error) {
       console.error('Failed to load organizations:', error);
@@ -89,71 +92,122 @@ export default function UserManagement() {
     }
   };
 
-  const handleAddUser = async () => {
-    if (!newUserData.email || !newUserData.firstName || !newUserData.lastName || !newUserData.organizationId) {
-      toast.error('Please fill in all required fields');
+  // const handleAddUser = async () => {
+  //   if (!newUserData.email || !newUserData.firstName || !newUserData.lastName || !newUserData.organizationId) {
+  //     toast.error('Please fill in all required fields');
+  //     return;
+  //   }
+
+  //   try {
+  //     let createdUser: User;
+      
+  //     // Create user based on role using real API
+  //     if (newUserData.role === 'superuser') {
+  //       // Superusers typically don't belong to an organization
+  //       createdUser = await adminService.createAdmin({
+  //         email: newUserData.email,
+  //         firstName: newUserData.firstName,
+  //         lastName: newUserData.lastName,
+  //         password: 'TempPass123!', // In a real app, this would be a generated password
+  //         role: 'superuser'
+  //       });
+  //     } else if (newUserData.role === 'admin') {
+  //       // Create admin without organizationId first
+  //       createdUser = await adminService.createAdmin({
+  //         email: newUserData.email,
+  //         firstName: newUserData.firstName,
+  //         lastName: newUserData.lastName,
+  //         password: 'TempPass123!', // In a real app, this would be a generated password
+  //         role: 'admin'
+  //       });
+        
+  //       // Then assign to organization
+  //       await adminService.assignAdminToOrganization(createdUser.id, newUserData.organizationId);
+  //     } else if (newUserData.role === 'teacher') {
+  //       createdUser = await adminService.createTeacher(
+  //         {
+  //           email: newUserData.email,
+  //           firstName: newUserData.firstName,
+  //           lastName: newUserData.lastName,
+  //           password: 'TempPass123!'
+  //         },
+  //         newUserData.organizationId
+  //       );
+  //     } else {
+  //       createdUser = await adminService.createStudent(
+  //         {
+  //           email: newUserData.email,
+  //           firstName: newUserData.firstName,
+  //           lastName: newUserData.lastName,
+  //           password: 'TempPass123!'
+  //         },
+  //         newUserData.organizationId
+  //       );
+  //     }
+      
+  //     const roleDisplay = newUserData.role === 'superuser' ? 'Superuser' : newUserData.role.charAt(0).toUpperCase() + newUserData.role.slice(1);
+  //     toast.success(`${roleDisplay} created successfully`);
+  //     setNewUserData({ email: '', firstName: '', lastName: '', role: 'student', organizationId: '' });
+  //     setShowAddUserModal(false);
+  //     // Reload users after creating a new user
+  //     loadUsers();
+  //   } catch (error) {
+  //     console.error('Error creating user:', error);
+  //     const roleDisplay = newUserData.role === 'superuser' ? 'Superuser' : newUserData.role;
+  //     toast.error(`Failed to create ${roleDisplay}`);
+  //   }
+  // };
+
+  const handleAddUser = async ( e: React.FormEvent) =>{
+    e.preventDefault();
+
+    const { firstName, lastName, email, password, role, organizationId } = newUserData;
+
+    if (
+      !newUserData.firstName ||
+      !newUserData.lastName ||
+      !newUserData.email ||
+      !newUserData.password ||
+      !newUserData.role ||
+      !newUserData.organizationId
+    ) {
+      toast.error('Please fill in all required fields ');
       return;
     }
 
+    // Find the selected organization by its internal ID
+    const selectedOrg = organizations.find(org =>  String(org.id) === organizationId);
+
+    // Use organizationCode as organizationId for backend
+    const payload = {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.trim().toLowerCase(),
+      password: password.trim(),
+      role,
+      organizationId: selectedOrg?.organizationCode || '', // map code to API
+    };
+    console.log('PAYLOAD TO BACKEND', payload);
     try {
-      let createdUser: User;
-      
-      // Create user based on role using real API
-      if (newUserData.role === 'superuser') {
-        // Superusers typically don't belong to an organization
-        createdUser = await adminService.createAdmin({
-          email: newUserData.email,
-          firstName: newUserData.firstName,
-          lastName: newUserData.lastName,
-          password: 'TempPass123!', // In a real app, this would be a generated password
-          role: 'superuser'
-        });
-      } else if (newUserData.role === 'admin') {
-        // Create admin without organizationId first
-        createdUser = await adminService.createAdmin({
-          email: newUserData.email,
-          firstName: newUserData.firstName,
-          lastName: newUserData.lastName,
-          password: 'TempPass123!', // In a real app, this would be a generated password
-          role: 'admin'
-        });
-        
-        // Then assign to organization
-        await adminService.assignAdminToOrganization(createdUser.id, newUserData.organizationId);
-      } else if (newUserData.role === 'teacher') {
-        createdUser = await adminService.createTeacher(
-          {
-            email: newUserData.email,
-            firstName: newUserData.firstName,
-            lastName: newUserData.lastName,
-            password: 'TempPass123!'
-          },
-          newUserData.organizationId
-        );
-      } else {
-        createdUser = await adminService.createStudent(
-          {
-            email: newUserData.email,
-            firstName: newUserData.firstName,
-            lastName: newUserData.lastName,
-            password: 'TempPass123!'
-          },
-          newUserData.organizationId
-        );
-      }
-      
-      const roleDisplay = newUserData.role === 'superuser' ? 'Superuser' : newUserData.role.charAt(0).toUpperCase() + newUserData.role.slice(1);
-      toast.success(`${roleDisplay} created successfully`);
-      setNewUserData({ email: '', firstName: '', lastName: '', role: 'student', organizationId: '' });
-      setShowAddUserModal(false);
-      // Reload users after creating a new user
-      loadUsers();
+      setCreatingUser(true);
+      const response = await adminService.createUser(payload);
+      toast.success(`User ${newUserData.firstName} is created`);
+      setNewUserData({
+        email: '',
+        firstName: '',
+        lastName: '',
+        password: '',
+        role: 'student' as 'student' | 'teacher' | 'admin' | 'superuser',
+        organizationId: '',
+      });
+      return response;
     } catch (error) {
-      console.error('Error creating user:', error);
-      const roleDisplay = newUserData.role === 'superuser' ? 'Superuser' : newUserData.role;
-      toast.error(`Failed to create ${roleDisplay}`);
+      console.log('ERROR IN COMPONENT [ HANDLE USER] ', error);
+      toast.error('Failed to Create User');
+    } finally {
+      setCreatingUser(false);
     }
-  };
+  }
 
   const handleEditUser = async () => {
     if (!editUserData.email || !editUserData.firstName || !editUserData.lastName || !editUserData.organizationId) {
@@ -209,21 +263,77 @@ export default function UserManagement() {
   };
 
   // Filter users based on search term, role, and organization
-  const filteredUsers = users.filter(user => {
-    const matchesSearch =
-      user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+  // const filteredUsers = users.filter(user => {
+  //   const matchesSearch =
+  //     user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     user.email.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+  //   const matchesRole = roleFilter === 'all' || user.role === roleFilter;
 
-    const matchesOrg =
-      orgFilter === 'all' ||
-      user.organizationId === orgFilter ||
-      organizations.find(o => o.id === orgFilter)?.organizationCode === user.organizationId;
+  //   const matchesOrg =
+  //     orgFilter === 'all' ||
+  //     user.organizationId === orgFilter ||
+  //     organizations.find(o => o.id === orgFilter)?.organizationCode === user.organizationId;
 
-    return matchesSearch && matchesRole && matchesOrg;
-  });
+  //   return matchesSearch && matchesRole && matchesOrg;
+  // });
+
+
+  // Search Users based on search term
+ const handleSearch = async () => {
+   if (!searchTerm.trim()) {
+     setSearchMode(false);
+     loadUsers();
+     return;
+   }
+
+   setSearchMode(true);
+   setLoading(true);
+
+   try {
+     // Build the query object
+     const query: any = {};
+     if (searchTerm.includes('@')) {
+       query.email = searchTerm.trim();
+     } else {
+       const parts = searchTerm.trim().split(' ');
+       if (parts.length === 1) {
+         query.firstName = parts[0];
+       } else if (parts.length >= 2) {
+         query.firstName = parts[0];
+         query.lastName = parts.slice(1).join(' ');
+       }
+     }
+
+     if (roleFilter !== 'all') {
+       query.role = roleFilter;
+     }
+
+     // Fetch results
+     const results = await adminService.searchUsers(query);
+
+     // Handle cases where no users are found
+     if (!results || results.length === 0) {
+       setUsers([]); // Clear the table
+       setTotalUsers(0);
+       SetTotalPages(1);
+       
+     } else {
+       setUsers(results);
+       setTotalUsers(results.length);
+       SetTotalPages(1);
+     }
+   } catch (error) {
+     console.error('Search failed:', error);
+    toast.error('No user found');
+     setUsers([]); // Make sure table shows "No users found"
+   } finally {
+     setLoading(false);
+   }
+ };
+
+
 
 
    useEffect(() => {
@@ -375,14 +485,65 @@ export default function UserManagement() {
       {/* Filters */}
       <Card>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Input
-              placeholder="Search users..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="md:col-span-2"
-            />
-            <select
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="relative w-full md:w-[50%] md:col-span-2">
+              <button
+                onClick={handleSearch}
+                type="button"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600"
+                title="Search"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z"
+                  />
+                </svg>
+              </button>
+
+              {/* Input Field */}
+              <Input
+                placeholder="Search By email and name"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="pl-10 pr-10"
+              />
+
+              {/* Clear Button */}
+              {searchTerm && (
+                <button
+                  onClick={() => {
+                    setSearchTerm('');
+                    setSearchMode(false);
+                    loadUsers();
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 9l4-4a1 1 0 111.414 1.414L11.414 10l4 4a1 1 0 01-1.414 1.414L10 11.414l-4 4A1 1 0 014.586 14L8.586 10l-4-4A1 1 0 015.414 4.586L10 9z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {/* <select
               value={roleFilter}
               onChange={e => setRoleFilter(e.target.value as any)}
               className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white sm:text-sm"
@@ -392,8 +553,8 @@ export default function UserManagement() {
               <option value="teacher">Teacher</option>
               <option value="admin">Admin</option>
               <option value="superuser">Superuser</option>
-            </select>
-            <select
+            </select> */}
+            {/* <select
               value={orgFilter}
               onChange={e => setOrgFilter(e.target.value)}
               className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white sm:text-sm"
@@ -404,7 +565,7 @@ export default function UserManagement() {
                   {org.name}
                 </option>
               ))}
-            </select>
+            </select> */}
           </div>
         </CardContent>
       </Card>
@@ -421,7 +582,7 @@ export default function UserManagement() {
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
-          ) : filteredUsers?.length === 0 ? (
+          ) : users?.length === 0 ? (
             <div className="text-center py-12">
               <UserGroupIcon className="h-12 w-12 mx-auto text-gray-400" />
               <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
@@ -433,8 +594,8 @@ export default function UserManagement() {
             </div>
           ) : (
             <>
-              <DataTable data={filteredUsers} columns={columns} pagination />
-              {renderPagination()}
+              <DataTable data={users} columns={columns} pagination onSearch={setSearchTerm} />
+              {!searchMode && renderPagination()}
             </>
           )}
         </CardContent>
@@ -470,6 +631,14 @@ export default function UserManagement() {
             placeholder="john.doe@example.com"
           />
 
+          <Input
+            label="Password"
+            type="password"
+            value={newUserData.password}
+            onChange={e => setNewUserData(prev => ({ ...prev, password: e.target.value }))}
+            placeholder="**********"
+          />
+
           <div className="space-y-1">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Role
@@ -495,7 +664,7 @@ export default function UserManagement() {
               onChange={e => setNewUserData(prev => ({ ...prev, organizationId: e.target.value }))}
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="">Select an organization</option>
+              <option value="">Select an Organization</option>
               {organizations.map(org => (
                 <option key={org.id} value={org.id}>
                   {org.name}
@@ -508,7 +677,35 @@ export default function UserManagement() {
             <Button variant="outline" onClick={() => setShowAddUserModal(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddUser}>Create User</Button>
+            <Button onClick={handleAddUser} disabled={creatingUser}>
+              {creatingUser ? (
+                <>
+                  <svg
+                    className="animate-spin h-4 w-4 mr-2 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8z"
+                    ></path>
+                  </svg>
+                  Creating...
+                </>
+              ) : (
+                'Create User'
+              )}
+            </Button>
           </div>
         </div>
       </Modal>

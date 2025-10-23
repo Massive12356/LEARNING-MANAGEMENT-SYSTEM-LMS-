@@ -1,7 +1,13 @@
 import { AxiosError } from 'axios';
-import { Organization } from '../types';
+import {
+  Organization,
+  organizationSearchQuery,
+  CreateOrganizationResponse,
+  GetOrganizationsResponse,
+  ActiveOrganizationStats,
+  RecentOrganizationStats,
+} from '../types';
 import apiClient from './apiClient';
-import { CreateOrganizationResponse,GetOrganizationsResponse, ActiveOrganizationStats,RecentOrganizationStats } from '../types';
 
 class OrganizationService {
   async getOrganizationById(id: string): Promise<Organization | null> {
@@ -14,10 +20,31 @@ class OrganizationService {
     }
   }
 
-  async getOrganizations(page=1, pageSize= 10 ): Promise<GetOrganizationsResponse> {
+  async getOrganizations(page = 1, pageSize = 10): Promise<GetOrganizationsResponse> {
     try {
       const response = await apiClient.get<GetOrganizationsResponse>(
         `/organization/All-organization?page=${page}&pageSize${pageSize}`
+      );
+      console.log('[organizationService] RESPONSE FROM BACKEND:', response.data);
+      return response.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.error(
+        '[organizationService] Error fetching organizations:',
+        err.response?.data || err.message
+      );
+      throw new Error(
+        err.response?.data?.message ||
+          err.message ||
+          '[organizationService] Error fetching organizations:'
+      );
+    }
+  }
+
+  async getFullOrganizations(): Promise<GetOrganizationsResponse> {
+    try {
+      const response = await apiClient.get<GetOrganizationsResponse>(
+        `/organization/All-organization/new`
       );
       console.log('[organizationService] RESPONSE FROM BACKEND:', response.data);
       return response.data;
@@ -75,6 +102,18 @@ class OrganizationService {
     }
   }
 
+  async updateOrganizationData(id: string, orgData: Partial<Organization>): Promise<Organization> {
+    try {
+      const response = await apiClient.put<Organization>(`/organization/Edit/${id}`, orgData);
+      console.log('[updateOrganizationData] RESPONSE FROM BACKEND:', response.data);
+      return response.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.error('Error [updateOrganizationData]:', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to change Status');
+    }
+  }
+
   async getUserOrganization(userId: string): Promise<Organization | null> {
     try {
       // This would need to be implemented with a real API endpoint
@@ -86,28 +125,52 @@ class OrganizationService {
     }
   }
 
-  async getTotalOrganizationActiveOnes(): Promise<ActiveOrganizationStats>{
+  async getTotalOrganizationActiveOnes(): Promise<ActiveOrganizationStats> {
     try {
       const response = await apiClient.get('/organization/Total/Active');
-      console.log("[organizationService]:RESPONSE FROM BACKEND:", response.data)
-      return response.data
+      console.log('[organizationService]:RESPONSE FROM BACKEND:', response.data);
+      return response.data;
     } catch (error) {
-      const err = error as AxiosError<{message?:string}>
-      console.log('[organizationService]:ERROR RESPONSE FROM BACKEND:', err.response?.data || err.message);
-      throw new Error(err.response?.data?.message || "Failed to fetch data")
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[organizationService]:ERROR RESPONSE FROM BACKEND:',
+        err.response?.data || err.message
+      );
+      throw new Error(err.response?.data?.message || 'Failed to fetch data');
     }
   }
 
-  async getRecentOrganization():Promise<RecentOrganizationStats>{
+  async getRecentOrganization(): Promise<RecentOrganizationStats> {
     try {
       const response = await apiClient.get('/organization/recent/created');
-      console.log('[organizationService]:RESPONSE FROM BACKEND:',response.data);
-      return response.data
+      console.log('[organizationService]:RESPONSE FROM BACKEND:', response.data);
+      return response.data;
     } catch (error) {
-      const err = error as AxiosError<{message?:string}>
+      const err = error as AxiosError<{ message?: string }>;
       console.log(
-        '[organizationService]:ERROR RESPONSE FROM BACKEND:',err.response?.data || err.message);
+        '[organizationService]:ERROR RESPONSE FROM BACKEND:',
+        err.response?.data || err.message
+      );
       throw new Error(err.response?.data?.message || 'Failed to fetch data');
+    }
+  }
+
+  async searchOrganizations(query: organizationSearchQuery): Promise<Organization[]> {
+    try {
+      const response = await apiClient.get('/organization/byName/code', { params: query });
+      console.log('[OrganizationService] Search Organization response:', response.data);
+
+      // Your backend returns an array directly
+      const result = Array.isArray(response.data) ? response.data : response.data?.data || [];
+
+      return result;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.error(
+        '[OrganizationService] Search organizations error:',
+        err.response?.data || err.message
+      );
+      throw new Error(err.response?.data?.message || 'Failed to search organizations');
     }
   }
 }

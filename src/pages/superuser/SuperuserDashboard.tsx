@@ -308,7 +308,7 @@ const loadRecentOrganizations = async () => {
       )}
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {stats.map(stat => {
           const Icon = stat.icon;
           return (
@@ -398,8 +398,11 @@ const loadRecentOrganizations = async () => {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="text-center">
                 <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {platformHealth.systemHealth?.percentage ?? 'N/A'}
+                  {platformHealth.systemHealth?.percentage != null
+                    ? `${platformHealth.systemHealth.percentage}%`
+                    : 'N/A'}
                 </div>
+
                 <div className="text-sm text-gray-600 dark:text-gray-400">Uptime</div>
               </div>
               <div className="text-center">

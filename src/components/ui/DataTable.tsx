@@ -5,7 +5,7 @@ import {
   FunnelIcon,
   MagnifyingGlassIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -34,6 +34,7 @@ export interface DataTableProps<T> {
   emptyMessage?: string;
   className?: string;
   loading?: boolean;
+  onSearch?: (value: string) => void;
 }
 
 interface SortConfig {
@@ -57,7 +58,8 @@ export function DataTable<T extends Record<string, any>>({
   onSelectionChange,
   emptyMessage = 'No data available',
   className = '',
-  loading = false
+  loading = false,
+  onSearch,
 }: DataTableProps<T>) {
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
   const [filters, setFilters] = useState<FilterConfig>({});
@@ -117,7 +119,9 @@ export function DataTable<T extends Record<string, any>>({
   // Pagination
   const totalPages = Math.ceil(processedData.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
-  const paginatedData = pagination ? processedData.slice(startIndex, startIndex + pageSize) : processedData;
+  const paginatedData = pagination
+    ? processedData.slice(startIndex, startIndex + pageSize)
+    : processedData;
 
   const handleSort = (key: string) => {
     if (!sortable) return;
@@ -200,20 +204,37 @@ export function DataTable<T extends Record<string, any>>({
     <div className={`space-y-4 ${className}`}>
       {/* Search and Filter Controls */}
       <div className="flex flex-col sm:flex-row gap-4">
-        {searchable && (
-          <div className="flex-1">
-            <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
+        {/* 🔒 Search temporarily commented out
+  {searchable && (
+    <div className="flex-1">
+      <div className="relative">
+        <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search by Name and Email..."
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            onSearch?.(e.target.value);
+          }}
+          className="pl-10 pr-10 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+        {searchTerm && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearchTerm('');
+              onSearch?.('');
+            }}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            ✖
+          </button>
         )}
+      </div>
+    </div>
+  )}
+  */}
 
         {filterable && (
           <Button
@@ -230,16 +251,17 @@ export function DataTable<T extends Record<string, any>>({
       {/* Column Filters */}
       {filterable && showFilters && (
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          {columns.filter(col => col.filterable).map(column => (
-            <Input
-              key={String(column.key)}
-              label={column.label}
-              value={filters[String(column.key)] || ''}
-              onChange={(e) => handleFilterChange(String(column.key), e.target.value)}
-              placeholder={`Filter by ${column.label}`}
-              size="sm"
-            />
-          ))}
+          {columns
+            .filter(col => col.filterable)
+            .map(column => (
+              <Input
+                key={String(column.key)}
+                label={column.label}
+                value={filters[String(column.key)] || ''}
+                onChange={e => handleFilterChange(String(column.key), e.target.value)}
+                placeholder={`Filter by ${column.label}`}
+              />
+            ))}
         </div>
       )}
 
@@ -258,17 +280,23 @@ export function DataTable<T extends Record<string, any>>({
                   />
                 </th>
               )}
-              {columns.map((column) => (
+              {columns.map(column => (
                 <th
                   key={String(column.key)}
                   className={`px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${
-                    column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : 'text-left'
+                    column.align === 'center'
+                      ? 'text-center'
+                      : column.align === 'right'
+                      ? 'text-right'
+                      : 'text-left'
                   }`}
                   style={{ width: column.width }}
                 >
-                  <div 
+                  <div
                     className={`flex items-center space-x-1 ${
-                      column.sortable !== false && sortable ? 'cursor-pointer hover:text-gray-700 dark:hover:text-gray-300' : ''
+                      column.sortable !== false && sortable
+                        ? 'cursor-pointer hover:text-gray-700 dark:hover:text-gray-300'
+                        : ''
                     }`}
                     onClick={() => column.sortable !== false && handleSort(String(column.key))}
                   >
@@ -295,17 +323,20 @@ export function DataTable<T extends Record<string, any>>({
                         />
                       </td>
                     )}
-                    {columns.map((column) => (
+                    {columns.map(column => (
                       <td
                         key={String(column.key)}
                         className={`px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white ${
-                          column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : 'text-left'
+                          column.align === 'center'
+                            ? 'text-center'
+                            : column.align === 'right'
+                            ? 'text-right'
+                            : 'text-left'
                         }`}
                       >
-                        {column.render 
+                        {column.render
                           ? column.render(getValue(row, String(column.key)), row, actualIndex)
-                          : String(getValue(row, String(column.key)) || '')
-                        }
+                          : String(getValue(row, String(column.key)) || '')}
                       </td>
                     ))}
                   </tr>
@@ -314,10 +345,7 @@ export function DataTable<T extends Record<string, any>>({
             ) : (
               <tr>
                 <td colSpan={columns.length + (selectable ? 1 : 0)} className="px-6 py-12">
-                  <EmptyState
-                    title="No data found"
-                    description={emptyMessage}
-                  />
+                  <EmptyState title="No data found" description={emptyMessage} />
                 </td>
               </tr>
             )}
@@ -329,9 +357,10 @@ export function DataTable<T extends Record<string, any>>({
       {pagination && totalPages > 1 && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-gray-700 dark:text-gray-300">
-            Showing {startIndex + 1} to {Math.min(startIndex + pageSize, processedData.length)} of {processedData.length} results
+            Showing {startIndex + 1} to {Math.min(startIndex + pageSize, processedData.length)} of{' '}
+            {processedData.length} results
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <Button
               variant="outline"
@@ -341,7 +370,7 @@ export function DataTable<T extends Record<string, any>>({
             >
               <ChevronLeftIcon className="h-4 w-4" />
             </Button>
-            
+
             <div className="flex items-center space-x-1">
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                 let pageNum;
@@ -354,7 +383,7 @@ export function DataTable<T extends Record<string, any>>({
                 } else {
                   pageNum = currentPage - 2 + i;
                 }
-                
+
                 return (
                   <Button
                     key={pageNum}
@@ -367,7 +396,7 @@ export function DataTable<T extends Record<string, any>>({
                 );
               })}
             </div>
-            
+
             <Button
               variant="outline"
               size="sm"

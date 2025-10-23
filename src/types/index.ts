@@ -33,6 +33,8 @@ export interface Organization {
   emailCopyBranding?: string;
   createdAt: Date;
   updatedAt: Date;
+  maxUsers: number;
+  expiryDay: Date;
 }
 
 export interface CreateOrganizationResponse {
@@ -48,6 +50,11 @@ export interface GetOrganizationsResponse {
   pageSize: number;
   totalCount: number;
   totalOrganizations: number;
+}
+
+export interface organizationSearchQuery {
+  name?: string;
+  organizationCode?: string;
 }
 
 export interface Course {
@@ -377,7 +384,6 @@ export interface LoginForm {
   rememberMe?: boolean;
 }
 
-
 export interface RegisterPayload {
   email: string;
   password: string;
@@ -440,17 +446,17 @@ export interface ActiveOrganizationStats {
   message?: string;
 }
 
-export interface ActiveUserStats{
-  activeUsers: number,
-  totalUsers: number,
-  message?:string
+export interface ActiveUserStats {
+  activeUsers: number;
+  totalUsers: number;
+  message?: string;
 }
 
-export interface SystemHealthStats{
-message?: string,
-readableUptime: string,
-systemHealthPercentage:number,
-totalUptimeSeconds:number
+export interface SystemHealthStats {
+  message?: string;
+  readableUptime: string;
+  systemHealthPercentage: number;
+  totalUptimeSeconds: number;
 }
 
 export interface OrganizationSummary {
@@ -471,9 +477,9 @@ export interface RecentOrganizationStats {
   recentOrganizations: OrganizationSummary[];
 }
 
-export interface userStats{
-totalUsers: number,
-activeUsers:number,
+export interface userStats {
+  totalUsers: number;
+  activeUsers: number;
 }
 
 export interface PlatformStatsResponse {
@@ -508,3 +514,9 @@ export interface SystemMemory {
   totalSystemMemory: string; // e.g., "30.65 GB"
 }
 
+export interface UserSearchQuery {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  role?: 'admin' | 'student' | 'teacher' | 'superuser';
+}

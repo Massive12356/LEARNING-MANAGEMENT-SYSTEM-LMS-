@@ -1,5 +1,12 @@
 import { mockApi } from './mockApi';
-import { User,RegisterPayload,ActiveUserStats,SystemHealthStats,PlatformStatsResponse } from '../types';
+import {
+  User,
+  RegisterPayload,
+  ActiveUserStats,
+  SystemHealthStats,
+  PlatformStatsResponse,
+  UserSearchQuery,
+} from '../types';
 import apiClient from './apiClient';
 import { AxiosError } from 'axios';
 
@@ -13,6 +20,18 @@ class AdminService {
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
       console.log('[AdminService]RESPONSE FROM BACKEND:', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to create Admin');
+    }
+  }
+
+  async createUser(adminData: Omit<RegisterPayload, 'password'>): Promise<User> {
+    try {
+      const response = await apiClient.post('/user/signUp-admin', adminData);
+      console.log('[AdminService CREATE USER]RESPONSE FROM BACKEND:', response.data);
+      return response.data.user || response.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log('[AdminService CREATE USER]RESPONSE FROM BACKEND:', err.response?.data || err.message);
       throw new Error(err.response?.data?.message || 'Failed to create Admin');
     }
   }
@@ -188,6 +207,18 @@ class AdminService {
       const err = error as AxiosError<{ message?: string }>;
       console.log('[adminService]: ERROR RESPONSE FROM BACKEND', err.response?.data || err.message);
       throw new Error(err.response?.data?.message || 'Failed to load Data');
+    }
+  }
+
+  async searchUsers(query: UserSearchQuery): Promise<User[]> {
+    try {
+      const response = await apiClient.get('/user/bySearch/models', { params: query });
+      console.log('[AdminService] Search users response:', response.data);
+      return response.data?.data || response.data?.users || [];
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.error('[AdminService] Search users error:', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to search users');
     }
   }
 }
