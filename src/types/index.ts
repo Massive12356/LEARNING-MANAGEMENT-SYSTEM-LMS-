@@ -514,6 +514,28 @@ export interface SystemMemory {
   totalSystemMemory: string; // e.g., "30.65 GB"
 }
 
+export interface ResourceUsage{
+  storageUsed: string;
+  totalStorage:string;
+  bandwidthUsed: string;
+  totalBandwidth: string;
+  databaseSize: string;
+  totalDatabaseCapacity:string;
+  backupStatus: string;
+}
+
+export interface UsagePatterns{
+  peakHours: string;
+  mostActiveDay: string;
+  avgSessionDuration: string;
+  mobileUsage: string;
+  peakConcurrentUsers: number;
+}
+
+export interface SystemUsageResponse {
+  resourceUsage: ResourceUsage;
+  usagePatterns: UsagePatterns;
+}
 export interface UserSearchQuery {
   firstName?: string;
   lastName?: string;

@@ -29,6 +29,8 @@ export default function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [searchMode, setSearchMode] = useState(false);
   const [creatingUser, setCreatingUser]= useState(false);
+  const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [updatingUser, setUpdatingUser] = useState(false);
   
    const [currentPage, SetCurrentPage] = useState(1);
   const [totalPages, SetTotalPages] = useState(1);
@@ -209,58 +211,71 @@ export default function UserManagement() {
     }
   }
 
-  const handleEditUser = async () => {
-    if (!editUserData.email || !editUserData.firstName || !editUserData.lastName || !editUserData.organizationId) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
+ const handleEditUser = async (e: React.FormEvent) => {
+   e.preventDefault();
 
-    if (!selectedUser) {
-      toast.error('No user selected for editing');
-      return;
-    }
+   if (
+     !editUserData.email ||
+     !editUserData.firstName ||
+     !editUserData.lastName ||
+     !editUserData.organizationId
+   ) {
+     toast.error('Please fill in all required fields');
+     return;
+   }
 
-    try {
-      // Check if role has changed
-      const roleChanged = selectedUser.role !== editUserData.role;
-      
-      // If role changed and the new role is superuser, we might need special handling
-      if (roleChanged && editUserData.role === 'superuser') {
-        toast.error('Cannot change user to superuser role');
-        return;
-      }
+   if (!selectedUser) {
+     toast.error('No user selected for editing');
+     return;
+   }
 
-      // Prepare the data for update (only include changed fields)
-      const userData: Partial<User> = {};
-      if (selectedUser.email !== editUserData.email) userData.email = editUserData.email;
-      if (selectedUser.firstName !== editUserData.firstName) userData.firstName = editUserData.firstName;
-      if (selectedUser.lastName !== editUserData.lastName) userData.lastName = editUserData.lastName;
-      if (selectedUser.organizationId !== editUserData.organizationId) userData.organizationId = editUserData.organizationId;
-      
-      // Only include role if it's different and not superuser
-      if (roleChanged && editUserData.role !== 'superuser') {
-        userData.role = editUserData.role as UserRole;
-      }
+   try {
+     setUpdatingUser(true);
 
-      // Only make API call if there are changes
-      if (Object.keys(userData).length > 0) {
-        // Update the user using the adminService
-        await adminService.updateUser(selectedUser.id, userData);
-        toast.success(`User ${editUserData.firstName} ${editUserData.lastName} updated successfully`);
-      } else {
-        toast.success('No changes to update');
-      }
-      
-      setShowEditUserModal(false);
-      setSelectedUser(null);
-      setEditUserData({ email: '', firstName: '', lastName: '', role: 'student', organizationId: '' });
-      // Reload users after updating
-      loadUsers();
-    } catch (error) {
-      console.error('Error updating user:', error);
-      toast.error('Failed to update user');
-    }
-  };
+     // Find organization to map to correct organizationCode for backend
+     const selectedOrg = organizations.find(org => String(org.id) === editUserData.organizationId);
+
+     const payload = {
+       firstName: editUserData.firstName.trim(),
+       lastName: editUserData.lastName.trim(),
+       email: editUserData.email.trim().toLowerCase(),
+       role: editUserData.role,
+       organizationId: selectedOrg?.organizationCode || '',
+     };
+
+     console.log('🟢 Updating user with payload:', payload);
+
+     // API call to update user
+     await adminService.superuserUpdateUser(selectedUser.id, payload);
+
+     toast.success(`User ${editUserData.firstName} ${editUserData.lastName} updated successfully`);
+
+     // Update the UI state accordingly
+     if (searchMode) {
+       // In search mode, update in current users list without refetching all pages
+       setUsers(prev => prev.map(u => (u.id === selectedUser.id ? { ...u, ...payload } : u)));
+     } else {
+       // In normal mode, reload the current page
+       await loadUsers(currentPage);
+     }
+
+     // Reset modal state
+     setShowEditUserModal(false);
+     setSelectedUser(null);
+     setEditUserData({
+       email: '',
+       firstName: '',
+       lastName: '',
+       role: 'student',
+       organizationId: '',
+     });
+   } catch (error) {
+     console.error('❌ Error updating user:', error);
+     toast.error('Failed to update user');
+   } finally {
+     setUpdatingUser(false);
+   }
+ };
 
   // Filter users based on search term, role, and organization
   // const filteredUsers = users.filter(user => {
@@ -280,66 +295,134 @@ export default function UserManagement() {
   // });
 
 
-  // Search Users based on search term
- const handleSearch = async () => {
-   if (!searchTerm.trim()) {
-     setSearchMode(false);
-     loadUsers();
-     return;
-   }
+  // Search Users based on search term and by clicking a button to trigger the search function
+//  const handleSearch = async () => {
+//    if (!searchTerm.trim()) {
+//      setSearchMode(false);
+//      loadUsers();
+//      return;
+//    }
 
-   setSearchMode(true);
-   setLoading(true);
+//    setSearchMode(true);
+//    setLoading(true);
 
-   try {
-     // Build the query object
-     const query: any = {};
-     if (searchTerm.includes('@')) {
-       query.email = searchTerm.trim();
-     } else {
-       const parts = searchTerm.trim().split(' ');
-       if (parts.length === 1) {
-         query.firstName = parts[0];
-       } else if (parts.length >= 2) {
-         query.firstName = parts[0];
-         query.lastName = parts.slice(1).join(' ');
-       }
-     }
+//    try {
+//      // Build the query object
+//      const query: any = {};
+//      if (searchTerm.includes('@')) {
+//        query.email = searchTerm.trim();
+//      } else {
+//        const parts = searchTerm.trim().split(' ');
+//        if (parts.length === 1) {
+//          query.firstName = parts[0];
+//        } else if (parts.length >= 2) {
+//          query.firstName = parts[0];
+//          query.lastName = parts.slice(1).join(' ');
+//        }
+//      }
 
-     if (roleFilter !== 'all') {
-       query.role = roleFilter;
-     }
+//      if (roleFilter !== 'all') {
+//        query.role = roleFilter;
+//      }
 
-     // Fetch results
-     const results = await adminService.searchUsers(query);
+//      // Fetch results
+//      const results = await adminService.searchUsers(query);
 
-     // Handle cases where no users are found
-     if (!results || results.length === 0) {
-       setUsers([]); // Clear the table
-       setTotalUsers(0);
-       SetTotalPages(1);
+//      // Handle cases where no users are found
+//      if (!results || results.length === 0) {
+//        setUsers([]); // Clear the table
+//        setTotalUsers(0);
+//        SetTotalPages(1);
        
-     } else {
-       setUsers(results);
-       setTotalUsers(results.length);
-       SetTotalPages(1);
-     }
-   } catch (error) {
-     console.error('Search failed:', error);
-    toast.error('No user found');
-     setUsers([]); // Make sure table shows "No users found"
-   } finally {
-     setLoading(false);
-   }
- };
+//      } else {
+//        setUsers(results);
+//        setTotalUsers(results.length);
+//        SetTotalPages(1);
+//      }
+//    } catch (error) {
+//      console.error('Search failed:', error);
+//     toast.error('No user found');
+//      setUsers([]); // Make sure table shows "No users found"
+//    } finally {
+//      setLoading(false);
+//    }
+//  };
 
 
+
+// auto search after user stops typing for 5 seconds
+useEffect(() =>{
+  if (!searchTerm.trim()) {
+    setSearchMode(false);
+    loadUsers();
+    return;
+  }
+    // clear previous timeout if the user keeps typing
+   if (debounceTimeout) clearTimeout(debounceTimeout);
+
+   const timeout = setTimeout(async() =>{
+    try {
+      setCreatingUser(true);
+      setLoading(true);
+
+      // Build the query object
+      const query: any = {};
+      if (searchTerm.includes('@')) {
+        query.email = searchTerm.trim();
+      } else {
+        const parts = searchTerm.trim().split(' ');
+        if (parts.length === 1) {
+          query.firstName = parts[0];
+        } else if (parts.length >= 2) {
+          query.firstName = parts[0];
+          query.lastName = parts.slice(1).join(' ');
+        }
+      }
+
+      if (roleFilter !== 'all') {
+        query.role = roleFilter;
+      }
+
+      console.log('[Search Query Sent]', query);
+
+      // Fetch results
+      const results = await adminService.searchUsers(query);
+
+      // Handle cases where no users are found
+      if (!results || results.length === 0) {
+        setUsers([]); // Clear the table
+        setTotalUsers(0);
+        SetTotalPages(1);
+      } else {
+        setUsers(results);
+        setTotalUsers(results.length);
+        SetTotalPages(1);
+      }
+    } catch (error) {
+      console.error('Search failed:', error);
+      toast.error('No user found');
+      setUsers([]); // Make sure table shows "No users found"
+    } finally {
+      setLoading(false);
+    }
+   }, 2000);
+
+   setDebounceTimeout(timeout)
+   return ()=>clearTimeout(timeout)
+},[searchTerm,roleFilter])
 
 
    useEffect(() => {
      loadUsers();
      loadOrganizations();
    }, []);
+
+ const handleClearSearch = () => {
+   setSearchTerm('');
+   setSearchMode(false);
+   loadUsers(); // reload all users
+ };
+
 
 
   const columns: Column<User>[] = [
@@ -410,7 +493,10 @@ export default function UserManagement() {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 role: user.role as 'student' | 'teacher' | 'admin' | 'superuser',
-                organizationId: user.organizationId || ''
+                organizationId:
+                  organizations
+                    .find(org => org.organizationCode === user.organizationId)
+                    ?.id.toString() || '',
               });
               // Open the edit modal
               setShowEditUserModal(true);
@@ -488,7 +574,6 @@ export default function UserManagement() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="relative w-full md:w-[50%] md:col-span-2">
               <button
-                onClick={handleSearch}
                 type="button"
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600"
                 title="Search"
@@ -520,25 +605,10 @@ export default function UserManagement() {
               {/* Clear Button */}
               {searchTerm && (
                 <button
-                  onClick={() => {
-                    setSearchTerm('');
-                    setSearchMode(false);
-                    loadUsers();
-                  }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                  onClick={handleClearSearch}
+                  className="absolute right-3 top-1 bg-blue-600 hover:bg-blue-700 text-white shadow-sm focus:ring-blue-500 px-3 py-1.5 text-sm rounded-lg  "
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 9l4-4a1 1 0 111.414 1.414L11.414 10l4 4a1 1 0 01-1.414 1.414L10 11.414l-4 4A1 1 0 014.586 14L8.586 10l-4-4A1 1 0 015.414 4.586L10 9z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+                  Clear
                 </button>
               )}
             </div>
@@ -594,8 +664,16 @@ export default function UserManagement() {
             </div>
           ) : (
             <>
-              <DataTable data={users} columns={columns} pagination onSearch={setSearchTerm} />
-              {!searchMode && renderPagination()}
+              <DataTable
+                data={users} // ✅ correct dataset
+                columns={columns}
+                loading={loading}
+                pagination={false} // handled externally by backend
+                searchable={false}
+              />
+
+              {/* Show pagination only in normal (non-search) mode */}
+              {!searchMode && totalPages > 1 && renderPagination()}
             </>
           )}
         </CardContent>
@@ -801,7 +879,35 @@ export default function UserManagement() {
             >
               Cancel
             </Button>
-            <Button onClick={handleEditUser}>Update User</Button>
+            <Button onClick={handleEditUser} disabled={updatingUser}>
+              {updatingUser ? (
+                <>
+                  <svg
+                    className="animate-spin h-4 w-4 mr-2 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8z"
+                    ></path>
+                  </svg>
+                  Updating...
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </Button>
           </div>
         </div>
       </Modal>

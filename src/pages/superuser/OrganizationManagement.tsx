@@ -48,15 +48,12 @@ export function OrganizationManagement() {
   const [showGenerateCodeModal, setShowGenerateCodeModal] = useState(false);
   const [generatedCode, setGeneratedCode] = useState<any>(null);
   const [codeGenerate, setCodeGenerate] = useState<string | null>(null);
-  const [allUsers, SetAllUsers] = useState<ActiveUserStats |null >(null);
+  const [allUsers, SetAllUsers] = useState<ActiveUserStats | null>(null);
   const [changingStatus, SetChangingStatus] = useState<string | null>(null);
   const [selectedOrgForEdit, setSelectedOrgForEdit] = useState<Organization | null>(null);
-  const [orgLoading, setOrgLoading]= useState(false);
-  const [userLoading,setUserLoading]=useState(false);
+  const [orgLoading, setOrgLoading] = useState(false);
+  const [userLoading, setUserLoading] = useState(false);
   const [searchMode, setSearchMode] = useState(false);
-
-
-
 
   const [newOrgData, setNewOrgData] = useState({
     name: '',
@@ -93,6 +90,7 @@ export function OrganizationManagement() {
   // Mock organization stats
   const [orgStats, setOrgStats] = useState<Record<string, any>>({});
   const [totalItems, setTotalItems] = useState<ActiveOrganizationStats | null>(null);
+  const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const [currentPage, SetCurrentPage] = useState(1);
   const [totalPages, SetTotalPages] = useState(1);
@@ -206,21 +204,21 @@ export function OrganizationManagement() {
   // Add this function for handling organization updates
   const handleUpdateOrganization = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedOrgForEdit) return;
-    
-    const { name, description, status, primaryColor,expiryDay,maxUsers } = editOrgData;
+
+    const { name, description, status, primaryColor, expiryDay, maxUsers } = editOrgData;
 
     // Validation
     if (!name.trim()) return toast.error('Organization name is required');
     if (name.trim().length < 3) return toast.error('Name must be at least 3 characters long');
     if (!description.trim()) return toast.error('Description is required');
-    if(!maxUsers) return toast.error("Maximum Users are Required")
-    if(!expiryDay) return toast.error("Date is Required")
+    if (!maxUsers) return toast.error('Maximum Users are required');
+    if (!expiryDay) return toast.error('Date is required');
+
     try {
       setUpdatingOrg(true);
-      
-      // Prepare the data for update
+
       const orgData = {
         name,
         description,
@@ -229,20 +227,36 @@ export function OrganizationManagement() {
         expiryDay: new Date(expiryDay),
         maxUsers,
       };
-      
-      console.log(`[handleUpdateOrganization] Updating organization ${selectedOrgForEdit.id} with data:`, orgData);
-      const updatedOrg = await organizationService.updateOrganizationData(selectedOrgForEdit.id, orgData);
+
+      console.log(
+        `[handleUpdateOrganization] Updating organization ${selectedOrgForEdit.id} with data:`,
+        orgData
+      );
+
+      const updatedOrg = await organizationService.updateOrganizationData(
+        selectedOrgForEdit.id,
+        orgData
+      );
       console.log(`[handleUpdateOrganization] Successfully updated organization:`, updatedOrg);
-      
-      // Update the organization in the state
+
+      // ✅ Update both organization lists for immediate UI sync
       setOrganizations(prev =>
         prev.map(org =>
-          org.id === selectedOrgForEdit.id ? { ...updatedOrg, updatedAt: new Date() } : org
+          org.id === selectedOrgForEdit.id ? { ...org, ...updatedOrg, updatedAt: new Date() } : org
         )
       );
-      
+
+      setFilteredOrganizations(prev =>
+        prev.map(org =>
+          org.id === selectedOrgForEdit.id ? { ...org, ...updatedOrg, updatedAt: new Date() } : org
+        )
+      );
+
       toast.success(`Organization ${updatedOrg.name} updated successfully`);
+
       loadOrganizations();
+
+      // ✅ Reset modal and form
       setShowEditModal(false);
       setSelectedOrgForEdit(null);
       setEditOrgData({
@@ -251,11 +265,11 @@ export function OrganizationManagement() {
         status: 'active',
         primaryColor: '#3B82F6',
         expiryDay: '',
-        maxUsers: 0
+        maxUsers: 0,
       });
     } catch (error: any) {
       console.error('[handleUpdateOrganization] Error:', error);
-     toast.error(`Update Organization Failed`);
+      toast.error(`Update Organization Failed`);
     } finally {
       setUpdatingOrg(false);
     }
@@ -264,14 +278,32 @@ export function OrganizationManagement() {
   const handleStatusChange = async (organizationId: string, newStatus: 'active' | 'suspended') => {
     try {
       SetChangingStatus(organizationId);
-      await organizationService.updateOrganization(organizationId, { status: newStatus });
 
-      setOrganizations(prev =>
-        prev.map(org =>
-          org.id === organizationId ? { ...org, status: newStatus, updatedAt: new Date() } : org
-        )
-      );
+      // 🔹 Send update request to backend
+      const updatedOrg = await organizationService.updateOrganization(organizationId, {
+        status: newStatus,
+      });
 
+      // 🔹 Update whichever list is currently displayed
+      if (searchMode) {
+        setFilteredOrganizations(prev =>
+          prev.map(org =>
+            org.id === organizationId
+              ? { ...org, status: updatedOrg.status ?? newStatus, updatedAt: new Date() }
+              : org
+          )
+        );
+      } else {
+        setOrganizations(prev =>
+          prev.map(org =>
+            org.id === organizationId
+              ? { ...org, status: updatedOrg.status ?? newStatus, updatedAt: new Date() }
+              : org
+          )
+        );
+      }
+
+      // 🔹 Optionally reload active orgs list if needed elsewhere
       await loadActiveOrganizations();
 
       toast.success(
@@ -284,10 +316,17 @@ export function OrganizationManagement() {
     }
   };
 
-  const openAssignAdminModal = (orgName: string) => {
-    setSelectOrgName(orgName);
+  const openAssignAdminModal = (org: Organization) => {
+    setSelectedOrgId(org.id);
+    setSelectOrgName(org.name);
+    setGeneratedCode(org.organizationCode || '');
+    setAdminData(prev => ({
+      ...prev,
+      organizationId: org.organizationCode || '', // Prefill organization code
+    }));
     setShowAssignAdminModal(true);
   };
+
 
   const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -362,12 +401,12 @@ export function OrganizationManagement() {
     }
 
     try {
-      setCodeGenerate(orgName)
+      setCodeGenerate(orgName);
       const code = await organizationCodeService.createOrganizationCode(orgName);
       console.log('[Generated Code API Response]', code);
       setGeneratedCode(code);
       setShowGenerateCodeModal(true);
-      toast.success("Code Generated")
+      toast.success('Code Generated');
 
       // Update the organization in the state with the new code
       setOrganizations(prevOrgs =>
@@ -375,10 +414,17 @@ export function OrganizationManagement() {
           org.name === orgName ? { ...org, organizationCode: code.newJoinCode } : org
         )
       );
+
+      // ✅ If search mode is active, also update filteredOrganizations
+      setFilteredOrganizations(prevOrgs =>
+        prevOrgs.map(org =>
+          org.name === orgName ? { ...org, organizationCode: code.newJoinCode } : org
+        )
+      );
     } catch (error) {
       toast.error('Failed to generate join code');
-    } finally{
-      setCodeGenerate(null)
+    } finally {
+      setCodeGenerate(null);
     }
   };
 
@@ -390,23 +436,23 @@ export function OrganizationManagement() {
       console.log('RESPONSE FROM BACKEND[FETCH USERS]', response);
     } catch (error) {
       console.log('ERROR RESPONSE FROM BACKEND', error);
-      toast.error("failed to load Users data")
-    }finally{
-      setUserLoading(false)
+      toast.error('failed to load Users data');
+    } finally {
+      setUserLoading(false);
     }
   };
 
   const loadActiveOrganizations = async () => {
     try {
-      setOrgLoading(true)
+      setOrgLoading(true);
       const response: ActiveOrganizationStats =
         await organizationService.getTotalOrganizationActiveOnes();
       setTotalItems(response);
     } catch (error) {
       console.log(error);
       toast.error('Failed to load organization data');
-    }finally{
-      setOrgLoading(false)
+    } finally {
+      setOrgLoading(false);
     }
   };
 
@@ -414,54 +460,114 @@ export function OrganizationManagement() {
     (acc: number, stats: any) => acc + stats.courses,
     0
   );
+  // normal search with button to trigger
+  // const handleSearchOrganization = async () => {
+  //   if (!searchTerm.trim()) {
+  //     toast.error('Please enter a search term');
+  //     return;
+  //   }
 
- const handleSearchOrganization = async () => {
-   if (!searchTerm.trim()) {
-     toast.error('Please enter a search term');
-     return;
-   }
+  //   try {
+  //     setSearchMode(true);
+  //     setLoading(true);
 
-   try {
-    setSearchMode(true);
-     setLoading(true);
+  //     const term = searchTerm.trim();
 
-     const term = searchTerm.trim();
+  //     // ✅ Detect whether the user typed a code (starts with "SYM-ORG-") or a name
+  //     const query = term.toUpperCase().startsWith('SYM-ORG-')
+  //       ? { organizationCode: term }
+  //       : { name: term };
 
-     // ✅ Detect whether the user typed a code (starts with "SYM-ORG-") or a name
-     const query = term.toUpperCase().startsWith('SYM-ORG-')
-       ? { organizationCode: term }
-       : { name: term };
+  //     console.log('[Search Query Sent]', query);
 
-     console.log('[Search Query Sent]', query);
+  //     const result = await organizationService.searchOrganizations(query);
+  //     console.log('[Search Result]', result);
 
-     const result = await organizationService.searchOrganizations(query);
-     console.log('[Search Result]', result);
+  //     // ✅ Handle empty or undefined data
+  //     if (!Array.isArray(result) || result.length === 0) {
+  //       setFilteredOrganizations([]);
+  //       toast.error('No organization found');
+  //     } else {
+  //       setFilteredOrganizations(result);
+  //       toast.success(`Found ${result.length} organization(s)`);
+  //     }
+  //   } catch (error: any) {
+  //     console.error('Error searching organizations:', error);
+  //     toast.error(error.message || 'Failed to search organizations');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
-     // ✅ Handle empty or undefined data
-     if (!Array.isArray(result) || result.length === 0) {
-       setFilteredOrganizations([]);
-       toast.error('No organization found');
-     } else {
-       setFilteredOrganizations(result);
-       toast.success(`Found ${result.length} organization(s)`);
-     }
-   } catch (error: any) {
-     console.error('Error searching organizations:', error);
-     toast.error(error.message || 'Failed to search organizations');
-   } finally {
-     setLoading(false);
-   }
- };
+  // automatic search with debounce
+  // ✅ Auto search after user stops typing for 5 seconds
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      // If user clears input → reset back to normal list
+      setSearchMode(false);
+      loadOrganizations(currentPage);
+      return;
+    }
+
+    // Clear previous timeout if the user keeps typing
+    if (debounceTimeout) clearTimeout(debounceTimeout);
+
+    const timeout = setTimeout(async () => {
+      try {
+        setSearchMode(true);
+        setLoading(true);
+
+        const term = searchTerm.trim();
+
+        // Detect if user typed org code or name
+        const query = term.toUpperCase().startsWith('SYM-ORG-')
+          ? { organizationCode: term }
+          : { name: term };
+
+        console.log('[Search Query Sent]', query);
+
+        const result = await organizationService.searchOrganizations(query);
+        console.log('[Search Result]', result);
+
+        if (!Array.isArray(result) || result.length === 0) {
+          setFilteredOrganizations([]);
+          toast.error('No organization found');
+        } else {
+          setFilteredOrganizations(result);
+          toast.success(`Found ${result.length} organization(s)`);
+        }
+      } catch (error: any) {
+        console.error('Error searching organizations:', error);
+        toast.error(error.message || 'Failed to search organizations');
+      } finally {
+        setLoading(false);
+      }
+    }, 1000); // <-- 5 seconds debounce delay
+
+    setDebounceTimeout(timeout);
+
+    return () => clearTimeout(timeout);
+  }, [searchTerm]);
+
+
+  // handle search form
+
+  const handleClearSearch = ()=>{
+    setSearchTerm("");
+    setSearchMode(false);
+    setFilteredOrganizations([]);
+    loadOrganizations(currentPage);
+  }
 
 
   useEffect(() => {
     loadOrganizations(currentPage);
     fetchUsers();
-    loadActiveOrganizations()
+    loadActiveOrganizations();
   }, [currentPage]);
 
   // useEffect(() => {
-  //   filterOrganizations();
+  //   filterdOrganizations();
   // }, [organizations, searchTerm, statusFilter]);
 
   return (
@@ -562,34 +668,25 @@ export function OrganizationManagement() {
       {/* Filters */}
       <Card>
         <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col  sm:flex-row gap-4">
             <div className="flex-1">
-              <div className="relative w-[50%]">
+              <div className="relative w-[50%] flex  flex-row">
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search organizations..."
+                  placeholder="Search organizations by Code or Name..."
                   value={searchTerm}
-                  onChange={e => {
-                    const value = e.target.value;
-                    setSearchTerm(value);
-                    if (!value.trim()) {
-                      // reset to full list if cleared
-                      setFilteredOrganizations(organizations);
-                    }
-                  }}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') handleSearchOrganization();
-                  }}
+                  onChange={e => setSearchTerm(e.target.value)}
                   className="pl-10 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
-                <button
-                  type="button"
-                  onClick={handleSearchOrganization}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                >
-                  <MagnifyingGlassIcon className="h-5 w-5 text-blue-500" />
-                </button>
+                {searchTerm && (
+                  <button
+                    onClick={handleClearSearch}
+                    className="absolute right-3 top-1 bg-blue-600 hover:bg-blue-700 text-white shadow-sm focus:ring-blue-500 px-3 py-1.5 text-sm rounded-lg  "
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
             </div>
 
@@ -613,7 +710,7 @@ export function OrganizationManagement() {
 
       {/* Organizations Grid */}
       {loading ? (
-        // Loading state: skeleton cards or spinner
+        // 🔹 Loading Skeletons
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
@@ -633,208 +730,227 @@ export function OrganizationManagement() {
             </Card>
           ))}
         </div>
-      ) : filteredOrganizations?.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredOrganizations?.map(org => {
-            const stats = orgStats[org.id] || { users: 0, courses: 0, activeUsers: 0 };
-            return (
-              <Card key={org.id} className="group hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center space-x-3 min-w-0">
-                      <div
-                        className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: org?.primaryColor }}
-                      >
-                        <BuildingOfficeIcon className="h-6 w-6 text-white" />
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
-                          {org?.name ?? 'N/A'}
-                        </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                          Created {org.createdAt ? org.createdAt.toLocaleDateString() : 'N/A'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
-                      <span
-                        className={`px-2 py-1 text-xs rounded-full whitespace-nowrap ${
-                          org?.status === 'active'
-                            ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                            : org.status === 'suspended'
-                            ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
-                            : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
-                        }`}
-                      >
-                        {org?.status ?? 'active'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-3 min-h-[3rem]">
-                    {org?.description ?? 'N/A'}
-                  </p>
-
-                  {/* Organization Stats */}
-                  <div className="grid grid-cols-3 gap-4 mb-4 py-2">
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-gray-900 dark:text-white">
-                        {formatNumber(stats?.registeredUsers ?? 0)}
-                      </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400 truncate">Users</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-gray-900 dark:text-white">
-                        {stats?.courses ?? 0}
-                      </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                        Courses
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-gray-900 dark:text-white">
-                        {formatNumber(stats?.totalActiveUsers ?? 0)}
-                      </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                        Active
-                      </div>
-                    </div>
-
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-gray-900 dark:text-white">
-                        {formatNumber(stats?.maxUsers ?? 0)}
-                      </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                        MaxUsers
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          // Set the selected organization for editing
-                          setSelectedOrgForEdit(org);
-                          // Pre-fill the edit form with organization data
-                          setEditOrgData({
-                            name: org.name,
-                            description: org.description,
-                            status: org.status as 'active' | 'suspended',
-                            primaryColor: org.primaryColor || '#3B82F6',
-                            maxUsers: org.maxUsers,
-                            expiryDay: org.expiryDay
-                              ? new Date(org.expiryDay).toISOString().split('T')[0]
-                              : '', // Convert Date → 'YYYY-MM-DD'
-                          });
-                          // Open the edit modal
-                          setShowEditModal(true);
-                        }}
-                      >
-                        <PencilIcon className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openAssignAdminModal(org.name)}
-                      >
-                        <UserPlusIcon className="h-4 w-4 mr-1" />
-                        Add Admin
-                      </Button>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleGenerateJoinCode(org.name)}
-                      >
-                        {codeGenerate === org.name ? (
-                          <div className="flex items-center gap-2">
-                            <span className="h-4 w-4 border-2 border-t-transparent border-gray-500 rounded-full animate-spin"></span>
-                            <span>...</span>
-                          </div>
-                        ) : (
-                          <>
-                            <PlusIcon className="h-4 w-4 mr-1" />
-                            Generate Code
-                          </>
-                        )}
-                      </Button>
-                      {org.status === 'active' ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleStatusChange(org.id, 'suspended')}
-                          disabled={changingStatus === org.id} // disable while loading
-                        >
-                          {changingStatus === org.id ? (
-                            <div className="flex items-center gap-2">
-                              <span className="h-4 w-4 border-2 border-t-transparent border-gray-500 rounded-full animate-spin"></span>
-                              <span>...</span>
-                            </div>
-                          ) : (
-                            <>
-                              <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
-                              Suspend
-                            </>
-                          )}
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleStatusChange(org.id, 'active')}
-                          disabled={changingStatus === org.id}
-                        >
-                          {changingStatus === org.id ? (
-                            <div className="flex items-center gap-2">
-                              <span className="h-4 w-4 border-2 border-t-transparent border-gray-500 rounded-full animate-spin"></span>
-                              <span>...</span>
-                            </div>
-                          ) : (
-                            <>
-                              <CheckCircleIcon className="h-4 w-4 mr-1" />
-                              Activate
-                            </>
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                    <p className="font-medium">Code: {org?.organizationCode ?? 'N/A'}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
       ) : (
-        <Card>
-          <CardContent className="text-center py-12">
-            <BuildingOfficeIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              {searchTerm || statusFilter !== 'all'
-                ? 'No organizations found'
-                : 'No organizations yet'}
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              {searchTerm || statusFilter !== 'all'
-                ? 'Try adjusting your search or filters.'
-                : 'Create your first organization to get started.'}
-            </p>
-            {!searchTerm && statusFilter === 'all' && (
-              <Button onClick={() => setShowCreateModal(true)}>
-                <PlusIcon className="h-4 w-4 mr-2" />
-                Create First Organization
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        <>
+          {/*  Decide which list to render */}
+          {(() => {
+            const displayList = searchMode ? filteredOrganizations : organizations;
+
+            if (!displayList || displayList.length === 0) {
+              //  Empty State (Handles both Search and Normal Mode)
+              return (
+                <Card>
+                  <CardContent className="text-center py-12">
+                    <BuildingOfficeIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                      {searchMode ? 'No organizations found' : 'No organizations yet'}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-6">
+                      {searchMode
+                        ? 'Try adjusting your search or filters.'
+                        : 'Create your first organization to get started.'}
+                    </p>
+                    {!searchMode && (
+                      <Button onClick={() => setShowCreateModal(true)}>
+                        <PlusIcon className="h-4 w-4 mr-2" />
+                        Create First Organization
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            }
+
+            // 🔹 Actual Grid of Organizations
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {displayList.map(org => {
+                  const stats = orgStats[org.id] || { users: 0, courses: 0, activeUsers: 0 };
+
+                  return (
+                    <Card key={org.id} className="group hover:shadow-lg transition-shadow">
+                      <CardContent className="p-6">
+                        {/* Header */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center space-x-3 min-w-0">
+                            <div
+                              className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+                              style={{ backgroundColor: org?.primaryColor }}
+                            >
+                              <BuildingOfficeIcon className="h-6 w-6 text-white" />
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                                {org?.name ?? 'N/A'}
+                              </h3>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                                Created{' '}
+                                {org?.createdAt ? org?.createdAt.toLocaleDateString() : 'N/A'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Status Badge */}
+                          <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
+                            <span
+                              className={`px-2 py-1 text-xs rounded-full whitespace-nowrap ${
+                                org?.status === 'active'
+                                  ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                                  : org.status === 'suspended'
+                                  ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                                  : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
+                              }`}
+                            >
+                              {org?.status ?? 'active'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Description */}
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-3 min-h-[3rem]">
+                          {org?.description ?? 'N/A'}
+                        </p>
+
+                        {/* Stats */}
+                        <div className="grid grid-cols-3 gap-4 mb-4 py-2">
+                          <div className="text-center">
+                            <div className="text-lg font-bold text-gray-900 dark:text-white">
+                              {formatNumber(stats?.registeredUsers ?? 0)}
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                              Users
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-lg font-bold text-gray-900 dark:text-white">
+                              {stats?.courses ?? 0}
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                              Courses
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-lg font-bold text-gray-900 dark:text-white">
+                              {formatNumber(stats?.totalActiveUsers ?? 0)}
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                              Active
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-lg font-bold text-gray-900 dark:text-white">
+                              {formatNumber(stats?.maxUsers ?? 0)}
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                              MaxUsers
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedOrgForEdit(org);
+                                setEditOrgData({
+                                  name: org.name,
+                                  description: org.description,
+                                  status: org.status as 'active' | 'suspended',
+                                  primaryColor: org.primaryColor || '#3B82F6',
+                                  maxUsers: org.maxUsers,
+                                  expiryDay: org.expiryDay
+                                    ? new Date(org.expiryDay).toISOString().split('T')[0]
+                                    : '',
+                                });
+                                setShowEditModal(true);
+                              }}
+                            >
+                              <PencilIcon className="h-4 w-4 mr-1" />
+                              Edit
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openAssignAdminModal(org)}
+                            >
+                              <UserPlusIcon className="h-4 w-4 mr-1" />
+                              Add Admin
+                            </Button>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleGenerateJoinCode(org.name)}
+                            >
+                              {codeGenerate === org.name ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="h-4 w-4 border-2 border-t-transparent border-gray-500 rounded-full animate-spin"></span>
+                                  <span>...</span>
+                                </div>
+                              ) : (
+                                <>
+                                  <PlusIcon className="h-4 w-4 mr-1" />
+                                  Generate Code
+                                </>
+                              )}
+                            </Button>
+
+                            {org.status === 'active' ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleStatusChange(org.id, 'suspended')}
+                                disabled={changingStatus === org.id}
+                              >
+                                {changingStatus === org.id ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="h-4 w-4 border-2 border-t-transparent border-gray-500 rounded-full animate-spin"></span>
+                                    <span>...</span>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
+                                    Suspend
+                                  </>
+                                )}
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleStatusChange(org.id, 'active')}
+                                disabled={changingStatus === org.id}
+                              >
+                                {changingStatus === org.id ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="h-4 w-4 border-2 border-t-transparent border-gray-500 rounded-full animate-spin"></span>
+                                    <span>...</span>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <CheckCircleIcon className="h-4 w-4 mr-1" />
+                                    Activate
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                          </div>
+                          <p className="font-medium text-black dark:text-white">Code: {org?.organizationCode ?? 'N/A'}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </>
       )}
 
       {/* Pagination Controls */}
@@ -1125,8 +1241,16 @@ export function OrganizationManagement() {
             organizationId: '',
           });
         }}
-        title="Create and Assign Admin"
       >
+        {selectOrgName && (
+          <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Assigning admin to:{' '}
+              <span className="font-semibold text-blue-600">{selectOrgName}</span>
+            </p>
+          </div>
+        )}
+
         <form className="space-y-4" onSubmit={handleCreateAdmin}>
           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <div className="flex items-start">

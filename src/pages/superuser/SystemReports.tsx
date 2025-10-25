@@ -14,10 +14,16 @@ import {
   GlobeAltIcon,
   BuildingOfficeIcon,
 } from '@heroicons/react/24/outline';
-import { ActiveOrganizationStats, ActiveUserStats, PlatformStatsResponse } from '../../types';
+import {
+  ActiveOrganizationStats,
+  ActiveUserStats,
+  PlatformStatsResponse,
+  SystemUsageResponse,
+} from '../../types';
 import { adminService } from '../../services/adminService';
 import { organizationService } from '../../services/organizationService';
 import toast from 'react-hot-toast';
+import { getUsageBar } from '../../utils/usageBar';
 
 export function SystemReports() {
   const [totalOrgs, setTotalOrgs] = useState<ActiveOrganizationStats | null>(null);
@@ -66,6 +72,9 @@ export function SystemReports() {
       mobileUsage: '',
     },
   });
+
+  const [usage, setUsage] = useState<SystemUsageResponse | null>(null);
+  const [loadingUsage, setLoadingUsage] = useState(false);
   const loadReportData = async () => {
     try {
       // Mock data loading - replace with real API calls
@@ -141,7 +150,7 @@ export function SystemReports() {
       setReportData(mockData);
     } catch (error) {
       console.error('Failed to load report data:', error);
-    } 
+    }
   };
 
   const exportReport = (format: 'csv' | 'pdf') => {
@@ -301,8 +310,8 @@ export function SystemReports() {
       setOrgLoading(true);
       const response = await organizationService.getTotalOrganizationActiveOnes();
       setTotalOrgs(response);
-    } catch (error) {
-      toast.error('failed to load total organization');
+    } catch (error: any) {
+      toast.error(error.message);
     } finally {
       setOrgLoading(false);
     }
@@ -313,8 +322,8 @@ export function SystemReports() {
       setUserLoading(true);
       const response = await adminService.getTotalUsers();
       setTotalUsers(response);
-    } catch (error) {
-      toast.error('failed to load Total Users');
+    } catch (error: any) {
+      toast.error(error.message);
     } finally {
       setUserLoading(false);
     }
@@ -332,6 +341,18 @@ export function SystemReports() {
     }
   };
 
+  const systemUsage = async () => {
+    try {
+      setLoadingUsage(true);
+      const data = await adminService.systemUsage();
+      setUsage(data);
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setLoadingUsage(false);
+    }
+  };
+
   // useEffects
   useEffect(() => {
     loadReportData();
@@ -341,6 +362,7 @@ export function SystemReports() {
     loadOrganization();
     loadUsers();
     systemCheck();
+    systemUsage();
   }, []);
 
   // System statistics Grid
@@ -466,7 +488,10 @@ export function SystemReports() {
                 {systemLoading ? (
                   <p className="text-sm text-blue-600"> Loading ....</p>
                 ) : (
-                  <p>{platformHealth.responseTime?.value ?? 0}{" "} {platformHealth.responseTime?.unit ?? "N/A"} </p>
+                  <p>
+                    {platformHealth.responseTime?.value ?? 0}{' '}
+                    {platformHealth.responseTime?.unit ?? 'N/A'}{' '}
+                  </p>
                 )}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Avg Response Time</div>
@@ -483,8 +508,8 @@ export function SystemReports() {
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Active Connections</div>
             </div>
-                 
-                 {/* Todo  system error section */}
+
+            {/* Todo  system error section */}
             {/* <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
               <GlobeAltIcon className="h-8 w-8 mx-auto text-yellow-600 mb-2" />
               <div className="text-2xl font-bold text-yellow-600 mb-1">
@@ -591,44 +616,88 @@ export function SystemReports() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              <div>
-                <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  <span>Storage Used</span>
-                  <span>{reportData.platformOverview.storageUsed} / 5TB</span>
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div className="bg-blue-600 h-2 rounded-full" style={{ width: '48%' }} />
-                </div>
-              </div>
+              {loadingUsage ? (
+                <p className="text-sm text-blue-600">Loading Resource Usage...</p>
+              ) : (
+                <div>
+                  {/* Storage Used */}
+                  <div >
+                    <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
+                      <span>Storage Used</span>
+                      <span>{usage?.resourceUsage?.storageUsed ?? '0'} / 5TB</span>
+                    </div>
+                    {(() => {
+                      const { percentage, color } = getUsageBar(
+                        usage?.resourceUsage?.storageUsed ?? '0TB',
+                        '5TB'
+                      );
+                      return (
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4">
+                          <div
+                            className={`${color} h-2 rounded-full transition-all duration-500`}
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      );
+                    })()}
+                  </div>
 
-              <div>
-                <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  <span>Bandwidth Used</span>
-                  <span>{reportData.platformOverview.bandwidthUsed} / 2TB</span>
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div className="bg-green-600 h-2 rounded-full" style={{ width: '60%' }} />
-                </div>
-              </div>
+                  {/* Bandwidth Used */}
+                  <div>
+                    <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
+                      <span>Bandwidth Used</span>
+                      <span>{usage?.resourceUsage?.bandwidthUsed ?? '0'} / 2TB</span>
+                    </div>
+                    {(() => {
+                      const { percentage, color } = getUsageBar(
+                        usage?.resourceUsage?.bandwidthUsed ?? '0TB',
+                        '2TB'
+                      );
+                      return (
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4">
+                          <div
+                            className={`${color} h-2 rounded-full transition-all duration-500`}
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      );
+                    })()}
+                  </div>
 
-              <div>
-                <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  <span>Database Size</span>
-                  <span>{reportData.systemMetrics.databaseSize} / 100GB</span>
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div className="bg-purple-600 h-2 rounded-full" style={{ width: '45%' }} />
-                </div>
-              </div>
+                  {/* Database Size */}
+                  <div>
+                    <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
+                      <span>Database Size</span>
+                      <span>{usage?.resourceUsage?.databaseSize ?? '0'} / 100GB</span>
+                    </div>
+                    {(() => {
+                      const { percentage, color } = getUsageBar(
+                        usage?.resourceUsage?.databaseSize ?? '0GB',
+                        '100GB'
+                      );
+                      return (
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4">
+                          <div
+                            className={`${color} h-2 rounded-full transition-all duration-500`}
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      );
+                    })()}
+                  </div>
 
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Backup Status</span>
-                  <span className="px-2 py-1 text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded">
-                    {reportData.systemMetrics.backupStatus}
-                  </span>
+                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Backup Status
+                      </span>
+                      <span className="px-2 py-1 text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded">
+                        {usage?.resourceUsage?.backupStatus ?? 'N/A'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -640,59 +709,67 @@ export function SystemReports() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <ClockIcon className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Peak Hours</span>
-                </div>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  {reportData.usagePatterns.peakHours}
-                </span>
-              </div>
+              {loadingUsage ? (
+                <p className="text-sm text-blue-600">Loading Usage Patterns ...</p>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <ClockIcon className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Peak Hours</span>
+                    </div>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      {usage?.usagePatterns?.peakHours ?? 'No Data'}
+                    </span>
+                  </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <GlobeAltIcon className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Most Active Day</span>
-                </div>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  {reportData.usagePatterns.mostActiveDay}
-                </span>
-              </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <GlobeAltIcon className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Most Active Day
+                      </span>
+                    </div>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      {usage?.usagePatterns?.mostActiveDay ?? 'No Data'}
+                    </span>
+                  </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <UserGroupIcon className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    Avg Session Duration
-                  </span>
-                </div>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  {reportData.usagePatterns.avgSessionDuration}
-                </span>
-              </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <UserGroupIcon className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Avg Session Duration
+                      </span>
+                    </div>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      {usage?.usagePatterns?.avgSessionDuration ?? 'No Data'}
+                    </span>
+                  </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <ServerIcon className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Mobile Usage</span>
-                </div>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  {reportData.usagePatterns.mobileUsage}
-                </span>
-              </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <ServerIcon className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Mobile Usage</span>
+                    </div>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      {usage?.usagePatterns?.mobileUsage ?? 'No Data'}
+                    </span>
+                  </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <ChartBarIcon className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    Peak Concurrent Users
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <ChartBarIcon className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Peak Concurrent Users
+                      </span>
+                    </div>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      {usage?.usagePatterns?.peakConcurrentUsers ?? 'No Data'}
+                    </span>
+                  </div>
                 </div>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  {reportData.systemMetrics.peakConcurrentUsers.toLocaleString()}
-                </span>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
