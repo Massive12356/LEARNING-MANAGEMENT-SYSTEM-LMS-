@@ -375,7 +375,7 @@ export function AdminReports() {
       </div>
 
       {/* Detailed Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Popular Courses */}
         <Card>
           <CardHeader>
@@ -461,49 +461,6 @@ export function AdminReports() {
                   </span>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Recent Activity
-            </h2>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[
-                { type: 'completion', user: 'John Doe', course: 'React Basics', time: '2 hours ago' },
-                { type: 'enrollment', user: 'Jane Smith', course: 'TypeScript Advanced', time: '4 hours ago' },
-                { type: 'certificate', user: 'Mike Johnson', course: 'JavaScript Fundamentals', time: '6 hours ago' },
-                { type: 'completion', user: 'Sarah Wilson', course: 'React Advanced', time: '8 hours ago' }
-              ].map((activity, index) => (
-                <div key={index} className="flex items-center space-x-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    activity.type === 'completion' ? 'bg-green-100 dark:bg-green-900' :
-                    activity.type === 'enrollment' ? 'bg-blue-100 dark:bg-blue-900' :
-                    'bg-yellow-100 dark:bg-yellow-900'
-                  }`}>
-                    {activity.type === 'completion' && <BookOpenIcon className="h-4 w-4 text-green-600" />}
-                    {activity.type === 'enrollment' && <UserGroupIcon className="h-4 w-4 text-blue-600" />}
-                    {activity.type === 'certificate' && <TrophyIcon className="h-4 w-4 text-yellow-600" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900 dark:text-white">
-                      <span className="font-medium">{activity.user}</span>
-                      {activity.type === 'completion' && ' completed '}
-                      {activity.type === 'enrollment' && ' enrolled in '}
-                      {activity.type === 'certificate' && ' earned certificate for '}
-                      <span className="font-medium">{activity.course}</span>
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {activity.time}
-                    </p>
-                  </div>
-                </div>
-              ))}
             </div>
           </CardContent>
         </Card>
