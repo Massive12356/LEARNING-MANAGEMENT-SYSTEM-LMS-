@@ -229,13 +229,13 @@ class AdminService {
     }
   }
 
-  async systemUsage():Promise<SystemUsageResponse>{
+  async systemUsage(): Promise<SystemUsageResponse> {
     try {
       const response = await apiClient.get<SystemUsageResponse>('/platform/statistics');
-      console.log('[adminService]: RESPONSE FROM BACKEND', response.data)
-      return response.data
+      console.log('[adminService]: RESPONSE FROM BACKEND', response.data);
+      return response.data;
     } catch (error) {
-      const err = error as AxiosError<{message?: string}>
+      const err = error as AxiosError<{ message?: string }>;
       console.log('[adminService]: ERROR RESPONSE FROM BACKEND', err.response?.data || err.message);
       throw new Error(err.response?.data?.message || 'Failed to load Data');
     }
@@ -250,6 +250,18 @@ class AdminService {
       const err = error as AxiosError<{ message?: string }>;
       console.error('[AdminService] Search users error:', err.response?.data || err.message);
       throw new Error(err.response?.data?.message || 'Failed to search users');
+    }
+  }
+
+  // adminService functions for admins
+  async inviteUsers(payload: Omit<RegisterPayload, 'password'>): Promise<User[]> {
+    try {
+      const response = await apiClient.post('/user/send-invitation/new-user/organization', payload);
+      console.log('[adminService] INVITE USERS RESPONSE FROM BACKEND', response.data.user);
+      return response.data?.user || response.data?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      throw new Error(err.response?.data?.message || 'Failed to Invite User');
     }
   }
 }

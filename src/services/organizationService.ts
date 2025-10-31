@@ -12,11 +12,25 @@ import apiClient from './apiClient';
 class OrganizationService {
   async getOrganizationById(id: string): Promise<Organization | null> {
     try {
-      const response = await apiClient.get<Organization>(`/organization/${id}`);
-      return response.data;
+      const response = await apiClient.get<{ message: string; organization: Organization }>(
+        `/organization/${id}`
+      );
+
+      console.log('[organizationService] RESPONSE FROM BACKEND:', response.data);
+
+      // ✅ Extract the nested organization object
+      return response.data.organization;
     } catch (error) {
-      console.error('Error fetching organization:', error);
-      return null;
+      const err = error as AxiosError<{ message?: string }>;
+      console.error(
+        '[organizationService] Error fetching organization:',
+        err.response?.data || err.message
+      );
+      throw new Error(
+        err.response?.data?.message ||
+          err.message ||
+          '[organizationService] Error fetching organization'
+      );
     }
   }
 

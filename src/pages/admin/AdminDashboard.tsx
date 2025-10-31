@@ -39,10 +39,10 @@ export function AdminDashboard() {
   }, [user]);
 
   const loadOrganization = async () => {
-    if (!user?.organizationId) return;
+    if (!user?.id) return;
     
     try {
-      const orgData = await organizationService.getOrganizationById(user.organizationId);
+      const orgData = await organizationService.getOrganizationById(user.id);
       setOrganization(orgData);
     } catch (error) {
       console.error('Failed to load organization:', error);

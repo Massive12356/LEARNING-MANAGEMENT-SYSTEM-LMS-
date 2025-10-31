@@ -53,8 +53,8 @@ export function OrganizationSettings() {
         orgIdToLoad = orgIdFromQuery;
       } 
       // For other users, use their assigned organization
-      else if (user?.organizationId) {
-        orgIdToLoad = user.organizationId;
+      else if (user?.id) {
+        orgIdToLoad = user.id;
       }
       
       if (!orgIdToLoad) {

@@ -10,7 +10,7 @@ import { FileUploader } from '../../components/ui/FileUploader';
 import { mockApi } from '../../services/mockApi';
 import { organizationService } from '../../services/organizationService';
 import { adminService } from '../../services/adminService';
-import { User, Organization } from '../../types';
+import { User, Organization,RegisterPayload } from '../../types';
 import { 
   PlusIcon,
   UserGroupIcon,
@@ -20,6 +20,9 @@ import {
   ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+
+// This version omits password (backend generates it)
+type InviteUserPayload = Omit<RegisterPayload, 'password'>;
 
 // Pending Users Table Component
 const PendingUsersTable: React.FC<{ 
@@ -127,29 +130,28 @@ export function UserManagement() {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [activeTab, setActiveTab] = useState<'active' | 'pending'>('active');
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
+  const [invitingUsers, setInvitingUsers] = useState(false);
 
   const [inviteData, setInviteData] = useState({
     email: '',
     firstName: '',
     lastName: '',
-    role: 'student' as 'student' | 'teacher'
+    role: 'student' as 'student' | 'teacher',
+    organizationId: ""
   });
 
   const loadOrganization = useCallback(async () => {
-    if (!currentUser?.organizationId) return;
+    if (!currentUser?.id) return;
     
     try {
-      const orgData = await organizationService.getOrganizationById(currentUser.organizationId);
+      const orgData = await organizationService.getOrganizationById(currentUser.id);
       setOrganization(orgData);
     } catch (error) {
       console.error('Failed to load organization:', error);
     }
-  }, [currentUser?.organizationId]);
+  }, [currentUser?.id]);
 
-  useEffect(() => {
-    loadUsers();
-    loadOrganization();
-  }, [currentUser, loadOrganization]);
+ 
 
   const loadUsers = async () => {
     if (!currentUser?.organizationId) return;
@@ -171,7 +173,8 @@ export function UserManagement() {
     }
   };
 
-  const handleInviteUser = async () => {
+  const handleInviteUser = async ( e:React.FormEvent) => {
+    e.preventDefault()
     if (!inviteData.email || !inviteData.firstName || !inviteData.lastName) {
       toast.error('Please fill in all required fields');
       return;
@@ -181,36 +184,31 @@ export function UserManagement() {
       toast.error('Organization not found');
       return;
     }
-
     try {
-      if (inviteData.role === 'teacher') {
-        await adminService.createTeacher(
-          {
-            email: inviteData.email,
-            firstName: inviteData.firstName,
-            lastName: inviteData.lastName,
-            password: 'TempPass123!' // In a real app, this would be a generated password
-          },
-          currentUser.organizationId
-        );
-      } else {
-        await adminService.createStudent(
-          {
-            email: inviteData.email,
-            firstName: inviteData.firstName,
-            lastName: inviteData.lastName,
-            password: 'TempPass123!' // In a real app, this would be a generated password
-          },
-          currentUser.organizationId
-        );
-      }
-      
-      toast.success(`${inviteData.role === 'teacher' ? 'Teacher' : 'Student'} created successfully`);
-      setInviteData({ email: '', firstName: '', lastName: '', role: 'student' });
+      setInvitingUsers(true)
+
+       // prepare payload and attached organizational code to the 
+       const payload: InviteUserPayload = {
+         ...inviteData,
+         organizationId: organization?.organizationCode,
+       };
+
+       console.log("[PayloadComponentFunction]", payload)
+      await adminService.inviteUsers(payload)
+      toast.success(` created successfully`);
+      setInviteData({ email: '', firstName: '', lastName: '', role: 'student',organizationId:"" });
       setShowInviteModal(false);
       loadUsers();
     } catch (error) {
-      toast.error(`Failed to create ${inviteData.role}`);
+      // 👇 Display the error thrown from the service
+      if (error instanceof Error) {
+        toast.error(error.message);
+        console.log(error.message)
+      } else {
+        toast.error('Something went wrong while inviting the user');
+      }
+    }finally{
+      setInvitingUsers(false)
     }
   };
 
@@ -407,6 +405,10 @@ export function UserManagement() {
       )
     }
   ];
+  useEffect(() => {
+    loadUsers();
+    loadOrganization();
+  }, [currentUser, loadOrganization]);
 
   if (loading) {
     return (
@@ -416,14 +418,14 @@ export function UserManagement() {
     );
   }
 
+   
+
   return (
     <div className="space-y-8">
       {/* Header with Organization Context */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            User Management
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">User Management</h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
             Manage users, roles, and permissions for your organization
           </p>
@@ -516,7 +518,11 @@ export function UserManagement() {
           loading={loading}
         />
       ) : (
-        <PendingUsersTable pendingUsers={pendingUsers} onApprove={handleApproveUser} onReject={handleRejectUser} />
+        <PendingUsersTable
+          pendingUsers={pendingUsers}
+          onApprove={handleApproveUser}
+          onReject={handleRejectUser}
+        />
       )}
 
       {/* Invite User Modal */}
@@ -528,7 +534,8 @@ export function UserManagement() {
         <div className="space-y-4">
           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-sm text-blue-700 dark:text-blue-300">
-              Users will be invited to join <strong>{organization?.name || 'your organization'}</strong>.
+              Users will be invited to join{' '}
+              <strong>{organization?.name || 'your organization'}</strong>.
             </p>
           </div>
 
@@ -536,22 +543,22 @@ export function UserManagement() {
             <Input
               label="First Name"
               value={inviteData.firstName}
-              onChange={(e) => setInviteData(prev => ({ ...prev, firstName: e.target.value }))}
+              onChange={e => setInviteData(prev => ({ ...prev, firstName: e.target.value }))}
               placeholder="John"
             />
             <Input
               label="Last Name"
               value={inviteData.lastName}
-              onChange={(e) => setInviteData(prev => ({ ...prev, lastName: e.target.value }))}
+              onChange={e => setInviteData(prev => ({ ...prev, lastName: e.target.value }))}
               placeholder="Doe"
             />
           </div>
-          
+
           <Input
             label="Email Address"
             type="email"
             value={inviteData.email}
-            onChange={(e) => setInviteData(prev => ({ ...prev, email: e.target.value }))}
+            onChange={e => setInviteData(prev => ({ ...prev, email: e.target.value }))}
             placeholder="john.doe@example.com"
           />
 
@@ -561,7 +568,7 @@ export function UserManagement() {
             </label>
             <select
               value={inviteData.role}
-              onChange={(e) => setInviteData(prev => ({ ...prev, role: e.target.value as any }))}
+              onChange={e => setInviteData(prev => ({ ...prev, role: e.target.value as any }))}
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="student">Student</option>
@@ -573,8 +580,8 @@ export function UserManagement() {
             <Button variant="outline" onClick={() => setShowInviteModal(false)}>
               Cancel
             </Button>
-            <Button onClick={handleInviteUser}>
-              Create User
+            <Button onClick={handleInviteUser} loading={invitingUsers}>
+              {invitingUsers ? 'Inviting...' : 'Invite User'}
             </Button>
           </div>
         </div>
@@ -590,9 +597,10 @@ export function UserManagement() {
         <div className="space-y-6">
           <div>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Upload a CSV file to import multiple users at once. The CSV should include columns for firstName, lastName, email, and role.
+              Upload a CSV file to import multiple users at once. The CSV should include columns for
+              firstName, lastName, email, and role.
             </p>
-            
+
             <FileUploader
               accept=".csv"
               maxSize={5 * 1024 * 1024} // 5MB
@@ -604,12 +612,12 @@ export function UserManagement() {
           </div>
 
           <div>
-            <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-              CSV Format Example:
-            </h4>
+            <h4 className="font-medium text-gray-900 dark:text-white mb-2">CSV Format Example:</h4>
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-sm font-mono">
-              firstName,lastName,email,role<br />
-              John,Doe,john.doe@example.com,student<br />
+              firstName,lastName,email,role
+              <br />
+              John,Doe,john.doe@example.com,student
+              <br />
               Jane,Smith,jane.smith@example.com,teacher
             </div>
           </div>
@@ -618,9 +626,7 @@ export function UserManagement() {
             <Button variant="outline" onClick={() => setShowBulkImportModal(false)}>
               Cancel
             </Button>
-            <Button>
-              Import Users
-            </Button>
+            <Button>Import Users</Button>
           </div>
         </div>
       </Modal>

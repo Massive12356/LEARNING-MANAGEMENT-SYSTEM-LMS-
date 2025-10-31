@@ -30,7 +30,7 @@ import {
   DocumentTextIcon,
   EnvelopeIcon,
   PencilSquareIcon,
-  PresentationChartLineIcon
+  PresentationChartLineIcon,
 } from '@heroicons/react/24/outline';
 import { NotificationBell } from '../components/ui/NotificationBell';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -56,7 +56,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+      if (
+        profileDropdownRef.current &&
+        !profileDropdownRef.current.contains(event.target as Node)
+      ) {
         setProfileDropdownOpen(false);
       }
     };
@@ -77,17 +80,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   // Load organization data
   useEffect(() => {
     const loadOrganization = async () => {
-      if (!user?.organizationId) {
+      if (!user?.id) {
         setLoadingOrg(false);
         return;
       }
-
       try {
-        const orgData = await organizationService.getOrganizationById(user.organizationId);
+        const orgData = await organizationService.getOrganizationById(user.id);
         setOrganization(orgData);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to load organization:', error);
-        toast.error('Failed to load organization data');
+        toast.error(error.message);
       } finally {
         setLoadingOrg(false);
       }
@@ -122,28 +124,36 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
   const getRoleDisplayName = (role: string) => {
     switch (role) {
-      case 'student': return 'Student';
-      case 'teacher': return 'Teacher';
-      case 'admin': return 'Admin';
-      case 'superuser': return 'Superuser';
-      default: return role;
+      case 'student':
+        return 'Student';
+      case 'teacher':
+        return 'Teacher';
+      case 'admin':
+        return 'Admin';
+      case 'superuser':
+        return 'Superuser';
+      default:
+        return role;
     }
   };
 
   const getRoleBadgeClass = (role: string) => {
     switch (role) {
-      case 'student': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'teacher': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'admin': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-      case 'superuser': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+      case 'student':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'teacher':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'admin':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+      case 'superuser':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
     }
   };
 
   const getProfileMenuItems = () => {
-    const baseItems = [
-      { name: 'Profile', href: `/${user?.role}/settings`, icon: UserIcon }
-    ];
+    const baseItems = [{ name: 'Profile', href: `/${user?.role}/settings`, icon: UserIcon }];
 
     if (user?.role === 'student') {
       baseItems.push(
@@ -167,7 +177,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           { name: 'My Courses', href: '/student/my-courses', icon: BookOpenIcon },
           { name: 'Discover', href: '/student/discover', icon: MagnifyingGlassIcon },
           { name: 'Reports', href: '/student/reports', icon: ChartBarIcon },
-          { name: 'Notifications', href: '/student/notifications', icon: BellIcon }
+          { name: 'Notifications', href: '/student/notifications', icon: BellIcon },
         ];
       case 'teacher':
         return [
@@ -175,7 +185,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           { name: 'Courses', href: '/teacher/courses', icon: BookOpenIcon },
           { name: 'Certificates', href: '/teacher/certificates', icon: DocumentTextIcon },
           { name: 'Notifications', href: '/teacher/notifications', icon: BellIcon },
-          { name: 'Reports', href: '/teacher/reports', icon: ChartBarIcon }
+          { name: 'Reports', href: '/teacher/reports', icon: ChartBarIcon },
         ];
       case 'admin':
         return [
@@ -186,7 +196,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           { name: 'Organization', href: '/admin/organization', icon: BuildingOfficeIcon },
           { name: 'Email Templates', href: '/admin/email-templates', icon: PencilSquareIcon },
           { name: 'Notifications', href: '/admin/notifications', icon: BellIcon },
-          { name: 'Reports', href: '/admin/reports', icon: PresentationChartLineIcon }
+          { name: 'Reports', href: '/admin/reports', icon: PresentationChartLineIcon },
         ];
       case 'superuser':
         return [
@@ -194,12 +204,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           { name: 'Organizations', href: '/superuser/organizations', icon: BuildingOfficeIcon },
           { name: 'Users', href: '/superuser/users', icon: UserGroupIcon },
           { name: 'Reports', href: '/superuser/reports', icon: ChartBarIcon },
-          { name: 'Settings', href: '/superuser/settings', icon: CogIcon }
+          { name: 'Settings', href: '/superuser/settings', icon: CogIcon },
         ];
       default:
-        return [
-          { name: 'Dashboard', href: `/${user.role}/dashboard`, icon: HomeIcon }
-        ];
+        return [{ name: 'Dashboard', href: `/${user.role}/dashboard`, icon: HomeIcon }];
     }
   };
 
@@ -216,9 +224,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
       {/* Sidebar */}
-      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
-        fixed inset-y-0 left-0 z-50 ${sidebarCollapsed ? 'w-20' : 'w-64'} bg-white dark:bg-gray-800 transform transition-all duration-300 ease-in-out 
-        lg:translate-x-0 lg:static lg:inset-0 shadow-xl`}>
+      <div
+        className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
+        fixed inset-y-0 left-0 z-50 ${
+          sidebarCollapsed ? 'w-20' : 'w-64'
+        } bg-white dark:bg-gray-800 transform transition-all duration-300 ease-in-out 
+        lg:translate-x-0 lg:static lg:inset-0 shadow-xl`}
+      >
         <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-700">
           <Link to={`/${user.role}/dashboard`} className="flex items-center space-x-2">
             <div className="p-1.5 bg-blue-600 rounded-lg">
@@ -230,7 +242,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
               </span>
             )}
           </Link>
-          
+
           <div className="flex items-center space-x-2">
             <button
               onClick={toggleSidebar}
@@ -242,7 +254,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                 <ChevronLeftIcon className="h-5 w-5" />
               )}
             </button>
-            
+
             <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden p-1 rounded-md text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
@@ -254,13 +266,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
         <div className="flex-1 flex flex-col overflow-y-auto">
           {/* Organization Info */}
-          {user.role !== 'teacher' && !loadingOrg && organization && (
+          {user.role !== 'teacher' && user.role !== 'superuser' && !loadingOrg && organization && (
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center space-x-3">
                 {organization.logo ? (
-                  <img 
-                    src={organization.logo} 
-                    alt={organization.name} 
+                  <img
+                    src={organization.logo}
+                    alt={organization.name}
                     className="h-8 w-8 rounded object-cover"
                   />
                 ) : (
@@ -276,7 +288,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                   </div>
                 )}
               </div>
-              
+
               {isViewingAs && originalUser && (
                 <div className="mt-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
                   <div className="flex items-center justify-between">
@@ -305,13 +317,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
           {/* Navigation */}
           <nav className="flex-1 px-2 py-4 space-y-1">
-            {navigation.map((item) => {
+            {navigation.map(item => {
               const isActiveItem = isActive(item.href);
               return (
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`flex items-center ${sidebarCollapsed ? 'justify-center px-3' : 'space-x-3 px-3'} py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex items-center ${
+                    sidebarCollapsed ? 'justify-center px-3' : 'space-x-3 px-3'
+                  } py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActiveItem
                       ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -330,8 +344,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
             <button
               onClick={toggleTheme}
-              className={`flex items-center ${sidebarCollapsed ? 'justify-center px-3' : 'space-x-3 px-3'} py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors`}
-              title={sidebarCollapsed ? (theme === 'light' ? 'Dark Mode' : 'Light Mode') : undefined}
+              className={`flex items-center ${
+                sidebarCollapsed ? 'justify-center px-3' : 'space-x-3 px-3'
+              } py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors`}
+              title={
+                sidebarCollapsed ? (theme === 'light' ? 'Dark Mode' : 'Light Mode') : undefined
+              }
             >
               {theme === 'light' ? (
                 <>
@@ -345,10 +363,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                 </>
               )}
             </button>
-            
+
             <button
               onClick={handleLogoutClick}
-              className={`flex items-center ${sidebarCollapsed ? 'justify-center px-3' : 'space-x-3 px-3'} py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors`}
+              className={`flex items-center ${
+                sidebarCollapsed ? 'justify-center px-3' : 'space-x-3 px-3'
+              } py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors`}
               title={sidebarCollapsed ? 'Sign Out' : undefined}
             >
               <ArrowRightOnRectangleIcon className="h-5 w-5" />
@@ -360,7 +380,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -377,30 +397,33 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             >
               <Bars3Icon className="h-6 w-6" />
             </button>
-            
+
             <div className="flex-1 flex items-center">
               {/* Organization Badge in Header for non-teachers */}
-              {user.role !== 'teacher' && !loadingOrg && organization && (
-                <div className="hidden lg:flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 rounded-full px-3 py-1">
-                  {organization.logo ? (
-                    <img 
-                      src={organization.logo} 
-                      alt={organization.name} 
-                      className="h-6 w-6 rounded object-cover"
-                    />
-                  ) : (
-                    <BuildingOfficeIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                  )}
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {organization.name}
-                  </span>
-                </div>
-              )}
+              {user.role !== 'teacher' &&
+                user.role !== 'superuser' &&
+                !loadingOrg &&
+                organization && (
+                  <div className="hidden lg:flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 rounded-full px-3 py-1">
+                    {organization.logo ? (
+                      <img
+                        src={organization.logo}
+                        alt={organization.name}
+                        className="h-6 w-6 rounded object-cover"
+                      />
+                    ) : (
+                      <BuildingOfficeIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                    )}
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {organization.name}
+                    </span>
+                  </div>
+                )}
             </div>
-            
+
             <div className="flex items-center space-x-3">
               <NotificationBell />
-              
+
               {/* User Profile Dropdown */}
               <div className="relative" ref={profileDropdownRef}>
                 <button
@@ -417,7 +440,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                   ) : (
                     <div className="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center">
                       <span className="text-sm font-medium text-white">
-                        {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                        {user.firstName?.charAt(0)}
+                        {user.lastName?.charAt(0)}
                       </span>
                     </div>
                   )}
@@ -435,14 +459,18 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                         {user.email}
                       </p>
                       {/* Account Type Badge */}
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-2 ${getRoleBadgeClass(user.role)}`}>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-2 ${getRoleBadgeClass(
+                          user.role
+                        )}`}
+                      >
                         {getRoleDisplayName(user.role)}
                       </span>
                     </div>
 
                     {/* Menu Items */}
                     <div className="py-1">
-                      {getProfileMenuItems().map((item) => (
+                      {getProfileMenuItems().map(item => (
                         <Link
                           key={item.name}
                           to={item.href}
@@ -453,7 +481,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                           <span>{item.name}</span>
                         </Link>
                       ))}
-                      
+
                       {/* Theme Toggle */}
                       <button
                         onClick={toggleTheme}
@@ -492,9 +520,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
         {/* Page Content */}
         <main className="flex-1 overflow-auto">
-          <div className="p-4 sm:p-6 lg:p-8">
-            {children}
-          </div>
+          <div className="p-4 sm:p-6 lg:p-8">{children}</div>
         </main>
       </div>
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 
@@ -65,7 +65,7 @@ const RadialProgress: React.FC<{ percentage: number; size?: number }> = ({ perce
 };
 
 export const StudentDashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const navigate = useNavigate();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -83,11 +83,11 @@ export const StudentDashboard: React.FC = () => {
         mockApi.getUserEnrollments(user.id),
         mockApi.getCourses({ 
           status: 'live',
-          organizationId: user.organizationId // Only get courses from user's organization
+          organizationId: user.id // Only get courses from user's organization
         }),
         mockApi.getPrograms({ 
           status: 'live',
-          organizationId: user.organizationId // Only get programs from user's organization
+          organizationId: user.id // Only get programs from user's organization
         }),
         mockApi.getCertificates(user.id)
       ]);
@@ -127,10 +127,10 @@ export const StudentDashboard: React.FC = () => {
   };
 
   const loadOrganization = async () => {
-    if (!user?.organizationId) return;
+    if (!user?.id) return;
     
     try {
-      const orgData = await organizationService.getOrganizationById(user.organizationId);
+      const orgData = await organizationService.getOrganizationById(user.id);
       setOrganization(orgData);
     } catch (error) {
       console.error('Failed to load organization:', error);
@@ -248,7 +248,7 @@ export const StudentDashboard: React.FC = () => {
           {organization ? (
             <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
               <BuildingOfficeIcon className="h-4 w-4 mr-1" />
-              <span>Learning with {organization.name}</span>
+              <span>Learning with {organization?.name}</span>
             </div>
           ) : (
             <div className="mt-2 flex items-center text-sm text-yellow-600 dark:text-yellow-400">
