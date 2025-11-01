@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../stores/authStore';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -10,14 +10,14 @@ import { FileUploader } from '../../components/ui/FileUploader';
 import { mockApi } from '../../services/mockApi';
 import { organizationService } from '../../services/organizationService';
 import { adminService } from '../../services/adminService';
-import { User, Organization,RegisterPayload } from '../../types';
-import { 
+import { User, Organization, RegisterPayload, ActiveUsersResponse,PendingUsersResponse } from '../../types';
+import {
   PlusIcon,
   UserGroupIcon,
   ArrowUpTrayIcon,
   BuildingOfficeIcon,
   EyeIcon,
-  ArrowDownTrayIcon
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -25,10 +25,10 @@ import toast from 'react-hot-toast';
 type InviteUserPayload = Omit<RegisterPayload, 'password'>;
 
 // Pending Users Table Component
-const PendingUsersTable: React.FC<{ 
-  pendingUsers: any[]; 
-  onApprove: (userId: string, role: string) => void; 
-  onReject: (userId: string) => void; 
+const PendingUsersTable: React.FC<{
+  pendingUsers: any[];
+  onApprove: (user: any) => void;
+  onReject: (user: any) => void;
 }> = ({ pendingUsers, onApprove, onReject }) => {
   if (pendingUsers.length === 0) {
     return (
@@ -49,13 +49,22 @@ const PendingUsersTable: React.FC<{
       <table className="min-w-full divide-y divide-gray-300 dark:divide-gray-700">
         <thead className="bg-gray-50 dark:bg-gray-800">
           <tr>
-            <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-white sm:pl-6">
+            <th
+              scope="col"
+              className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-white sm:pl-6"
+            >
               User
             </th>
-            <th scope="col" className="px-3 py-33.5 text-left text-sm font-semibold text-gray-900 dark:text-white">
+            <th
+              scope="col"
+              className="px-3 py-33.5 text-left text-sm font-semibold text-gray-900 dark:text-white"
+            >
               Requested Role
             </th>
-            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">
+            <th
+              scope="col"
+              className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white"
+            >
               Submitted
             </th>
             <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
@@ -64,32 +73,35 @@ const PendingUsersTable: React.FC<{
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
-          {pendingUsers.map((user) => (
+          {pendingUsers.map(user => (
             <tr key={user.id}>
               <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
                 <div className="flex items-center">
                   <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
                     <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                      {user.firstName.charAt(0)}{user.lastName.charAt(0)}
+                      {user.firstName.charAt(0)}
+                      {user.lastName.charAt(0)}
                     </span>
                   </div>
                   <div className="ml-4">
                     <div className="font-medium text-gray-900 dark:text-white">
                       {user.firstName} {user.lastName}
                     </div>
-                    <div className="text-gray-500 dark:text-gray-400">
-                      {user.email}
-                    </div>
+                    <div className="text-gray-500 dark:text-gray-400">{user.email}</div>
                   </div>
                 </div>
               </td>
               <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  user.requestedRole === 'teacher' 
-                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' 
-                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                }`}>
-                  {user.requestedRole === 'teacher' ? 'Teacher (Fast-Track)' : user.requestedRole}
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    user.role === 'teacher'
+                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                      : user.role === 'admin'
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                  }`}
+                >
+                  {user.role === 'teacher' ? 'Teacher' : user.role}
                 </span>
               </td>
               <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
@@ -97,17 +109,10 @@ const PendingUsersTable: React.FC<{
               </td>
               <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                 <div className="flex items-center space-x-2">
-                  <Button 
-                    size="sm" 
-                    onClick={() => onApprove(user.id, user.requestedRole)}
-                  >
+                  <Button size="sm" onClick={() => onApprove(user)}>
                     Approve
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => onReject(user.id)}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => onReject(user)}>
                     Reject
                   </Button>
                 </div>
@@ -121,7 +126,7 @@ const PendingUsersTable: React.FC<{
 };
 
 export function UserManagement() {
-  const { user: currentUser, viewAsUser } = useAuth();
+  const { user: currentUser, viewAsUser } = useAuthStore();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -130,19 +135,30 @@ export function UserManagement() {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [activeTab, setActiveTab] = useState<'active' | 'pending'>('active');
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
+  const [totalPendingUsers, setTotalPendingUsers] = useState<number>(0);
   const [invitingUsers, setInvitingUsers] = useState(false);
+  const [totalActiveUsers, setTotalActiveUsers] = useState<ActiveUsersResponse | null>(null);
+  const [totalPages, setTotalPages] = useState(1);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
 
   const [inviteData, setInviteData] = useState({
     email: '',
     firstName: '',
     lastName: '',
     role: 'student' as 'student' | 'teacher',
-    organizationId: ""
+    organizationId: '',
   });
+
+  // 🔹 States for approve/reject confirmation modals
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const loadOrganization = useCallback(async () => {
     if (!currentUser?.id) return;
-    
+
     try {
       const orgData = await organizationService.getOrganizationById(currentUser.id);
       setOrganization(orgData);
@@ -151,30 +167,46 @@ export function UserManagement() {
     }
   }, [currentUser?.id]);
 
- 
-
-  const loadUsers = async () => {
+  const loadActiveUsers = async (page = 1, limit = 10) => {
     if (!currentUser?.organizationId) return;
-    
+
     try {
-      const usersData = await mockApi.getUsers({ 
-        organizationId: currentUser.organizationId 
-      });
-      setUsers(usersData.data);
-      
-      // Load pending users
-      const pendingData = await mockApi.getProvisionalUsers(currentUser.organizationId);
-      setPendingUsers(pendingData);
+      const response = await adminService.getActiveUsers(currentUser.organizationId, page, limit);
+
+      if (response) {
+        setUsers(response.users || []);
+        setTotalPages(response.totalPages || 1);
+      }
+      setTotalActiveUsers(response);
     } catch (error) {
-      console.error('Failed to load users:', error);
       toast.error('Failed to load users');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleInviteUser = async ( e:React.FormEvent) => {
-    e.preventDefault()
+  const loadPendingUsers = async (page = 1, limit = 10) => {
+    if (!currentUser?.organizationId) return;
+
+    setLoading(true);
+    try {
+      const response = await adminService.getPendingUsers(currentUser.organizationId, page, limit);
+      if (response) {
+        setPendingUsers(response.users || []);
+        setTotalPages(response.totalPages || 1);
+        // ✅ Set total pending users (number)
+        setTotalPendingUsers(response.totalPendingUsers || 0);
+      }
+    } catch (error) {
+      toast.error('Failed to load pending users');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInviteUser = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!inviteData.email || !inviteData.firstName || !inviteData.lastName) {
       toast.error('Please fill in all required fields');
       return;
@@ -185,56 +217,68 @@ export function UserManagement() {
       return;
     }
     try {
-      setInvitingUsers(true)
+      setInvitingUsers(true);
 
-       // prepare payload and attached organizational code to the 
-       const payload: InviteUserPayload = {
-         ...inviteData,
-         organizationId: organization?.organizationCode,
-       };
+      // prepare payload and attached organizational code to the
+      const payload: InviteUserPayload = {
+        ...inviteData,
+        organizationId: organization?.organizationCode,
+      };
 
-       console.log("[PayloadComponentFunction]", payload)
-      await adminService.inviteUsers(payload)
+      console.log('[PayloadComponentFunction]', payload);
+      await adminService.inviteUsers(payload);
       toast.success(` created successfully`);
-      setInviteData({ email: '', firstName: '', lastName: '', role: 'student',organizationId:"" });
+      setInviteData({
+        email: '',
+        firstName: '',
+        lastName: '',
+        role: 'student',
+        organizationId: '',
+      });
       setShowInviteModal(false);
-      loadUsers();
+      loadPendingUsers();
     } catch (error) {
       // 👇 Display the error thrown from the service
       if (error instanceof Error) {
         toast.error(error.message);
-        console.log(error.message)
+        console.log(error.message);
       } else {
         toast.error('Something went wrong while inviting the user');
       }
-    }finally{
-      setInvitingUsers(false)
+    } finally {
+      setInvitingUsers(false);
     }
   };
 
   const handleArchiveUser = async (userId: string) => {
-    if (!confirm('Are you sure you want to archive this user? They will lose access to the platform.')) {
+    if (
+      !confirm('Are you sure you want to archive this user? They will lose access to the platform.')
+    ) {
       return;
     }
 
     try {
       await mockApi.archiveUser(userId);
       toast.success('User archived successfully');
-      loadUsers();
+      loadActiveUsers();
     } catch (error) {
       toast.error('Failed to archive user');
     }
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Are you sure you want to permanently delete this user? This action cannot be undone.')) {
+    if (
+      !confirm(
+        'Are you sure you want to permanently delete this user? This action cannot be undone.'
+      )
+    ) {
       return;
     }
 
     try {
       await mockApi.deleteUser(userId);
       toast.success('User deleted successfully');
-      loadUsers();
+      loadActiveUsers();
     } catch (error) {
       toast.error('Failed to delete user');
     }
@@ -248,13 +292,16 @@ export function UserManagement() {
     }
   };
 
-  const handleApproveUser = async (userId: string, role: string) => {
+  const handleApproveUser = async (userId: string) => {
     if (!currentUser?.organizationId) return;
-    
+
     try {
-      await mockApi.approveProvisionalUser(userId, currentUser.organizationId, role);
+      console.log(`Payload id:`, userId);
+      await adminService.approveProvisionalUsers(userId);
       toast.success('User approved successfully');
-      loadUsers(); // Reload both active and pending users
+      // Reload both active and pending users
+      loadActiveUsers();
+      loadPendingUsers();
     } catch (error) {
       toast.error('Failed to approve user');
     }
@@ -262,9 +309,11 @@ export function UserManagement() {
 
   const handleRejectUser = async (userId: string) => {
     try {
-      await mockApi.rejectProvisionalUser(userId);
+      await adminService.rejectProvisionalUser(userId);
       toast.success('User rejected successfully');
-      loadUsers(); // Reload both active and pending users
+      // Reload both active and pending users
+      loadActiveUsers();
+      loadPendingUsers();
     } catch (error) {
       toast.error('Failed to reject user');
     }
@@ -288,7 +337,11 @@ export function UserManagement() {
         }
         break;
       case 'delete':
-        if (confirm(`Permanently delete ${selectedUsers.length} selected users? This cannot be undone.`)) {
+        if (
+          confirm(
+            `Permanently delete ${selectedUsers.length} selected users? This cannot be undone.`
+          )
+        ) {
           toast.success(`Deleted ${selectedUsers.length} users`);
           setSelectedUsers([]);
         }
@@ -304,12 +357,50 @@ export function UserManagement() {
         toast.error('Please upload a CSV file');
         return;
       }
-      
+
       // TODO: Process CSV and import users
       toast.success('CSV file uploaded successfully');
     } catch (error) {
       toast.error('Failed to upload file');
     }
+  };
+
+  // confirm Approve function
+  const confirmApprove = async () => {
+    if (!selectedUser) return;
+    setIsProcessing(true);
+
+    try {
+      await handleApproveUser(selectedUser.id);
+      setShowApproveModal(false);
+      setSelectedUser(null);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  //Confirm Reject
+  const confirmReject = async () => {
+    if (!selectedUser) return;
+    setIsProcessing(true);
+    try {
+      await handleRejectUser(selectedUser.id);
+      setShowRejectModal(false);
+      setSelectedUser(null);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // open Approve Modal
+  const openApproveModal = (user: any) => {
+    setSelectedUser(user);
+    setShowApproveModal(true);
+  };
+
+  const openRejectModal = (user: any) => {
+    setSelectedUser(user);
+    setShowRejectModal(true);
   };
 
   // Define table columns
@@ -330,7 +421,8 @@ export function UserManagement() {
             ) : (
               <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
                 <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                  {user.firstName.charAt(0)}{user.lastName.charAt(0)}
+                  {user.firstName.charAt(0)}
+                  {user.lastName.charAt(0)}
                 </span>
               </div>
             )}
@@ -339,47 +431,49 @@ export function UserManagement() {
             <div className="text-sm font-medium text-gray-900 dark:text-white">
               {user.firstName} {user.lastName}
             </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              {user.email}
-            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
           </div>
         </div>
-      )
+      ),
     },
     {
       key: 'role',
       label: 'Role',
       filterable: true,
-      render: (role) => (
-        <span className={`px-2 py-1 text-xs rounded-full capitalize ${
-          role === 'admin' 
-            ? 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200'
-            : role === 'teacher'
-            ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-            : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
-        }`}>
+      render: role => (
+        <span
+          className={`px-2 py-1 text-xs rounded-full capitalize ${
+            role === 'admin'
+              ? 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200'
+              : role === 'teacher'
+              ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+          }`}
+        >
           {role}
         </span>
-      )
+      ),
     },
     {
       key: 'isArchived',
       label: 'Status',
       filterable: true,
-      render: (isArchived) => (
-        <span className={`px-2 py-1 text-xs rounded-full ${
-          isArchived
-            ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
-            : 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-        }`}>
+      render: isArchived => (
+        <span
+          className={`px-2 py-1 text-xs rounded-full ${
+            isArchived
+              ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+              : 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+          }`}
+        >
           {isArchived ? 'Archived' : 'Active'}
         </span>
-      )
+      ),
     },
     {
       key: 'lastLogin',
       label: 'Last Login',
-      render: (lastLogin) => lastLogin ? new Date(lastLogin).toLocaleDateString() : 'Never'
+      render: lastLogin => (lastLogin ? new Date(lastLogin).toLocaleDateString() : 'Never'),
     },
     {
       key: 'actions',
@@ -393,32 +487,19 @@ export function UserManagement() {
             </Button>
           </Link>
           {user.role === 'student' && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => handleViewAsUser(user.id)}
-            >
+            <Button variant="outline" size="sm" onClick={() => handleViewAsUser(user.id)}>
               View As
             </Button>
           )}
         </div>
-      )
-    }
+      ),
+    },
   ];
   useEffect(() => {
-    loadUsers();
+    loadActiveUsers(page, pageSize);
+    loadPendingUsers(page, pageSize);
     loadOrganization();
-  }, [currentUser, loadOrganization]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-   
+  }, [currentUser, loadOrganization, page]);
 
   return (
     <div className="space-y-8">
@@ -459,7 +540,7 @@ export function UserManagement() {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
             }`}
           >
-            Active Users ({users.length})
+            Active Users ({totalActiveUsers?.totalActiveUsers ?? 0})
           </button>
           <button
             onClick={() => setActiveTab('pending')}
@@ -469,7 +550,7 @@ export function UserManagement() {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
             }`}
           >
-            Pending Signups ({pendingUsers.length})
+            Pending Signups ({totalPendingUsers})
           </button>
         </nav>
       </div>
@@ -511,7 +592,10 @@ export function UserManagement() {
           sortable
           filterable
           pagination
-          pageSize={10}
+          pageSize={pageSize}
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
           selectable
           onSelectionChange={setSelectedUsers}
           emptyMessage="No users found. Get started by inviting your first user."
@@ -520,10 +604,88 @@ export function UserManagement() {
       ) : (
         <PendingUsersTable
           pendingUsers={pendingUsers}
-          onApprove={handleApproveUser}
-          onReject={handleRejectUser}
+          onApprove={user => openApproveModal(user)}
+          onReject={user => openRejectModal(user)}
         />
       )}
+
+      {/* ✅ Approve Confirmation Modal */}
+      <Modal
+        isOpen={showApproveModal}
+        onClose={() => setShowApproveModal(false)}
+        title="Approve User Confirmation"
+      >
+        {selectedUser && (
+          <div className="space-y-4">
+            <p className="text-gray-700 dark:text-gray-300">
+              Are you sure you want to <strong>approve</strong> this user?
+            </p>
+            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <p>
+                <strong>Name:</strong> {selectedUser.firstName} {selectedUser.lastName}
+              </p>
+              <p>
+                <strong>Email:</strong> {selectedUser.email}
+              </p>
+              <p>
+                <strong>Requested Role:</strong> {selectedUser.role}
+              </p>
+              <p>
+                <strong>Submitted On:</strong>{' '}
+                {new Date(selectedUser.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <Button variant="outline" onClick={() => setShowApproveModal(false)}>
+                Cancel
+              </Button>
+              <Button onClick={confirmApprove} loading={isProcessing}>
+                {isProcessing ? 'Approving...' : 'Confirm Approve'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ❌ Reject Confirmation Modal */}
+      <Modal
+        isOpen={showRejectModal}
+        onClose={() => setShowRejectModal(false)}
+        title="Reject User Confirmation"
+      >
+        {selectedUser && (
+          <div className="space-y-4">
+            <p className="text-gray-700 dark:text-gray-300">
+              Are you sure you want to <strong>reject</strong> this user?
+            </p>
+            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <p>
+                <strong>Name:</strong> {selectedUser.firstName} {selectedUser.lastName}
+              </p>
+              <p>
+                <strong>Email:</strong> {selectedUser.email}
+              </p>
+              <p>
+                <strong>Requested Role:</strong> {selectedUser.role}
+              </p>
+              <p>
+                <strong>Submitted On:</strong>{' '}
+                {new Date(selectedUser.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <Button variant="outline" onClick={() => setShowRejectModal(false)}>
+                Cancel
+              </Button>
+              <Button variant="secondary" onClick={confirmReject} loading={isProcessing}>
+                {isProcessing ? 'Rejecting...' : 'Confirm Reject'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Invite User Modal */}
       <Modal

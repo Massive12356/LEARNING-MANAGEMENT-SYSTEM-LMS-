@@ -1,4 +1,3 @@
-
 import {
   User,
   RegisterPayload,
@@ -6,7 +5,9 @@ import {
   SystemHealthStats,
   PlatformStatsResponse,
   UserSearchQuery,
-  SystemUsageResponse
+  SystemUsageResponse,
+  ActiveUsersResponse,
+  PendingUsersResponse
 } from '../types';
 import apiClient from './apiClient';
 import { AxiosError } from 'axios';
@@ -262,6 +263,83 @@ class AdminService {
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
       throw new Error(err.response?.data?.message || 'Failed to Invite User');
+    }
+  }
+
+  async getActiveUsers(
+    organizationId: string,
+    page: number = 1,
+    pageSize: number = 10
+  ): Promise<ActiveUsersResponse | null> {
+    try {
+      const response = await apiClient.get<ActiveUsersResponse>(
+        `/user/organization/${organizationId}/active-users`,
+        {
+          params: { page, pageSize },
+        }
+      );
+
+      console.log(
+        `[adminService] PAGINATED RESPONSE (page=${page}, limit=${page}):`,
+        response.data
+      );
+      return response.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.error('[adminService] ERRO GETTING ACTIVE USERS', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to get data');
+    }
+  }
+
+  async getPendingUsers(
+    organizationId: string,
+    page: number = 1,
+    pageSize: number = 10
+  ): Promise<PendingUsersResponse | null> {
+    try {
+      const response = await apiClient.get<PendingUsersResponse>(
+        `/user/organization/${organizationId}/pending-users`,
+        {
+          params: { page, pageSize },
+        }
+      );
+
+      console.log(
+        `[adminService] PAGINATED RESPONSE (page=${page}, limit=${page}):`,
+        response.data
+      );
+      return response.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.error(
+        '[adminService] ERROR FETCHING PENDING USERS',
+        err.response?.data || err.message
+      );
+      throw new Error(err.response?.data?.message || 'Failed to get data');
+    }
+  }
+
+  async approveProvisionalUsers(id: string): Promise<User> {
+    try {
+      const response = await apiClient.put(`/user/status/direct/approve/${id}`);
+      console.log(`[adminService] SUCCESS RESPONSE FROM BACKEND`, response.data);
+      return response.data || response.data.users;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log('[adminService] ERROR FROM BACKEND RESPONSE', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || err.message);
+    }
+  }
+
+  async rejectProvisionalUser(id: string): Promise<User> {
+    try {
+      const response = await apiClient.put(`/user/status/direct/reject/${id}`);
+      console.log(`[adminService] SUCCESS RESPONSE FROM BACKEND`, response.data);
+      return response.data || response.data.users;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log('[adminService] ERROR FROM BACKEND RESPONSE', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || err.message);
     }
   }
 }

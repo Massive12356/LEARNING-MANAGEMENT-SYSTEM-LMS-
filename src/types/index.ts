@@ -292,6 +292,8 @@ export type NotificationType = 'info' | 'success' | 'warning' | 'error' | 'annou
 export type NotificationPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type NotificationStatus = 'unread' | 'read' | 'archived';
 
+
+
 export interface Notification {
   id: string;
   title: string;
@@ -300,7 +302,7 @@ export interface Notification {
   priority: NotificationPriority;
   status: NotificationStatus;
   userId?: string; // For user-specific notifications
-  role?: UserRole; // For role-based announcements
+  roles?: UserRole[]; // For role-based announcements
   courseId?: string; // For course-specific notifications
   organizationId?: string; // For org-wide announcements
   senderId?: string; // Who sent the notification
@@ -308,6 +310,13 @@ export interface Notification {
   createdAt: Date;
   readAt?: Date;
   expiresAt?: Date; // When the notification should be automatically archived
+  recipientType?: 'All Users' | 'By Role' | 'By Course' | 'By User' | 'certificate';
+}
+
+export interface CreateNotificationResponse {
+  success: boolean;
+  data?: Notification;
+  error?: string;
 }
 
 // Student Report Data Type
@@ -541,4 +550,22 @@ export interface UserSearchQuery {
   lastName?: string;
   email?: string;
   role?: 'admin' | 'student' | 'teacher' | 'superuser';
+}
+
+ export interface ActiveUsersResponse {
+  message: string;
+  totalUsersInOrg: number;
+  totalActiveUsers: number;
+  totalPages: number;
+  currentPage: number;
+  users: User[];
+}
+
+export interface PendingUsersResponse {
+  message: string;
+  totalUsersInOrg: number;
+  totalPendingUsers: number;
+  totalPages: number;
+  currentPage: number;
+  users: User[];
 }

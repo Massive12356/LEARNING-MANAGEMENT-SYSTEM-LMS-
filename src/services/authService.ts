@@ -230,7 +230,6 @@ class AuthService {
       firstName: 'Mock',
       lastName: 'User',
       role: payload.role as any,
-      accountType: payload.role as any,
       organizationId: payload.organizationId,
       isArchived: false,
       createdAt: new Date(),

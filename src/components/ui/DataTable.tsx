@@ -29,6 +29,10 @@ export interface DataTableProps<T> {
   filterable?: boolean;
   pagination?: boolean;
   pageSize?: number;
+  // ✅ Add these three props:
+  currentPage?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
   selectable?: boolean;
   onSelectionChange?: (selected: T[]) => void;
   emptyMessage?: string;

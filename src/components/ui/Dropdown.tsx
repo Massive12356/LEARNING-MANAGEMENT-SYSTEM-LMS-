@@ -11,7 +11,7 @@ export interface DropdownOption {
 
 interface DropdownProps {
   options: DropdownOption[];
-  value?: string | number | null;
+  value?: string | number | null | (string | number)[]; // ✅ Add support for array when `multiple` is true
   placeholder?: string;
   disabled?: boolean;
   clearable?: boolean;
@@ -22,9 +22,10 @@ interface DropdownProps {
   error?: string;
   label?: string;
   helpText?: string;
-  onChange: (value: string | number | null | (string | number)[]) => void;
+  onChange: (value: string | number | null | (string | number)[]) => void; // ✅ onChange supports array too
   onSearch?: (query: string) => void;
 }
+
 
 export const Dropdown: React.FC<DropdownProps> = ({
   options,
