@@ -6,13 +6,13 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { organizationService } from '../../services/organizationService';
 import { Organization } from '../../types';
-import { 
+import {
   BuildingOfficeIcon,
   PhotoIcon,
   UserGroupIcon,
   EnvelopeIcon,
   DevicePhoneMobileIcon,
-  GlobeAltIcon
+  GlobeAltIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { ActiveOrganizationStats } from '../../types';
@@ -24,13 +24,15 @@ export function OrganizationSettings() {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('general');
+  const [updatingOrgs, setUpdatingOrgs] = useState(false);
+  const [orgId, setOrgId] = useState<string | null>(null);
 
   const [orgData, setOrgData] = useState({
     name: '',
     description: '',
-    logo: '',
+    logo: null as File | null, // store a File instead of string
     primaryColor: '#3b82f6',
-    emailCopyBranding: ''
+    emailCopyBranding: '',
   });
 
   // Extract organization ID from query parameters for superuser access
@@ -45,43 +47,25 @@ export function OrganizationSettings() {
   }, [user, orgIdFromQuery]);
 
   const loadOrganization = async () => {
+    if (!orgId) return;
+
     try {
-      let orgIdToLoad = null;
-      
-      // For superusers, use orgId from query params if provided
-      if (user?.role === 'superuser' && orgIdFromQuery) {
-        orgIdToLoad = orgIdFromQuery;
-      } 
-      // For other users, use their assigned organization
-      else if (user?.id) {
-        orgIdToLoad = user.id;
-      }
-      
-      if (!orgIdToLoad) {
-        toast.error('No organization specified');
-        setLoading(false);
-        return;
-      }
-      
-      const orgDataResult = await organizationService.getOrganizationById(orgIdToLoad);
-      
-      // Add null check
+      const orgDataResult = await organizationService.getOrganizationById(orgId);
+
       if (!orgDataResult) {
         toast.error('Organization not found');
-        setLoading(false);
         return;
       }
-      
+
       setOrganization(orgDataResult);
       setOrgData({
         name: orgDataResult.name,
         description: orgDataResult.description || '',
-        logo: orgDataResult.logo || '',
+        logo: null as File | null, // store a File instead of string
         primaryColor: orgDataResult.primaryColor || '#3b82f6',
-        emailCopyBranding: orgDataResult.emailCopyBranding || ''
+        emailCopyBranding: orgDataResult.emailCopyBranding || '',
       });
     } catch (error) {
-      console.error('Failed to load organization:', error);
       toast.error('Failed to load organization settings');
     } finally {
       setLoading(false);
@@ -90,23 +74,63 @@ export function OrganizationSettings() {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!organization) return;
-    
+
+    if (!orgId) return toast.error('No valid organization ID');
+
     try {
-      const updatedOrg = await organizationService.updateOrganization(organization.id, orgData);
-      setOrganization(updatedOrg);
+      setUpdatingOrgs(true);
+
+      if (orgData.logo instanceof File) {
+        // Use FormData for logo uploads
+        const formData = new FormData();
+        formData.append('name', orgData.name);
+        formData.append('description', orgData.description);
+        formData.append('primaryColor', orgData.primaryColor);
+        formData.append('emailCopyBranding', orgData.emailCopyBranding);
+        formData.append('logo', orgData.logo);
+
+        const updatedOrg = await organizationService.updateOrganizationWithLogo(orgId, formData);
+        setOrganization(updatedOrg);
+      } else {
+        // Remove logo before sending JSON data
+        const { logo, ...jsonOrgData } = orgData;
+
+        const updatedOrg = await organizationService.updateOrganizationData(orgId, jsonOrgData);
+        setOrganization(updatedOrg);
+      }
+
       toast.success('Organization settings updated successfully');
     } catch (error) {
       toast.error('Failed to update organization settings');
+    } finally {
+      setUpdatingOrgs(false);
     }
   };
+
+  // First: Set the orgId when user or URL param changes
+  useEffect(() => {
+    const idToLoad =
+      user?.role === 'superuser' && orgIdFromQuery ? orgIdFromQuery : user?.organizationDetails?.id;
+
+    if (idToLoad) {
+      setOrgId(String(idToLoad));
+    } else {
+      toast.error('No organization specified');
+    }
+  }, [user, orgIdFromQuery]);
+
+  // Second: When orgId is set, load the organization
+  useEffect(() => {
+    if (orgId) {
+      loadOrganization();
+    }
+  }, [orgId]);
 
   const tabs = [
     { id: 'general', name: 'General', icon: BuildingOfficeIcon },
     { id: 'branding', name: 'Branding', icon: PhotoIcon },
     { id: 'members', name: 'Members', icon: UserGroupIcon },
-    { id: 'communication', name: 'Communication', icon: EnvelopeIcon }
+    { id: 'communication', name: 'Communication', icon: EnvelopeIcon },
   ];
 
   if (loading) {
@@ -155,7 +179,7 @@ export function OrganizationSettings() {
         {/* Sidebar */}
         <div className="lg:w-1/4">
           <nav className="space-y-1">
-            {tabs.map((tab) => {
+            {tabs.map(tab => {
               const Icon = tab.icon;
               return (
                 <button
@@ -193,7 +217,7 @@ export function OrganizationSettings() {
                   <Input
                     label="Organization Name"
                     value={orgData.name}
-                    onChange={(e) => setOrgData({ ...orgData, name: e.target.value })}
+                    onChange={e => setOrgData({ ...orgData, name: e.target.value })}
                     required
                   />
 
@@ -203,7 +227,7 @@ export function OrganizationSettings() {
                     </label>
                     <textarea
                       value={orgData.description}
-                      onChange={(e) => setOrgData({ ...orgData, description: e.target.value })}
+                      onChange={e => setOrgData({ ...orgData, description: e.target.value })}
                       rows={4}
                       className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Brief description of your organization"
@@ -211,8 +235,8 @@ export function OrganizationSettings() {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button type="submit">
-                      Save Changes
+                    <Button type="submit" loading={updatingOrgs} disabled={updatingOrgs}>
+                      {updatingOrgs ? ' Saving' : 'Save Changes'}
                     </Button>
                   </div>
                 </form>
@@ -224,9 +248,7 @@ export function OrganizationSettings() {
           {activeTab === 'branding' && (
             <Card>
               <CardHeader>
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  Branding
-                </h2>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Branding</h2>
                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                   Customize your organization's appearance
                 </p>
@@ -238,7 +260,13 @@ export function OrganizationSettings() {
                       Logo
                     </label>
                     <div className="flex items-center space-x-4">
-                      {orgData.logo ? (
+                      {orgData.logo instanceof File ? (
+                        <img
+                          src={URL.createObjectURL(orgData.logo)}
+                          alt="Preview Logo"
+                          className="h-16 w-16 rounded-lg object-cover"
+                        />
+                      ) : orgData.logo ? (
                         <img
                           src={orgData.logo}
                           alt="Organization Logo"
@@ -249,13 +277,33 @@ export function OrganizationSettings() {
                           <PhotoIcon className="h-8 w-8 text-gray-400" />
                         </div>
                       )}
+
+                      {/* Upload Button */}
                       <div>
-                        <Button variant="outline" size="sm">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => document.getElementById('logoUpload')?.click()}
+                        >
                           Upload Logo
                         </Button>
                         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                           JPG, PNG, or GIF. Max 2MB.
                         </p>
+
+                        {/* Hidden Input */}
+                        <input
+                          id="logoUpload"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setOrgData({ ...orgData, logo: file }); // Save file object
+                            }
+                          }}
+                        />
                       </div>
                     </div>
                   </div>
@@ -268,12 +316,12 @@ export function OrganizationSettings() {
                       <input
                         type="color"
                         value={orgData.primaryColor}
-                        onChange={(e) => setOrgData({ ...orgData, primaryColor: e.target.value })}
+                        onChange={e => setOrgData({ ...orgData, primaryColor: e.target.value })}
                         className="h-10 w-16 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer"
                       />
                       <Input
                         value={orgData.primaryColor}
-                        onChange={(e) => setOrgData({ ...orgData, primaryColor: e.target.value })}
+                        onChange={e => setOrgData({ ...orgData, primaryColor: e.target.value })}
                         placeholder="#3b82f6"
                         className="flex-1"
                       />
@@ -281,8 +329,8 @@ export function OrganizationSettings() {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button type="submit">
-                      Save Changes
+                    <Button type="submit" loading={updatingOrgs} disabled={updatingOrgs}>
+                      {updatingOrgs ? ' Saving' : 'Save Changes'}
                     </Button>
                   </div>
                 </form>
@@ -307,16 +355,15 @@ export function OrganizationSettings() {
                     <div className="flex items-center space-x-4">
                       <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
                         <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                          {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+                          {user?.firstName?.charAt(0)}
+                          {user?.lastName?.charAt(0)}
                         </span>
                       </div>
                       <div>
                         <p className="font-medium text-gray-900 dark:text-white">
                           {user?.firstName} {user?.lastName}
                         </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {user?.email}
-                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{user?.email}</p>
                       </div>
                     </div>
                     <span className="px-2 py-1 text-xs rounded-full bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
@@ -347,7 +394,7 @@ export function OrganizationSettings() {
                     </label>
                     <textarea
                       value={orgData.emailCopyBranding}
-                      onChange={(e) => setOrgData({ ...orgData, emailCopyBranding: e.target.value })}
+                      onChange={e => setOrgData({ ...orgData, emailCopyBranding: e.target.value })}
                       rows={6}
                       className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Add your organization's email signature or branding here..."
@@ -358,8 +405,8 @@ export function OrganizationSettings() {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button type="submit">
-                      Save Changes
+                    <Button type="submit" loading={updatingOrgs} disabled={updatingOrgs}>
+                      {updatingOrgs ? ' Saving' : 'Save Changes'}
                     </Button>
                   </div>
                 </form>

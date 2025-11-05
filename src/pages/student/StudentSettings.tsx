@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -19,7 +19,7 @@ import toast from 'react-hot-toast';
 import { ProfilePictureUpload } from '../../components/ui/ProfilePictureUpload';
 
 export const StudentSettings: React.FC = () => {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
@@ -69,7 +69,7 @@ export const StudentSettings: React.FC = () => {
   }, [user]);
 
   const loadOrganization = async () => {
-    if (!user?.organizationId) {
+    if (!user?.organizationDetails?.id) {
       // If user has no organization, we're done loading
       setOrganization(null);
       setLoading(false);
@@ -77,7 +77,7 @@ export const StudentSettings: React.FC = () => {
     }
     
     try {
-      const orgData = await organizationService.getOrganizationById(user.organizationId);
+      const orgData = await organizationService.getOrganizationById(user?.organizationDetails?.id.toString());
       setOrganization(orgData);
     } catch (error) {
       console.error('Failed to load organization:', error);

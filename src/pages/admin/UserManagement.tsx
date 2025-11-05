@@ -10,7 +10,13 @@ import { FileUploader } from '../../components/ui/FileUploader';
 import { mockApi } from '../../services/mockApi';
 import { organizationService } from '../../services/organizationService';
 import { adminService } from '../../services/adminService';
-import { User, Organization, RegisterPayload, ActiveUsersResponse,PendingUsersResponse } from '../../types';
+import {
+  User,
+  Organization,
+  RegisterPayload,
+  ActiveUsersResponse,
+  PendingUsersResponse,
+} from '../../types';
 import {
   PlusIcon,
   UserGroupIcon,
@@ -18,11 +24,23 @@ import {
   BuildingOfficeIcon,
   EyeIcon,
   ArrowDownTrayIcon,
+  ClipboardDocumentIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
 // This version omits password (backend generates it)
 type InviteUserPayload = Omit<RegisterPayload, 'password'>;
+
+const handleCopy = async (text: string) => {
+  try {
+    const res = await navigator.clipboard.writeText(text);
+    console.log('text Copied [admin DashBoard]', res);
+    toast.success('code copied to clipboard!!');
+  } catch (error) {
+    console.log('failed to copy code [admin dashboard]', error);
+    toast.error('failed to copy text!');
+  }
+};
 
 // Pending Users Table Component
 const PendingUsersTable: React.FC<{
@@ -155,15 +173,21 @@ export function UserManagement() {
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [orgLoading, setOrgLoading] = useState(true);
 
   const loadOrganization = useCallback(async () => {
-    if (!currentUser?.id) return;
+    if (!currentUser?.organizationDetails?.id) return;
 
     try {
-      const orgData = await organizationService.getOrganizationById(currentUser.id);
+      setOrgLoading(true);
+      const orgData = await organizationService.getOrganizationById(
+        String(currentUser.organizationDetails?.id)
+      );
       setOrganization(orgData);
     } catch (error) {
       console.error('Failed to load organization:', error);
+    } finally {
+      setOrgLoading(false);
     }
   }, [currentUser?.id]);
 
@@ -510,11 +534,25 @@ export function UserManagement() {
           <p className="mt-2 text-gray-600 dark:text-gray-400">
             Manage users, roles, and permissions for your organization
           </p>
-          {organization && (
-            <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
+          {orgLoading ? (
+            <div className="mt-2 h-4 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded"></div>
+          ) : organization ? (
+            <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400 group relative">
               <BuildingOfficeIcon className="h-4 w-4 mr-1" />
               <span>{organization.name}</span>
+              <span className="ml-3 text-zinc-900 dark:text-yellow-500 font-medium">
+                {organization?.organizationCode ?? 'N/A'}
+              </span>
+              <button
+                className="ml-2 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-gray-200 dark:hover:bg-gray-700"
+                onClick={() => handleCopy(organization?.organizationCode ?? 'N/A')}
+                title="Copy organization code"
+              >
+                <ClipboardDocumentIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </button>
             </div>
+          ) : (
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">No organization found</p>
           )}
         </div>
         <div className="flex items-center space-x-4">
@@ -620,7 +658,7 @@ export function UserManagement() {
             <p className="text-gray-700 dark:text-gray-300">
               Are you sure you want to <strong>approve</strong> this user?
             </p>
-            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="p-3 bg-gray-50 dark:bg-gray-800 dark:text-gray-300 rounded-lg border border-gray-200 dark:border-gray-700 dark">
               <p>
                 <strong>Name:</strong> {selectedUser.firstName} {selectedUser.lastName}
               </p>

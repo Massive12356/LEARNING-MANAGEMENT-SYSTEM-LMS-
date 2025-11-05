@@ -127,10 +127,11 @@ export const StudentDashboard: React.FC = () => {
   };
 
   const loadOrganization = async () => {
-    if (!user?.id) return;
+    if (!user?.organizationDetails?.id) return;
     
     try {
-      const orgData = await organizationService.getOrganizationById(user.id);
+      const orgData = await organizationService.getOrganizationById(user?.organizationDetails?.id.toString()
+      );
       setOrganization(orgData);
     } catch (error) {
       console.error('Failed to load organization:', error);

@@ -1,10 +1,10 @@
 import React from 'react';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { StudentTodo } from '../../components/student/StudentTodo';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../stores/authStore';
 
 export const StudentTodoPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
 
   return (
     <div className="space-y-6">

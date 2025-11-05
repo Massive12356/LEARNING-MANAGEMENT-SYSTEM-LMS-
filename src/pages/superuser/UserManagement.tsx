@@ -202,6 +202,7 @@ export default function UserManagement() {
         role: 'student' as 'student' | 'teacher' | 'admin' | 'superuser',
         organizationId: '',
       });
+      await loadUsers();
       return response;
     } catch (error) {
       console.log('ERROR IN COMPONENT [ HANDLE USER] ', error);

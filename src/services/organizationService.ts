@@ -13,7 +13,7 @@ class OrganizationService {
   async getOrganizationById(id: string): Promise<Organization | null> {
     try {
       const response = await apiClient.get<{ message: string; organization: Organization }>(
-        `/organization/${id}`
+        `/organization/${id}/byId`
       );
 
       console.log('[organizationService] RESPONSE FROM BACKEND:', response.data);
@@ -125,6 +125,23 @@ class OrganizationService {
       const err = error as AxiosError<{ message?: string }>;
       console.error('Error [updateOrganizationData]:', err.response?.data || err.message);
       throw new Error(err.response?.data?.message || 'Failed to change Status');
+    }
+  }
+
+
+  async updateOrganizationWithLogo(id: string, formData: FormData): Promise<Organization> {
+    try {
+      const response = await apiClient.put<Organization>(`/organization/Edit/${id}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log('[updateOrganizationWithLogo] RESPONSE FROM BACKEND:', response.data);
+      return response.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.error('Error [updateOrganizationWithLogo]:', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to update organization with logo');
     }
   }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { TodoList } from '../../components/ui/TodoList';
@@ -22,7 +22,7 @@ import {
 import { DetailedAnalytics } from '../../components/teacher/DetailedAnalytics';
 
 export function TeacherDashboard() {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [courses, setCourses] = useState<Course[]>([]);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,10 +55,10 @@ export function TeacherDashboard() {
   }, [user]);
 
   const loadOrganization = async () => {
-    if (!user?.organizationId) return;
+    if (!user?.organizationDetails?.id) return;
     
     try {
-      const orgData = await organizationService.getOrganizationById(user.organizationId);
+      const orgData = await organizationService.getOrganizationById(user?.organizationDetails?.id.toString());
       setOrganization(orgData);
     } catch (error) {
       console.error('Failed to load organization:', error);

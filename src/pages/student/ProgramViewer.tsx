@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { mockApi } from '../../services/mockApi';
@@ -17,7 +17,7 @@ import {
 
 export function ProgramViewer() {
   const { programId } = useParams<{ programId: string }>();
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [program, setProgram] = useState<Program | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [completedCourses, setCompletedCourses] = useState<Set<string>>(new Set());

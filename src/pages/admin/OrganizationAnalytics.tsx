@@ -13,6 +13,7 @@ import {
   ChartBarIcon
 } from '@heroicons/react/24/outline';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { organizationService } from '../../services/organizationService';
 
 interface OrganizationStats {
   users: number;
@@ -51,7 +52,7 @@ export function OrganizationAnalytics() {
       
       // Load organization data
       if (organizationId) {
-        const orgData = await mockApi.getOrganizationById(organizationId);
+        const orgData = await  organizationService.getOrganizationById(organizationId);
         setOrganization(orgData);
       }
       

@@ -3,7 +3,7 @@ import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { RichTextDisplay } from '../../components/ui/RichTextEditor';
 import { studentReportService, StudentReportData } from '../../services/studentReportService';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../stores/authStore';
 import { 
   BookOpenIcon, 
   DocumentTextIcon, 
@@ -21,7 +21,7 @@ import {
 import toast from 'react-hot-toast';
 
 export function StudentReports() {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [reportData, setReportData] = useState<StudentReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('30');

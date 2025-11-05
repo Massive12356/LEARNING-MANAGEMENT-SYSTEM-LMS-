@@ -774,11 +774,20 @@ export function OrganizationManagement() {
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center space-x-3 min-w-0">
                             <div
-                              className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
-                              style={{ backgroundColor: org?.primaryColor }}
+                              className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
+                              style={{ backgroundColor: org.logo ? "transparent": org?.primaryColor }}
                             >
-                              <BuildingOfficeIcon className="h-6 w-6 text-white" />
+                              {org?.logo ? (
+                                <img
+                                  src={org.logo}
+                                  alt={`${org.name} logo`}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <BuildingOfficeIcon className="h-6 w-6 text-white" />
+                              )}
                             </div>
+
                             <div className="min-w-0">
                               <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
                                 {org?.name ?? 'N/A'}
@@ -941,7 +950,9 @@ export function OrganizationManagement() {
                               </Button>
                             )}
                           </div>
-                          <p className="font-medium text-black dark:text-white">Code: {org?.organizationCode ?? 'N/A'}</p>
+                          <p className="font-medium text-black dark:text-white">
+                            Code: {org?.organizationCode ?? 'N/A'}
+                          </p>
                         </div>
                       </CardContent>
                     </Card>

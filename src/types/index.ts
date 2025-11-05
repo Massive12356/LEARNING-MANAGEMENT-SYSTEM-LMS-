@@ -20,11 +20,18 @@ export interface User {
   lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
+  organizationDetails?: OrganizationDetails;
+}
+export interface OrganizationDetails {
+  id: number;
+  code: string;
+  name: string;
 }
 
 export interface Organization {
-  organizationCode: string | undefined;
   id: string;
+  adminUserId: string;
+  organizationCode: string | undefined;
   name: string;
   status: OrganizationStatus;
   description: string;
@@ -35,6 +42,7 @@ export interface Organization {
   updatedAt: Date;
   maxUsers: number;
   expiryDay: Date;
+  organizationDetails: OrganizationDetails
 }
 
 export interface CreateOrganizationResponse {

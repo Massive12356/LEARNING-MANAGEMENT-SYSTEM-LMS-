@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { exportToCSV } from '../../utils/csvParser';
@@ -40,7 +40,7 @@ interface TeacherReport {
 }
 
 export function TeacherReports() {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [reportData, setReportData] = useState<TeacherReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('30');

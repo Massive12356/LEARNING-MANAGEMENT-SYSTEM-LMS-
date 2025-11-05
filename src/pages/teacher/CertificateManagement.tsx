@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -28,7 +28,7 @@ interface CertificateTemplate {
 }
 
 export default function CertificateManagement() {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [courses, setCourses] = useState<Course[]>([]);
   const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
   const [loading, setLoading] = useState(true);

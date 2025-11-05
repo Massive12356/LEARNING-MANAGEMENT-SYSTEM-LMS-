@@ -78,25 +78,39 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   }, [user, navigate]);
 
   // Load organization data
-  useEffect(() => {
-    const loadOrganization = async () => {
-      if (!user?.id) {
-        setLoadingOrg(false);
-        return;
-      }
-      try {
-        const orgData = await organizationService.getOrganizationById(user.id);
-        setOrganization(orgData);
-      } catch (error: any) {
-        console.error('Failed to load organization:', error);
-        toast.error(error.message);
-      } finally {
-        setLoadingOrg(false);
-      }
-    };
+ useEffect(() => {
+   const loadOrganization = async () => {
+     // Superusers should not load organization data at all.
+     if (user?.role === 'superuser') {
+       setLoadingOrg(false);
+       return;
+     }
 
-    loadOrganization();
-  }, [user]);
+     // For other roles (admin, teacher, student),
+     // show "No organization found" gracefully if no data exists.
+     if (!user?.organizationDetails?.id) {
+       setOrganization(null); // Explicitly set to null for UI checks
+       toast.error('No organization assigned to your account.');
+       setLoadingOrg(false);
+       return;
+     }
+
+     try {
+       const orgData = await organizationService.getOrganizationById(
+         user.organizationDetails.id.toString()
+       );
+       setOrganization(orgData);
+     } catch (error: any) {
+       console.error('Failed to load organization:', error);
+       toast.error(error.message || 'Error loading organization details.');
+     } finally {
+       setLoadingOrg(false);
+     }
+   };
+
+   loadOrganization();
+ }, [user]);
+
 
   const handleLogout = async () => {
     console.log('handleLogout called');
