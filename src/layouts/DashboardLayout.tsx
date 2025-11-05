@@ -35,6 +35,7 @@ import {
 import { NotificationBell } from '../components/ui/NotificationBell';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import toast from 'react-hot-toast';
+import { useOrganizationStore } from '../stores/organizationStore';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -45,13 +46,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const { theme, toggleTheme, sidebarCollapsed, toggleSidebar } = useUIStore();
   const { unreadCount } = useNotifications(); // We only need unreadCount since NotificationBell uses it
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [organization, setOrganization] = useState<Organization | null>(null);
+  // const [organization, setOrganization] = useState<Organization | null>(null);
   const [loadingOrg, setLoadingOrg] = useState(true);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const { neworganization: organization, refetchOrganization } = useOrganizationStore();
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -89,7 +91,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
      // For other roles (admin, teacher, student),
      // show "No organization found" gracefully if no data exists.
      if (!user?.organizationDetails?.id) {
-       setOrganization(null); // Explicitly set to null for UI checks
+      //  setOrganization(null); // Explicitly set to null for UI checks
+       refetchOrganization(String(user?.organizationDetails?.id));
        toast.error('No organization assigned to your account.');
        setLoadingOrg(false);
        return;
@@ -99,7 +102,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
        const orgData = await organizationService.getOrganizationById(
          user.organizationDetails.id.toString()
        );
-       setOrganization(orgData);
+      //  setOrganization(orgData);
+      refetchOrganization(String(user.organizationDetails.id));
      } catch (error: any) {
        console.error('Failed to load organization:', error);
        toast.error(error.message || 'Error loading organization details.');

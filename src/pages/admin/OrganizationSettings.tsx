@@ -16,6 +16,7 @@ import {
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { ActiveOrganizationStats } from '../../types';
+import { useOrganizationStore } from '../../stores/organizationStore';
 
 export function OrganizationSettings() {
   const { user } = useAuthStore();
@@ -26,6 +27,7 @@ export function OrganizationSettings() {
   const [activeTab, setActiveTab] = useState('general');
   const [updatingOrgs, setUpdatingOrgs] = useState(false);
   const [orgId, setOrgId] = useState<string | null>(null);
+  const { updateOrganizationStore, refetchOrganization } = useOrganizationStore();
 
   const [orgData, setOrgData] = useState({
     name: '',
@@ -91,12 +93,14 @@ export function OrganizationSettings() {
 
         const updatedOrg = await organizationService.updateOrganizationWithLogo(orgId, formData);
         setOrganization(updatedOrg);
+        await refetchOrganization(orgId)
       } else {
         // Remove logo before sending JSON data
         const { logo, ...jsonOrgData } = orgData;
 
         const updatedOrg = await organizationService.updateOrganizationData(orgId, jsonOrgData);
         setOrganization(updatedOrg);
+        await refetchOrganization(orgId)
       }
 
       toast.success('Organization settings updated successfully');

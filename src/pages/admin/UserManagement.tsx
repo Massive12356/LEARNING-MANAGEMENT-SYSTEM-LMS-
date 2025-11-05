@@ -198,16 +198,24 @@ export function UserManagement() {
       const response = await adminService.getActiveUsers(currentUser.organizationId, page, limit);
 
       if (response) {
-        setUsers(response.users || []);
+        // Filter out admins so only students and teachers show on the table
+        const filteredUsers = response.users?.filter(user => user.role !== 'admin') || [];
+
+        setUsers(filteredUsers);
         setTotalPages(response.totalPages || 1);
+        // Optional: Update totalActiveUsers based on filtered list
+        setTotalActiveUsers({
+          ...response,
+          totalActiveUsers: filteredUsers.length,
+        });
       }
-      setTotalActiveUsers(response);
     } catch (error) {
       toast.error('Failed to load users');
     } finally {
       setLoading(false);
     }
   };
+
 
   const loadPendingUsers = async (page = 1, limit = 10) => {
     if (!currentUser?.organizationId) return;
@@ -216,10 +224,14 @@ export function UserManagement() {
     try {
       const response = await adminService.getPendingUsers(currentUser.organizationId, page, limit);
       if (response) {
-        setPendingUsers(response.users || []);
+        // Filter out admins and update pending users
+        const filteredPending = response.users?.filter(user => user.role !== 'admin') || [];
+
+        setPendingUsers(filteredPending);
         setTotalPages(response.totalPages || 1);
-        // ✅ Set total pending users (number)
-        setTotalPendingUsers(response.totalPendingUsers || 0);
+
+        // Update total pending users after filtering
+        setTotalPendingUsers(filteredPending.length);
       }
     } catch (error) {
       toast.error('Failed to load pending users');
@@ -228,6 +240,7 @@ export function UserManagement() {
       setLoading(false);
     }
   };
+
 
   const handleInviteUser = async (e: React.FormEvent) => {
     e.preventDefault();
