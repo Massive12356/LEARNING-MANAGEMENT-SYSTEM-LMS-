@@ -306,6 +306,16 @@ class MockApiService {
     user.updatedAt = new Date();
   }
 
+  async unarchiveUser(id: string): Promise<void> {
+    await delay();
+    const user = this.users.find(u => u.id === id);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    user.isArchived = false;
+    user.updatedAt = new Date();
+  }
+
   async deleteUser(id: string): Promise<void> {
     await delay();
     const userIndex = this.users.findIndex(u => u.id === id);

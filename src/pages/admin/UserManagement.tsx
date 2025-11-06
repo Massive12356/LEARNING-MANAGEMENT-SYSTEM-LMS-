@@ -22,7 +22,6 @@ import {
   UserGroupIcon,
   ArrowUpTrayIcon,
   BuildingOfficeIcon,
-  EyeIcon,
   ArrowDownTrayIcon,
   ClipboardDocumentIcon,
 } from '@heroicons/react/24/outline';
@@ -287,19 +286,37 @@ export function UserManagement() {
     }
   };
 
-  const handleArchiveUser = async (userId: string) => {
+  const handleSuspendUser = async (userId: string) => {
     if (
-      !confirm('Are you sure you want to archive this user? They will lose access to the platform.')
+      !confirm('Are you sure you want to suspend this user? They will lose access to the platform.')
     ) {
       return;
     }
 
     try {
-      await mockApi.archiveUser(userId);
-      toast.success('User archived successfully');
+      // Use the real API endpoint for suspending users
+      await adminService.suspendUser(userId);
+      toast.success('User suspended successfully');
       loadActiveUsers();
     } catch (error) {
-      toast.error('Failed to archive user');
+      toast.error('Failed to suspend user');
+    }
+  };
+
+  const handleActivateUser = async (userId: string) => {
+    if (
+      !confirm('Are you sure you want to activate this user? They will regain access to the platform.')
+    ) {
+      return;
+    }
+
+    try {
+      // Use the real API endpoint for activating users
+      await adminService.activateUser(userId);
+      toast.success('User activated successfully');
+      loadActiveUsers();
+    } catch (error) {
+      toast.error('Failed to activate user');
     }
   };
 
@@ -321,13 +338,7 @@ export function UserManagement() {
     }
   };
 
-  const handleViewAsUser = async (userId: string) => {
-    try {
-      await viewAsUser(userId);
-    } catch (error) {
-      toast.error('Failed to view as user');
-    }
-  };
+
 
   const handleApproveUser = async (userId: string) => {
     if (!currentUser?.organizationId) return;
@@ -518,16 +529,33 @@ export function UserManagement() {
       sortable: false,
       render: (_, user) => (
         <div className="flex items-center space-x-2">
-          <Link to={`/admin/users/${user.id}`}>
-            <Button variant="outline" size="sm">
-              <EyeIcon className="h-4 w-4" />
+          {user.isArchived ? (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleActivateUser(user.id)}
+              className="text-green-600 hover:text-green-700 border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+            >
+              Activate
             </Button>
-          </Link>
-          {user.role === 'student' && (
-            <Button variant="outline" size="sm" onClick={() => handleViewAsUser(user.id)}>
-              View As
+          ) : (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleSuspendUser(user.id)}
+              className="text-yellow-600 hover:text-yellow-700 border-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
+            >
+              Suspend
             </Button>
           )}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => handleDeleteUser(user.id)}
+            className="text-red-600 hover:text-red-700 border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+          >
+            Delete
+          </Button>
         </div>
       ),
     },
