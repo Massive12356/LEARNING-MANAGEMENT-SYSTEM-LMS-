@@ -215,6 +215,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           { name: 'Email Templates', href: '/admin/email-templates', icon: PencilSquareIcon },
           { name: 'Notifications', href: '/admin/notifications', icon: BellIcon },
           { name: 'Reports', href: '/admin/reports', icon: PresentationChartLineIcon },
+          { name: 'Settings', href: '/admin/settings', icon: CogIcon },
         ];
       case 'superuser':
         return [
