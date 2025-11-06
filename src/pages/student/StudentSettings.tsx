@@ -310,21 +310,21 @@ export const StudentSettings: React.FC = () => {
                 </p>
               </CardHeader>
               <CardContent>
-                {organization ? (
+                {organization?.organizationDetails?.id ? (
                   <div className="space-y-6">
                     <div className="flex items-center space-x-4">
                       <div 
                         className="w-16 h-16 rounded-lg flex items-center justify-center"
-                        style={{ backgroundColor: organization.primaryColor }}
+                        style={{ backgroundColor: organization?.primaryColor }}
                       >
                         <BuildingOfficeIcon className="h-8 w-8 text-white" />
                       </div>
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                          {organization.name}
+                          {organization?.name}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {organization.description}
+                          {organization?.description}
                         </p>
                       </div>
                     </div>
@@ -341,7 +341,7 @@ export const StudentSettings: React.FC = () => {
                             ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
                             : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
                         }`}>
-                          {organization.status}
+                          {organization?.status}
                         </span>
                       </div>
 

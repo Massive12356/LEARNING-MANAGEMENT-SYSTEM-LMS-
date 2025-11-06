@@ -458,8 +458,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                   ) : (
                     <div className="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center">
                       <span className="text-sm font-medium text-white">
-                        {user.firstName?.charAt(0)}
-                        {user.lastName?.charAt(0)}
+                        {user.firstName?.charAt(0).toUpperCase()}
+                        {user.lastName?.charAt(0).toUpperCase()}
                       </span>
                     </div>
                   )}
