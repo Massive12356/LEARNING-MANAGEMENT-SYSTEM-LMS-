@@ -94,6 +94,14 @@ export function EmailTemplateEditor() {
           : t
       ));
       
+      // Update selected template with new data
+      if (selectedTemplate) {
+        setSelectedTemplate({
+          ...selectedTemplate,
+          ...templateData
+        });
+      }
+      
       toast.success('Email template saved successfully');
     } catch (error) {
       toast.error('Failed to save email template');
@@ -196,20 +204,26 @@ export function EmailTemplateEditor() {
                       className={`w-full p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
                         isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-r-2 border-blue-600' : ''
                       }`}
+                      disabled={!template}
                     >
                       <div className="flex items-start space-x-3">
                         <Icon className={`h-5 w-5 mt-0.5 ${
-                          isSelected ? 'text-blue-600' : 'text-gray-400'
+                          isSelected && template ? 'text-blue-600' : 'text-gray-400'
                         }`} />
                         <div className="flex-1 min-w-0">
                           <h3 className={`font-medium ${
-                            isSelected ? 'text-blue-600' : 'text-gray-900 dark:text-white'
+                            isSelected && template ? 'text-blue-600' : 'text-gray-900 dark:text-white'
                           }`}>
                             {templateType.name}
                           </h3>
                           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                             {templateType.description}
                           </p>
+                          {!template && (
+                            <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                              Template not initialized
+                            </p>
+                          )}
                         </div>
                       </div>
                     </button>
@@ -320,7 +334,7 @@ export function EmailTemplateEditor() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-2">
-                          {selectedTemplate.variables.map((variable) => (
+                          {selectedTemplate && selectedTemplate.variables.map((variable) => (
                             <button
                               key={variable}
                               onClick={() => insertVariable(variable)}

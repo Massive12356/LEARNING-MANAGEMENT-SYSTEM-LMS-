@@ -41,6 +41,20 @@ class MockApiService {
       subject: 'Welcome to {{organizationName}}!',
       body: 'Hi {{firstName}},\n\nWelcome to our learning platform! We\'re excited to have you join us.\n\nBest regards,\nThe {{organizationName}} Team',
       variables: ['firstName', 'organizationName']
+    },
+    {
+      id: '2',
+      type: 'password-reset',
+      subject: 'Reset Your Password for {{organizationName}}',
+      body: 'Hi {{firstName}},\n\nWe received a request to reset your password for {{organizationName}}. Click the link below to reset your password:\n\n{{resetLink}}\n\nThis link will expire in 24 hours.\n\nIf you didn\'t request this, please ignore this email.\n\nBest regards,\nThe {{organizationName}} Team',
+      variables: ['firstName', 'organizationName', 'resetLink']
+    },
+    {
+      id: '3',
+      type: 'course-completion',
+      subject: 'Congratulations on Completing {{courseName}}!',
+      body: 'Hi {{firstName}},\n\nCongratulations on successfully completing {{courseName}}!\n\n{{certificateAvailable}}\n\nWe hope you enjoyed the course and found it valuable.\n\nBest regards,\nThe {{organizationName}} Team',
+      variables: ['firstName', 'courseName', 'organizationName', 'certificateAvailable']
     }
   ];
 
@@ -303,6 +317,16 @@ class MockApiService {
       throw new Error('User not found');
     }
     user.isArchived = true;
+    user.updatedAt = new Date();
+  }
+
+  async unarchiveUser(id: string): Promise<void> {
+    await delay();
+    const user = this.users.find(u => u.id === id);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    user.isArchived = false;
     user.updatedAt = new Date();
   }
 

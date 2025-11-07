@@ -7,7 +7,7 @@ import {
   UserSearchQuery,
   SystemUsageResponse,
   ActiveUsersResponse,
-  PendingUsersResponse
+  PendingUsersResponse,
 } from '../types';
 import apiClient from './apiClient';
 import { AxiosError } from 'axios';
@@ -343,15 +343,27 @@ class AdminService {
     }
   }
 
-  async deleteUser(id: string): Promise<User> {
+  async suspendUser(id: string): Promise<User> {
     try {
-      const response = await apiClient.patch('user/organization/soft-delete', id);
-      console.log('[adminService] RESPONSE FROM SERVER', response.data);
-      return response.data || response.data.data;
+      const response = await apiClient.put(`/user/status/suspend/${id}`);
+      console.log(`[adminService] SUSPEND USER RESPONSE FROM BACKEND`, response.data);
+      return response.data || response.data.users;
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
-      console.log('[adminService] RESPONSE FROM SERVER:', err?.response?.data || err?.message);
-      throw new Error(err?.response?.data?.message || err?.message);
+      console.log('[adminService] ERROR SUSPENDING USER', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || err.message);
+    }
+  }
+
+  async activateUser(id: string): Promise<User> {
+    try {
+      const response = await apiClient.put(`/user/status/activate/${id}`);
+      console.log(`[adminService] ACTIVATE USER RESPONSE FROM BACKEND`, response.data);
+      return response.data || response.data.users;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log('[adminService] ERROR ACTIVATING USER', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || err.message);
     }
   }
 }

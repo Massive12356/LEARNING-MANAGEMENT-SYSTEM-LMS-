@@ -46,6 +46,7 @@ import { OrganizationSettings } from '../pages/admin/OrganizationSettings';
 import { OrganizationAnalytics } from '../pages/admin/OrganizationAnalytics';
 import { EmailTemplateEditor } from '../pages/admin/EmailTemplateEditor';
 import { AdminReports } from '../pages/admin/AdminReports';
+import { AdminSettings } from '../pages/admin/AdminSettings';
 
 // Superuser Pages
 import { SuperuserDashboard } from '../pages/superuser/SuperuserDashboard';
@@ -179,6 +180,7 @@ export const AppRoutes: React.FC = () => {
               <Route path="notifications" element={<NotificationManagement />} />
               <Route path="notifications/list" element={<NotificationList />} />
               <Route path="reports" element={<AdminReports />} />
+              <Route path="settings" element={<AdminSettings />} />
             </Routes>
           </DashboardLayout>
         </ProtectedRoute>

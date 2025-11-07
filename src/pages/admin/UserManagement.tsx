@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { DataTable, Column } from '../../components/ui/DataTable';
 import { FileUploader } from '../../components/ui/FileUploader';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { mockApi } from '../../services/mockApi';
 import { organizationService } from '../../services/organizationService';
 import { adminService } from '../../services/adminService';
@@ -22,7 +23,6 @@ import {
   UserGroupIcon,
   ArrowUpTrayIcon,
   BuildingOfficeIcon,
-  EyeIcon,
   ArrowDownTrayIcon,
   ClipboardDocumentIcon,
 } from '@heroicons/react/24/outline';
@@ -159,6 +159,14 @@ export function UserManagement() {
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
+  const [userToSuspend, setUserToSuspend] = useState<User | null>(null);
+  const [showActivateConfirm, setShowActivateConfirm] = useState(false);
+  const [userToActivate, setUserToActivate] = useState<User | null>(null);
+  const [showBulkArchiveConfirm, setShowBulkArchiveConfirm] = useState(false);
 
   const [inviteData, setInviteData] = useState({
     email: '',
@@ -287,45 +295,65 @@ export function UserManagement() {
     }
   };
 
-  const handleArchiveUser = async (userId: string) => {
-    if (
-      !confirm('Are you sure you want to archive this user? They will lose access to the platform.')
-    ) {
-      return;
-    }
+  const handleSuspendUser = async (user: User) => {
+    setUserToSuspend(user);
+    setShowSuspendConfirm(true);
+  };
+
+  const confirmSuspendUser = async () => {
+    if (!userToSuspend) return;
 
     try {
-      await mockApi.archiveUser(userId);
-      toast.success('User archived successfully');
+      // Use the real API endpoint for suspending users
+      await adminService.suspendUser(userToSuspend.id);
+      toast.success('User suspended successfully');
       loadActiveUsers();
     } catch (error) {
-      toast.error('Failed to archive user');
+      toast.error('Failed to suspend user');
+    } finally {
+      setShowSuspendConfirm(false);
+      setUserToSuspend(null);
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (
-      !confirm(
-        'Are you sure you want to permanently delete this user? This action cannot be undone.'
-      )
-    ) {
-      return;
-    }
+  const handleActivateUser = async (user: User) => {
+    setUserToActivate(user);
+    setShowActivateConfirm(true);
+  };
+
+  const confirmActivateUser = async () => {
+    if (!userToActivate) return;
 
     try {
-      await mockApi.deleteUser(userId);
+      // Use the real API endpoint for activating users
+      await adminService.activateUser(userToActivate.id);
+      toast.success('User activated successfully');
+      loadActiveUsers();
+    } catch (error) {
+      toast.error('Failed to activate user');
+    } finally {
+      setShowActivateConfirm(false);
+      setUserToActivate(null);
+    }
+  };
+
+  const handleDeleteUser = async (user: User) => {
+    setUserToDelete(user);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    try {
+      await mockApi.deleteUser(userToDelete.id);
       toast.success('User deleted successfully');
       loadActiveUsers();
     } catch (error) {
       toast.error('Failed to delete user');
-    }
-  };
-
-  const handleViewAsUser = async (userId: string) => {
-    try {
-      await viewAsUser(userId);
-    } catch (error) {
-      toast.error('Failed to view as user');
+    } finally {
+      setShowDeleteConfirm(false);
+      setUserToDelete(null);
     }
   };
 
@@ -368,22 +396,24 @@ export function UserManagement() {
         toast.success(`Exporting ${selectedUsers.length} users`);
         break;
       case 'archive':
-        if (confirm(`Archive ${selectedUsers.length} selected users?`)) {
-          toast.success(`Archived ${selectedUsers.length} users`);
-          setSelectedUsers([]);
-        }
+        setShowBulkArchiveConfirm(true);
         break;
       case 'delete':
-        if (
-          confirm(
-            `Permanently delete ${selectedUsers.length} selected users? This cannot be undone.`
-          )
-        ) {
-          toast.success(`Deleted ${selectedUsers.length} users`);
-          setSelectedUsers([]);
-        }
+        setShowBulkDeleteConfirm(true);
         break;
     }
+  };
+
+  const confirmBulkArchive = () => {
+    toast.success(`Archived ${selectedUsers.length} users`);
+    setSelectedUsers([]);
+    setShowBulkArchiveConfirm(false);
+  };
+
+  const confirmBulkDelete = () => {
+    toast.success(`Deleted ${selectedUsers.length} users`);
+    setSelectedUsers([]);
+    setShowBulkDeleteConfirm(false);
   };
 
   const handleFileUpload = async (files: File[]) => {
@@ -518,16 +548,33 @@ export function UserManagement() {
       sortable: false,
       render: (_, user) => (
         <div className="flex items-center space-x-2">
-          <Link to={`/admin/users/${user.id}`}>
-            <Button variant="outline" size="sm">
-              <EyeIcon className="h-4 w-4" />
+          {user.isArchived ? (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleActivateUser(user)}
+              className="text-green-600 hover:text-green-700 border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+            >
+              Activate
             </Button>
-          </Link>
-          {user.role === 'student' && (
-            <Button variant="outline" size="sm" onClick={() => handleViewAsUser(user.id)}>
-              View As
+          ) : (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleSuspendUser(user)}
+              className="text-yellow-600 hover:text-yellow-700 border-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
+            >
+              Suspend
             </Button>
           )}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => handleDeleteUser(user)}
+            className="text-red-600 hover:text-red-700 border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+          >
+            Delete
+          </Button>
         </div>
       ),
     },
@@ -843,6 +890,76 @@ export function UserManagement() {
           </div>
         </div>
       </Modal>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setUserToDelete(null);
+        }}
+        onConfirm={confirmDeleteUser}
+        title="Delete User"
+        message="Are you sure you want to permanently delete this user? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmVariant="danger"
+      />
+
+      {/* Suspend Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showSuspendConfirm}
+        onClose={() => {
+          setShowSuspendConfirm(false);
+          setUserToSuspend(null);
+        }}
+        onConfirm={confirmSuspendUser}
+        title="Suspend User"
+        message="Are you sure you want to suspend this user? They will lose access to the platform."
+        confirmText="Suspend"
+        cancelText="Cancel"
+        confirmVariant="danger"
+      />
+
+      {/* Activate Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showActivateConfirm}
+        onClose={() => {
+          setShowActivateConfirm(false);
+          setUserToActivate(null);
+        }}
+        onConfirm={confirmActivateUser}
+        title="Activate User"
+        message="Are you sure you want to activate this user? They will regain access to the platform."
+        confirmText="Activate"
+        cancelText="Cancel"
+        confirmVariant="primary"
+      />
+
+      {/* Bulk Archive Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showBulkArchiveConfirm}
+        onClose={() => setShowBulkArchiveConfirm(false)}
+        onConfirm={confirmBulkArchive}
+        title="Archive Users"
+        message={`Are you sure you want to archive ${selectedUsers.length} selected users?`}
+        confirmText="Archive"
+        cancelText="Cancel"
+        confirmVariant="primary"
+      />
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showBulkDeleteConfirm}
+        onClose={() => setShowBulkDeleteConfirm(false)}
+        onConfirm={confirmBulkDelete}
+        title="Delete Users"
+        message={`Are you sure you want to permanently delete ${selectedUsers.length} selected users? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmVariant="danger"
+      />
+
     </div>
   );
 }
