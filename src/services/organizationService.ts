@@ -204,18 +204,6 @@ class OrganizationService {
       throw new Error(err.response?.data?.message || 'Failed to search organizations');
     }
   }
-  
-  async deleteOrganizations(ids: string): Promise<Organization[]>{
-    try {
-      const response = await apiClient.post('/user/organization/soft-delete', ids);
-      console.log("[OrganizationService]: RESPONSE FROM BACKEND", response.data)
-      return response.data.data
-    } catch (error) {
-      const err = error as AxiosError<{message?:string}>
-      console.log("[OrganizationService]: RESPONSE FROM BACKEND",err.response?.data || err.message)
-      throw new Error(err.response?.data?.message ||  "Failed to Delete User(s)")
-    }
-  }
 }
 
 export const organizationService = new OrganizationService();
