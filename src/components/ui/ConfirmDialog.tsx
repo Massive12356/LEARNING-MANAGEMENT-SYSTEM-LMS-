@@ -11,6 +11,7 @@ interface ConfirmDialogProps {
   confirmText?: string;
   cancelText?: string;
   confirmVariant?: 'primary' | 'secondary' | 'danger';
+  confirmDisabled?: boolean;
 }
 
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
@@ -21,13 +22,13 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   message,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
-  confirmVariant = 'primary'
+  confirmVariant = 'primary',
+  confirmDisabled  = false,
 }) => {
   console.log('ConfirmDialog rendered with isOpen:', isOpen);
   
   const handleConfirm = () => {
     onConfirm();
-    onClose();
   };
 
   return (
@@ -41,7 +42,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           <Button variant="outline" onClick={onClose}>
             {cancelText}
           </Button>
-          <Button variant={confirmVariant} onClick={handleConfirm}>
+          <Button variant={confirmVariant} onClick={handleConfirm} disabled={confirmDisabled} >
             {confirmText}
           </Button>
         </div>

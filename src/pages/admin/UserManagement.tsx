@@ -27,6 +27,15 @@ import {
   ClipboardDocumentIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import Papa from 'papaparse';
+
+interface CSVUserRecord {
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  [key: string]: any;
+}
 
 // This version omits password (backend generates it)
 type InviteUserPayload = Omit<RegisterPayload, 'password'>;
@@ -156,8 +165,11 @@ export function UserManagement() {
   const [totalPendingUsers, setTotalPendingUsers] = useState<number>(0);
   const [invitingUsers, setInvitingUsers] = useState(false);
   const [totalActiveUsers, setTotalActiveUsers] = useState<ActiveUsersResponse | null>(null);
-  const [totalPages, setTotalPages] = useState(1);
-  const [page, setPage] = useState(1);
+  const [activePage, setActivePage] = useState(1);
+  const [pendingPage, setPendingPage] = useState(1);
+  const [activeTotalPages, setActiveTotalPages] = useState(1);
+  const [pendingTotalPages, setPendingTotalPages] = useState(1);
+
   const [pageSize] = useState(10);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
@@ -167,6 +179,9 @@ export function UserManagement() {
   const [showActivateConfirm, setShowActivateConfirm] = useState(false);
   const [userToActivate, setUserToActivate] = useState<User | null>(null);
   const [showBulkArchiveConfirm, setShowBulkArchiveConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [totalOrgUsers, setTotalOrgUsers] =useState(0);
 
   const [inviteData, setInviteData] = useState({
     email: '',
@@ -201,21 +216,20 @@ export function UserManagement() {
 
   const loadActiveUsers = async (page = 1, limit = 10) => {
     if (!currentUser?.organizationId) return;
-
     try {
       const response = await adminService.getActiveUsers(currentUser.organizationId, page, limit);
-
       if (response) {
-        // Filter out admins so only students and teachers show on the table
         const filteredUsers = response.users?.filter(user => user.role !== 'admin') || [];
-
         setUsers(filteredUsers);
-        setTotalPages(response.totalPages || 1);
-        // Optional: Update totalActiveUsers based on filtered list
-        setTotalActiveUsers({
-          ...response,
-          totalActiveUsers: filteredUsers.length,
-        });
+        setActiveTotalPages(response.totalPages || 1);
+        // 🔹 Keep a separate total count that doesn’t change on pagination
+          setTotalActiveUsers({
+            ...response,
+            totalActiveUsers: response.totalActiveUsers ?? filteredUsers.length,
+          });
+
+          setTotalOrgUsers(response?.totalUsersInOrg);
+      
       }
     } catch (error) {
       toast.error('Failed to load users');
@@ -224,31 +238,24 @@ export function UserManagement() {
     }
   };
 
-
   const loadPendingUsers = async (page = 1, limit = 10) => {
     if (!currentUser?.organizationId) return;
-
     setLoading(true);
     try {
       const response = await adminService.getPendingUsers(currentUser.organizationId, page, limit);
       if (response) {
-        // Filter out admins and update pending users
         const filteredPending = response.users?.filter(user => user.role !== 'admin') || [];
-
         setPendingUsers(filteredPending);
-        setTotalPages(response.totalPages || 1);
-
-        // Update total pending users after filtering
-        setTotalPendingUsers(filteredPending.length);
-      }
+        setPendingTotalPages(response.totalPages || 1);
+        // 🔹 Keep overall pending count fixed
+          setTotalPendingUsers(response.totalPendingUsers ?? filteredPending.length);
+        }
     } catch (error) {
       toast.error('Failed to load pending users');
-      console.error(error);
     } finally {
       setLoading(false);
     }
   };
-
 
   const handleInviteUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -326,7 +333,8 @@ export function UserManagement() {
 
     try {
       // Use the real API endpoint for activating users
-      await adminService.activateUser(userToActivate.id);
+      const userIds = userToActivate.id;
+      await adminService.activateUser(userIds);
       toast.success('User activated successfully');
       loadActiveUsers();
     } catch (error) {
@@ -344,14 +352,17 @@ export function UserManagement() {
 
   const confirmDeleteUser = async () => {
     if (!userToDelete) return;
+    setIsDeleting(true);
 
     try {
-      await mockApi.deleteUser(userToDelete.id);
+      console.log('PAYLOAD ID:', [userToDelete.id]);
+      await adminService.deleteUser([userToDelete.id]);
       toast.success('User deleted successfully');
       loadActiveUsers();
     } catch (error) {
       toast.error('Failed to delete user');
     } finally {
+      setIsDeleting(false);
       setShowDeleteConfirm(false);
       setUserToDelete(null);
     }
@@ -410,25 +421,75 @@ export function UserManagement() {
     setShowBulkArchiveConfirm(false);
   };
 
-  const confirmBulkDelete = () => {
-    toast.success(`Deleted ${selectedUsers.length} users`);
-    setSelectedUsers([]);
-    setShowBulkDeleteConfirm(false);
+  const confirmBulkDelete = async () => {
+    if (selectedUsers.length === 0) return;
+
+    const userIds = selectedUsers.map(u => u.id);
+    setIsBulkDeleting(true);
+    try {
+      console.log('PAYLOAD ID:', [userIds]);
+      await adminService.deleteUser(userIds);
+      toast.success(`Deleted ${selectedUsers.length} user${selectedUsers.length > 1 ? 's' : ''}`);
+      setSelectedUsers([]);
+      loadActiveUsers();
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      toast.error('Failed to delete selected users');
+    } finally {
+      setIsBulkDeleting(false);
+      setShowBulkDeleteConfirm(false);
+    }
   };
 
   const handleFileUpload = async (files: File[]) => {
     try {
-      // Handle CSV file upload
+      // check if file is uploaded
       const file = files[0];
-      if (file.type !== 'text/csv') {
-        toast.error('Please upload a CSV file');
+      if (!file) {
+        toast.error('Please select a CSV file');
+        return;
+      }
+      // check if file has correct extension
+      if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+        toast.error('Invalid file type. Please upload a CSV file.');
         return;
       }
 
-      // TODO: Process CSV and import users
-      toast.success('CSV file uploaded successfully');
+      // Parse CSV into JSON
+      Papa.parse<CSVUserRecord>(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async result => {
+          const records = result.data;
+          console.log('Parsed Records:', records);
+
+          // Validate CSV structure
+          const requiredFields = ['email', 'firstName', 'lastName', 'role'];
+          const hasAllFields = requiredFields.every(f => f in records[0]);
+          if (!hasAllFields) {
+            toast.error('CSV file missing required columns');
+            return;
+          }
+
+          // Attach organization code automatically
+          const payload = records.map((r: any) => ({
+            ...r,
+            organizationId: organization?.organizationCode,
+          }));
+
+          console.log('PAYLOAD TO BACKEND:', payload);
+
+          // ✅ Send to backend via your service
+          await adminService.addBulkUsers(payload);
+
+          toast.success(`Successfully imported ${payload.length} users`);
+          setShowBulkImportModal(false);
+          loadPendingUsers();
+        },
+      });
     } catch (error) {
-      toast.error('Failed to upload file');
+      console.error('Bulk import error:', error);
+      toast.error('Failed to import users');
     }
   };
 
@@ -549,27 +610,27 @@ export function UserManagement() {
       render: (_, user) => (
         <div className="flex items-center space-x-2">
           {user.isArchived ? (
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => handleActivateUser(user)}
               className="text-green-600 hover:text-green-700 border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
             >
               Activate
             </Button>
           ) : (
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => handleSuspendUser(user)}
               className="text-yellow-600 hover:text-yellow-700 border-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
             >
               Suspend
             </Button>
           )}
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => handleDeleteUser(user)}
             className="text-red-600 hover:text-red-700 border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
           >
@@ -579,11 +640,24 @@ export function UserManagement() {
       ),
     },
   ];
+
   useEffect(() => {
-    loadActiveUsers(page, pageSize);
-    loadPendingUsers(page, pageSize);
+    if (!currentUser?.organizationId) return;
+
+    // Load both datasets once on mount
+    loadActiveUsers(1, pageSize);
+    loadPendingUsers(1, pageSize);
     loadOrganization();
-  }, [currentUser, loadOrganization, page]);
+  }, [currentUser?.organizationId]);
+
+  useEffect(() => {
+    if (activeTab === 'active') {
+      loadActiveUsers(activePage, pageSize);
+    } else {
+      loadPendingUsers(pendingPage, pageSize);
+    }
+    loadOrganization();
+  }, [currentUser, loadOrganization, activePage, pendingPage, activeTab]);
 
   return (
     <div className="space-y-8">
@@ -650,6 +724,10 @@ export function UserManagement() {
           >
             Pending Signups ({totalPendingUsers})
           </button>
+
+          <span className="whitespace-nowrap py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 dark:text-gray-400">
+            Total Users ({totalOrgUsers ?? 0})
+          </span>
         </nav>
       </div>
 
@@ -691,9 +769,9 @@ export function UserManagement() {
           filterable
           pagination
           pageSize={pageSize}
-          currentPage={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
+          currentPage={activePage}
+          totalPages={activeTotalPages}
+          onPageChange={setActivePage}
           selectable
           onSelectionChange={setSelectedUsers}
           emptyMessage="No users found. Get started by inviting your first user."
@@ -705,6 +783,30 @@ export function UserManagement() {
           onApprove={user => openApproveModal(user)}
           onReject={user => openRejectModal(user)}
         />
+      )}
+
+      {activeTab === 'pending' && pendingTotalPages > 1 && (
+        <div className="flex justify-between items-center mt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pendingPage === 1}
+            onClick={() => setPendingPage(prev => Math.max(prev - 1, 1))}
+          >
+            Previous
+          </Button>
+          <span className="text-sm text-gray-600 dark:text-gray-300">
+            Page {pendingPage} of {pendingTotalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pendingPage === pendingTotalPages}
+            onClick={() => setPendingPage(prev => Math.min(prev + 1, pendingTotalPages))}
+          >
+            Next
+          </Button>
+        </div>
       )}
 
       {/* ✅ Approve Confirmation Modal */}
@@ -900,10 +1002,11 @@ export function UserManagement() {
         }}
         onConfirm={confirmDeleteUser}
         title="Delete User"
-        message="Are you sure you want to permanently delete this user? This action cannot be undone."
-        confirmText="Delete"
+        message={`Are you sure you want to delete ${userToDelete?.firstName} ${userToDelete?.lastName}? this `}
+        confirmText={isDeleting ? 'Deleting..' : 'Confirm Delete'}
         cancelText="Cancel"
         confirmVariant="danger"
+        confirmDisabled={isDeleting}
       />
 
       {/* Suspend Confirmation Dialog */}
@@ -955,11 +1058,11 @@ export function UserManagement() {
         onConfirm={confirmBulkDelete}
         title="Delete Users"
         message={`Are you sure you want to permanently delete ${selectedUsers.length} selected users? This action cannot be undone.`}
-        confirmText="Delete"
+        confirmText={isBulkDeleting ? 'Deleting...' : ' Confirm Delete'}
         cancelText="Cancel"
         confirmVariant="danger"
+        confirmDisabled={isDeleting}
       />
-
     </div>
   );
 }

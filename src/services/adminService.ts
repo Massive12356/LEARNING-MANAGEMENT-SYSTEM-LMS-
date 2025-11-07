@@ -366,6 +366,32 @@ class AdminService {
       throw new Error(err.response?.data?.message || err.message);
     }
   }
+
+  async deleteUser(userIds: string[]): Promise<User> {
+    try {
+      const response = await apiClient.patch('/user/organization/soft-delete',
+      { userIds },
+      );
+      console.log('[adminService] RESPONSE FROM SERVER:', response.data);
+      return response.data || response.data.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log('[adminService]ERROR RESPONSE FROM SERVER:', err?.response?.data || err?.message);
+      throw new Error(err?.response?.data?.message || err?.message);
+    }
+  }
+
+  async addBulkUsers(payload:any[]) : Promise<User>{
+    try {
+      const response = await apiClient.post('/user/send-invitation/bulk-users/organization',payload);
+      console.log('[adminService] RESPONSE FROM SERVER:', response.data);
+      return response?.data || response?.data.data
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log('[adminService]ERROR RESPONSE FROM SERVER:', err?.response?.data || err?.message);
+      throw new Error(err?.response?.data?.message || err?.message);
+    }
+  }
 }
 
 export const adminService = new AdminService();
