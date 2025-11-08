@@ -231,9 +231,37 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
         const listItem = range.startContainer.parentElement?.closest('li');
-        if (listItem && !listItem.textContent?.trim()) {
-          e.preventDefault();
-          execCommand('outdent');
+        if (listItem) {
+          // If the list item is empty, remove it and exit the list
+          if (!listItem.textContent?.trim()) {
+            e.preventDefault();
+            // Remove the empty list item
+            listItem.remove();
+            // Insert a new paragraph after the list
+            const list = listItem.closest('ul, ol');
+            if (list) {
+              const newP = document.createElement('p');
+              newP.innerHTML = '<br>';
+              list.after(newP);
+              // Move cursor to the new paragraph
+              const newRange = document.createRange();
+              newRange.setStart(newP, 0);
+              newRange.collapse(true);
+              selection.removeAllRanges();
+              selection.addRange(newRange);
+            }
+          } else {
+            // For non-empty list items, let the browser handle it but ensure proper behavior
+            setTimeout(() => {
+              if (editorRef.current) {
+                const newValue = editorRef.current.innerHTML;
+                if (newValue !== valueRef.current) {
+                  valueRef.current = newValue;
+                  onChange(newValue);
+                }
+              }
+            }, 0);
+          }
         }
       }
     }
@@ -247,14 +275,25 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         if (listItem) {
           e.preventDefault();
           if (e.shiftKey) {
-            execCommand('outdent');
+            document.execCommand('outdent');
           } else {
-            execCommand('indent');
+            document.execCommand('indent');
           }
+          
+          // Update the editor content
+          setTimeout(() => {
+            if (editorRef.current) {
+              const newValue = editorRef.current.innerHTML;
+              if (newValue !== valueRef.current) {
+                valueRef.current = newValue;
+                onChange(newValue);
+              }
+            }
+          }, 0);
         }
       }
     }
-  }, [execCommand]);
+  }, [execCommand, onChange]);
 
   const insertLink = useCallback(() => {
     // Instead of using prompt, show our custom modal
@@ -343,8 +382,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   }, []);
 
-  // Fix for list commands
+  // Fix for list commands - improved implementation
   const toggleUnorderedList = useCallback(() => {
+    // Ensure we're working with the correct document context
+    document.execCommand('styleWithCSS', false, 'false');
+    
     // Check if we're already in a list
     const selection = window.getSelection();
     if (selection && selection.rangeCount > 0) {
@@ -353,22 +395,33 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       
       // Check if we're inside a list
       const parentList = container.nodeType === Node.ELEMENT_NODE 
-        ? (container as Element).closest('ul, ol')
-        : container.parentElement?.closest('ul, ol');
+        ? (container as Element).closest('ul')
+        : container.parentElement?.closest('ul');
       
       if (parentList) {
-        // We're in a list, so we need to outdent or remove list formatting
-        execCommand('outdent');
+        // We're in a UL list, so convert to paragraph
+        document.execCommand('insertUnorderedList', false, undefined);
       } else {
-        // We're not in a list, so create one
-        execCommand('insertUnorderedList');
+        // We're not in a UL list, so create one
+        document.execCommand('insertUnorderedList', false, undefined);
       }
     } else {
-      execCommand('insertUnorderedList');
+      document.execCommand('insertUnorderedList', false, undefined);
     }
-  }, [execCommand]);
+    
+    // Update the editor content
+    if (editorRef.current) {
+      const newValue = editorRef.current.innerHTML;
+      valueRef.current = newValue;
+      skipNextInputRef.current = true;
+      onChange(newValue);
+    }
+  }, [onChange]);
 
   const toggleOrderedList = useCallback(() => {
+    // Ensure we're working with the correct document context
+    document.execCommand('styleWithCSS', false, 'false');
+    
     // Check if we're already in a list
     const selection = window.getSelection();
     if (selection && selection.rangeCount > 0) {
@@ -377,20 +430,28 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       
       // Check if we're inside a list
       const parentList = container.nodeType === Node.ELEMENT_NODE 
-        ? (container as Element).closest('ul, ol')
-        : container.parentElement?.closest('ul, ol');
+        ? (container as Element).closest('ol')
+        : container.parentElement?.closest('ol');
       
       if (parentList) {
-        // We're in a list, so we need to outdent or remove list formatting
-        execCommand('outdent');
+        // We're in an OL list, so convert to paragraph
+        document.execCommand('insertOrderedList', false, undefined);
       } else {
-        // We're not in a list, so create one
-        execCommand('insertOrderedList');
+        // We're not in an OL list, so create one
+        document.execCommand('insertOrderedList', false, undefined);
       }
     } else {
-      execCommand('insertOrderedList');
+      document.execCommand('insertOrderedList', false, undefined);
     }
-  }, [execCommand]);
+    
+    // Update the editor content
+    if (editorRef.current) {
+      const newValue = editorRef.current.innerHTML;
+      valueRef.current = newValue;
+      skipNextInputRef.current = true;
+      onChange(newValue);
+    }
+  }, [onChange]);
 
   return (
     <div className={`border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden ${className}`}>
