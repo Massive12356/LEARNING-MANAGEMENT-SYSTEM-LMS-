@@ -40,11 +40,16 @@ export function StudentReports() {
       reportData.certificates.forEach((certificate: any) => {
         if (!notifiedCertificates.includes(certificate.id)) {
           // Send notification for new certificate
-          studentReportService.sendCertificateNotification(
-            user?.id || '',
-            certificate.title,
-            certificate.id
-          );
+          try {
+            studentReportService.sendCertificateNotification(
+              user?.id || '',
+              certificate.title,
+              certificate.id
+            );
+          } catch (error) {
+            // Silently handle permission errors for certificate notifications
+            console.log('Could not send certificate notification (permission denied)');
+          }
           
           // Mark as notified
           setNotifiedCertificates((prev: string[]) => [...prev, certificate.id]);
