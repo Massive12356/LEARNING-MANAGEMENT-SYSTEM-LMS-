@@ -36,20 +36,15 @@ export function StudentReports() {
 
   // Check for new certificates and send notifications
   useEffect(() => {
-    if (reportData && reportData.certificates.length > 0) {
+    if (reportData && reportData.certificates.length > 0 && user?.role !== 'student') {
       reportData.certificates.forEach((certificate: any) => {
         if (!notifiedCertificates.includes(certificate.id)) {
-          // Send notification for new certificate
-          try {
-            studentReportService.sendCertificateNotification(
-              user?.id || '',
-              certificate.title,
-              certificate.id
-            );
-          } catch (error) {
-            // Silently handle permission errors for certificate notifications
-            console.log('Could not send certificate notification (permission denied)');
-          }
+          // Send notification for new certificate (only for non-student roles)
+          studentReportService.sendCertificateNotification(
+            user?.id || '',
+            certificate.title,
+            certificate.id
+          );
           
           // Mark as notified
           setNotifiedCertificates((prev: string[]) => [...prev, certificate.id]);
