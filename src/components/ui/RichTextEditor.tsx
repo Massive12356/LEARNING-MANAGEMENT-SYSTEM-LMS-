@@ -235,32 +235,60 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           // If the list item is empty, remove it and exit the list
           if (!listItem.textContent?.trim()) {
             e.preventDefault();
-            // Remove the empty list item
-            listItem.remove();
-            // Insert a new paragraph after the list
+            
+            // Get the parent list
             const list = listItem.closest('ul, ol');
             if (list) {
-              const newP = document.createElement('p');
-              newP.innerHTML = '<br>';
-              list.after(newP);
-              // Move cursor to the new paragraph
-              const newRange = document.createRange();
-              newRange.setStart(newP, 0);
-              newRange.collapse(true);
-              selection.removeAllRanges();
-              selection.addRange(newRange);
-            }
-          } else {
-            // For non-empty list items, let the browser handle it but ensure proper behavior
-            setTimeout(() => {
-              if (editorRef.current) {
-                const newValue = editorRef.current.innerHTML;
-                if (newValue !== valueRef.current) {
-                  valueRef.current = newValue;
-                  onChange(newValue);
+              // Remove the empty list item
+              listItem.remove();
+              
+              // If this was the last item in the list, remove the empty list
+              if (list.children.length === 0) {
+                const nextElement = list.nextSibling;
+                list.remove();
+                
+                // Create a new paragraph
+                const newP = document.createElement('p');
+                newP.innerHTML = '<br>';
+                
+                // Insert after the list or at the end
+                if (nextElement) {
+                  nextElement.parentElement?.insertBefore(newP, nextElement);
+                } else {
+                  editorRef.current?.appendChild(newP);
                 }
+                
+                // Move cursor to the new paragraph
+                const newRange = document.createRange();
+                newRange.setStart(newP, 0);
+                newRange.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(newRange);
+              } else {
+                // Just move cursor to next line
+                const newP = document.createElement('p');
+                newP.innerHTML = '<br>';
+                list.after(newP);
+                
+                // Move cursor to the new paragraph
+                const newRange = document.createRange();
+                newRange.setStart(newP, 0);
+                newRange.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(newRange);
               }
-            }, 0);
+              
+              // Update the editor content
+              setTimeout(() => {
+                if (editorRef.current) {
+                  const newValue = editorRef.current.innerHTML;
+                  if (newValue !== valueRef.current) {
+                    valueRef.current = newValue;
+                    onChange(newValue);
+                  }
+                }
+              }, 0);
+            }
           }
         }
       }
@@ -382,31 +410,83 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   }, []);
 
-  // Fix for list commands - improved implementation
+  // Fix for list commands - robust implementation that works with manual DOM manipulation
   const toggleUnorderedList = useCallback(() => {
-    // Ensure we're working with the correct document context
-    document.execCommand('styleWithCSS', false, 'false');
-    
-    // Check if we're already in a list
     const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      const container = range.commonAncestorContainer;
-      
-      // Check if we're inside a list
-      const parentList = container.nodeType === Node.ELEMENT_NODE 
-        ? (container as Element).closest('ul')
-        : container.parentElement?.closest('ul');
-      
-      if (parentList) {
-        // We're in a UL list, so convert to paragraph
+    if (!selection || !selection.rangeCount) return;
+    
+    const range = selection.getRangeAt(0);
+    const container = range.commonAncestorContainer;
+    
+    // Check if we're inside a list item
+    const listItem = container.nodeType === Node.ELEMENT_NODE 
+      ? (container as Element).closest('li')
+      : container.parentElement?.closest('li');
+    
+    if (listItem) {
+      // We're in a list item, try to toggle off
+      try {
+        document.execCommand('styleWithCSS', false, 'false');
         document.execCommand('insertUnorderedList', false, undefined);
-      } else {
-        // We're not in a UL list, so create one
-        document.execCommand('insertUnorderedList', false, undefined);
+      } catch (error) {
+        // If execCommand fails, manually convert to paragraph
+        const parentList = listItem.closest('ul, ol');
+        if (parentList) {
+          // Create a new paragraph with the list item content
+          const newP = document.createElement('p');
+          newP.innerHTML = listItem.innerHTML || '<br>';
+          
+          // Replace the list item with the paragraph
+          listItem.replaceWith(newP);
+          
+          // If the list is now empty, remove it
+          if (parentList.children.length === 0) {
+            parentList.remove();
+          }
+          
+          // Move cursor to the new paragraph
+          const newRange = document.createRange();
+          newRange.setStart(newP, 0);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        }
       }
     } else {
-      document.execCommand('insertUnorderedList', false, undefined);
+      // We're not in a list, try to create one
+      try {
+        document.execCommand('styleWithCSS', false, 'false');
+        document.execCommand('insertUnorderedList', false, undefined);
+      } catch (error) {
+        // If execCommand fails, manually create a list
+        if (range.collapsed) {
+          // For collapsed selection, create an empty list
+          const list = document.createElement('ul');
+          const newItem = document.createElement('li');
+          newItem.innerHTML = '<br>';
+          list.appendChild(newItem);
+          
+          range.insertNode(list);
+          
+          // Move cursor to the new list item
+          const newRange = document.createRange();
+          newRange.setStart(newItem, 0);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        } else {
+          // For range selection, wrap content in list
+          const list = document.createElement('ul');
+          const newItem = document.createElement('li');
+          
+          // Extract selected content
+          const fragment = range.extractContents();
+          newItem.appendChild(fragment);
+          list.appendChild(newItem);
+          
+          range.insertNode(list);
+        }
+      }
     }
     
     // Update the editor content
@@ -419,29 +499,81 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   }, [onChange]);
 
   const toggleOrderedList = useCallback(() => {
-    // Ensure we're working with the correct document context
-    document.execCommand('styleWithCSS', false, 'false');
-    
-    // Check if we're already in a list
     const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      const container = range.commonAncestorContainer;
-      
-      // Check if we're inside a list
-      const parentList = container.nodeType === Node.ELEMENT_NODE 
-        ? (container as Element).closest('ol')
-        : container.parentElement?.closest('ol');
-      
-      if (parentList) {
-        // We're in an OL list, so convert to paragraph
+    if (!selection || !selection.rangeCount) return;
+    
+    const range = selection.getRangeAt(0);
+    const container = range.commonAncestorContainer;
+    
+    // Check if we're inside a list item
+    const listItem = container.nodeType === Node.ELEMENT_NODE 
+      ? (container as Element).closest('li')
+      : container.parentElement?.closest('li');
+    
+    if (listItem) {
+      // We're in a list item, try to toggle off
+      try {
+        document.execCommand('styleWithCSS', false, 'false');
         document.execCommand('insertOrderedList', false, undefined);
-      } else {
-        // We're not in an OL list, so create one
-        document.execCommand('insertOrderedList', false, undefined);
+      } catch (error) {
+        // If execCommand fails, manually convert to paragraph
+        const parentList = listItem.closest('ul, ol');
+        if (parentList) {
+          // Create a new paragraph with the list item content
+          const newP = document.createElement('p');
+          newP.innerHTML = listItem.innerHTML || '<br>';
+          
+          // Replace the list item with the paragraph
+          listItem.replaceWith(newP);
+          
+          // If the list is now empty, remove it
+          if (parentList.children.length === 0) {
+            parentList.remove();
+          }
+          
+          // Move cursor to the new paragraph
+          const newRange = document.createRange();
+          newRange.setStart(newP, 0);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        }
       }
     } else {
-      document.execCommand('insertOrderedList', false, undefined);
+      // We're not in a list, try to create one
+      try {
+        document.execCommand('styleWithCSS', false, 'false');
+        document.execCommand('insertOrderedList', false, undefined);
+      } catch (error) {
+        // If execCommand fails, manually create a list
+        if (range.collapsed) {
+          // For collapsed selection, create an empty list
+          const list = document.createElement('ol');
+          const newItem = document.createElement('li');
+          newItem.innerHTML = '<br>';
+          list.appendChild(newItem);
+          
+          range.insertNode(list);
+          
+          // Move cursor to the new list item
+          const newRange = document.createRange();
+          newRange.setStart(newItem, 0);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        } else {
+          // For range selection, wrap content in list
+          const list = document.createElement('ol');
+          const newItem = document.createElement('li');
+          
+          // Extract selected content
+          const fragment = range.extractContents();
+          newItem.appendChild(fragment);
+          list.appendChild(newItem);
+          
+          range.insertNode(list);
+        }
+      }
     }
     
     // Update the editor content
