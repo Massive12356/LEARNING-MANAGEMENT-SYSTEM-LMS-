@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -41,6 +42,7 @@ interface TeacherReport {
 
 export function TeacherReports() {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const [reportData, setReportData] = useState<TeacherReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('30');
@@ -255,7 +257,7 @@ export function TeacherReports() {
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value)}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm appearance-none pr-8"
           >
             <option value="7">Last 7 days</option>
             <option value="30">Last 30 days</option>
@@ -410,7 +412,7 @@ export function TeacherReports() {
                       {course.certificatesIssued}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => navigate(`/teacher/courses/${course.id}/edit`)}>
                         <EyeIcon className="h-4 w-4 mr-1" />
                         View Details
                       </Button>
