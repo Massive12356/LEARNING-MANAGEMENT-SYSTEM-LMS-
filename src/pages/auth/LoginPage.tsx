@@ -51,7 +51,7 @@ export const LoginPage: React.FC = () => {
       console.log('Login successful');
       navigate(from, { replace: true });
     } catch (error: any) {
-      toast.error('Login error');
+      toast.error(error.message || 'Login error');
       console.error('Login error:', error.message);
     } finally{
       setLoading(false)

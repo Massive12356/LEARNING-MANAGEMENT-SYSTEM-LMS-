@@ -8,6 +8,7 @@ import {
   SystemUsageResponse,
   ActiveUsersResponse,
   PendingUsersResponse,
+  UserStatus,
 } from '../types';
 import apiClient from './apiClient';
 import { AxiosError } from 'axios';
@@ -280,13 +281,13 @@ class AdminService {
       );
 
       console.log(
-        `[adminService] PAGINATED RESPONSE (page=${page}, limit=${page}):`,
+        `[adminService] ACTIVE PAGINATED RESPONSE (page=${pageSize}, limit=${page}):`,
         response.data
       );
       return response.data;
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
-      console.error('[adminService] ERRO GETTING ACTIVE USERS', err.response?.data || err.message);
+      console.error('[adminService] ERROR GETTING ACTIVE USERS', err.response?.data || err.message);
       throw new Error(err.response?.data?.message || 'Failed to get data');
     }
   }
@@ -305,7 +306,7 @@ class AdminService {
       );
 
       console.log(
-        `[adminService] PAGINATED RESPONSE (page=${page}, limit=${page}):`,
+        `[adminService] PENDING PAGINATED RESPONSE (page=${page}, limit=${page}):`,
         response.data
       );
       return response.data;
@@ -369,9 +370,7 @@ class AdminService {
 
   async deleteUser(userIds: string[]): Promise<User> {
     try {
-      const response = await apiClient.patch('/user/organization/soft-delete',
-      { userIds },
-      );
+      const response = await apiClient.patch('/user/organization/soft-delete', { userIds });
       console.log('[adminService] RESPONSE FROM SERVER:', response.data);
       return response.data || response.data.data;
     } catch (error) {
@@ -381,15 +380,42 @@ class AdminService {
     }
   }
 
-  async addBulkUsers(payload:any[]) : Promise<User>{
+  async addBulkUsers(payload: any[]): Promise<User> {
     try {
-      const response = await apiClient.post('/user/send-invitation/bulk-users/organization',payload);
+      const response = await apiClient.post(
+        '/user/send-invitation/bulk-users/organization',
+        payload
+      );
       console.log('[adminService] RESPONSE FROM SERVER:', response.data);
-      return response?.data || response?.data.data
+      return response?.data || response?.data.data;
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
       console.log('[adminService]ERROR RESPONSE FROM SERVER:', err?.response?.data || err?.message);
       throw new Error(err?.response?.data?.message || err?.message);
+    }
+  }
+
+  async updateUserStatus(id: string, payload: { newStatus: UserStatus }): Promise<User> {
+    try {
+      const response = await apiClient.put<User>(`/user/change/status/${id}`, payload);
+      console.log('[adminService] RESPONSE FROM BACKEND:', response.data);
+      return response.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.error('adminService', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to change status');
+    }
+  }
+
+  async passwordChange(payload: {oldPassword: string; password:string}): Promise<User> {
+    try {
+      const response = await apiClient.post('/user/Edit-Password', payload);
+      console.log('[adminService] RESPONSE FROM SERVER', response.data);
+      return response.data || response.data.data;
+    } catch (error) {
+      const err = error as AxiosError<{message?:string}>
+      console.log('[adminService] RESPONSE FROM SERVER', err?.response?.data || err?.message)
+      throw new Error(err?.response?.data?.message || err?.message)
     }
   }
 }

@@ -1,4 +1,5 @@
 export type UserRole = 'student' | 'teacher' | 'admin' | 'superuser';
+export type UserStatus = "active" | 'pending'
 
 export type CourseStatus = 'draft' | 'live';
 export type ProgramStatus = 'draft' | 'live';
@@ -21,6 +22,7 @@ export interface User {
   createdAt: Date;
   updatedAt: Date;
   organizationDetails?: OrganizationDetails;
+  newStatus: UserStatus;
 }
 export interface OrganizationDetails {
   id: number;

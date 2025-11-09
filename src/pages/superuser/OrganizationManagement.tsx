@@ -871,15 +871,18 @@ export function OrganizationManagement() {
                               <PencilIcon className="h-4 w-4 mr-1" />
                               Edit
                             </Button>
-
+                            
+                            {/* dynamically display admin button  */}
+                            <div className={ org?.organizationCode ? "flex" : "hidden"}>
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => openAssignAdminModal(org)}
-                            >
+                              >
                               <UserPlusIcon className="h-4 w-4 mr-1" />
                               Add Admin
                             </Button>
+                              </div>
                           </div>
 
                           <div className="flex flex-wrap items-center gap-2">
