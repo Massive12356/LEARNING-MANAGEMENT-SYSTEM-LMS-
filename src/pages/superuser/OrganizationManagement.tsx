@@ -328,7 +328,6 @@ export function OrganizationManagement() {
     setShowAssignAdminModal(true);
   };
 
-
   const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectOrgName) {
@@ -550,15 +549,14 @@ export function OrganizationManagement() {
     return () => clearTimeout(timeout);
   }, [searchTerm]);
 
-
   // handle search form
 
-  const handleClearSearch = ()=>{
-    setSearchTerm("");
+  const handleClearSearch = () => {
+    setSearchTerm('');
     setSearchMode(false);
     setFilteredOrganizations([]);
     loadOrganizations(currentPage);
-  }
+  };
   const handleCopy = async (text: string) => {
     try {
       const res = await navigator.clipboard.writeText(text);
@@ -785,9 +783,19 @@ export function OrganizationManagement() {
                           <div className="flex items-center space-x-3 min-w-0">
                             <div
                               className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
-                              style={{ backgroundColor: org?.primaryColor }}
+                              style={{
+                                backgroundColor: org?.logo ? 'transparent' : org?.primaryColor,
+                              }}
                             >
-                              <BuildingOfficeIcon className="h-6 w-6 text-white" />
+                              {org?.logo ? (
+                                <img
+                                  src={org?.logo}
+                                  alt={org?.name}
+                                  className="w-9 h-9 object-cover center mr-1 rounded-full"
+                                />
+                              ) : (
+                                <BuildingOfficeIcon className="h-6 w-6 text-white" />
+                              )}
                             </div>
                             <div className="min-w-0">
                               <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
@@ -954,18 +962,18 @@ export function OrganizationManagement() {
                               </Button>
                             )}
                           </div>
-                          <div className='flex items-center'>
-                          <p className="font-medium text-black  text-sm dark:text-yellow-500">
-                            {org?.organizationCode ?? 'N/A'}
-                          </p>
-                          <button
-                            className="ml-1 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-gray-200 dark:hover:bg-gray-700"
-                            onClick={() => handleCopy(org?.organizationCode ?? 'N/A')}
-                            title="Copy organization code"
+                          <div className="flex items-center">
+                            <p className="font-medium text-black  text-sm dark:text-yellow-500">
+                              {org?.organizationCode ?? 'N/A'}
+                            </p>
+                            <button
+                              className={`ml-1 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-gray-200 dark:hover:bg-gray-700 ${org?.organizationCode ? "flex" : "hidden"}`}
+                              onClick={() => handleCopy(org?.organizationCode ?? 'N/A')}
+                              title="Copy organization code"
                             >
-                            <ClipboardDocumentIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                          </button>
-                            </div>
+                              <ClipboardDocumentIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            </button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>

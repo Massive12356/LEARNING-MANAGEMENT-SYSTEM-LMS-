@@ -292,7 +292,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                   <img
                     src={organization.logo}
                     alt={organization.name}
-                    className="h-8 w-8 rounded object-cover"
+                    className="w-7 h-7 object-cover center mr-1 rounded-full"
                   />
                 ) : (
                   <div className="h-8 w-8 rounded bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
@@ -428,7 +428,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                       <img
                         src={organization.logo}
                         alt={organization.name}
-                        className="h-6 w-6 rounded object-cover"
+                        className="w-7 h-7 object-cover center mr-1 rounded-full"
                       />
                     ) : (
                       <BuildingOfficeIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />

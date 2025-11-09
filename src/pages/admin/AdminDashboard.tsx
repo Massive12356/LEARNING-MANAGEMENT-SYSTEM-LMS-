@@ -182,7 +182,7 @@ const loadOrganization = async () => {
                 <img
                   src={organization?.logo}
                   alt={organization?.name}
-                  className="w-7 h-7 object-cover center"
+                  className="w-7 h-7 object-cover center mr-1 rounded-full"
                 />
               ) : (
                 <BuildingOfficeIcon className="h-4 w-4 mr-1" />

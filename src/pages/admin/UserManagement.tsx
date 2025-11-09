@@ -220,24 +220,20 @@ export function UserManagement() {
   const loadActiveUsers = async (page = 1, limit = 10) => {
     if (!currentUser?.organizationId) return;
     try {
-      const response = await adminService.getActiveUsers(currentUser.organizationId, page, limit) as ActiveUsersResponse;
-      const filteredUsers = response?.users?.filter(user => user.role !== 'admin') || [];
-      setUsers(filteredUsers);
-      setActiveTotalPages(response?.totalPages || 1);
+      const response = await adminService.getActiveUsers(currentUser.organizationId, page, limit);
+      if (response) {
+        const filteredUsers = response.users?.filter(user => user.role !== 'admin') || [];
+        setUsers(filteredUsers);
+        setActiveTotalPages(response.totalPages || 1);
+        
+        // 🔹 Keep a separate total count that doesn’t change on pagination
+        setTotalActiveUsers({
+          ...response,
+          totalActiveUsers: response.totalActiveUsers ?? filteredUsers.length,
+        });
 
-      // ✅ Recalculate counts excluding admins
-      const filteredActiveCount = filteredUsers.length;
-      const filteredTotalOrgCount = response?.users
-        ? response.users.filter(u => u.role !== 'admin').length
-        : filteredActiveCount;
-
-      setTotalActiveUsers({
-        ...response,
-        totalActiveUsers: filteredActiveCount,
-      });
-
-      setTotalOrgUsers(filteredTotalOrgCount);
-
+        setTotalOrgUsers(response?.totalUsersInOrg);
+      }
     } catch (error) {
       toast.error('Failed to load users');
     } finally {
@@ -253,10 +249,9 @@ export function UserManagement() {
       if (response) {
         const filteredPending = response.users?.filter(user => user.role !== 'admin') || [];
         setPendingUsers(filteredPending);
-
-        // ✅ Recalculate pending count excluding admins
-        const filteredPendingCount = filteredPending.length;
-        setTotalPendingUsers(filteredPendingCount);
+        setPendingTotalPages(response.totalPages || 1);
+        // 🔹 Keep overall pending count fixed
+        setTotalPendingUsers(response?.totalPendingUsers);
       }
     } catch (error) {
       toast.error('Failed to load pending users');
