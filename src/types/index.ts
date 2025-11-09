@@ -563,7 +563,7 @@ export interface UserSearchQuery {
 }
 
  export interface ActiveUsersResponse {
-  message: string;
+  message?: string;
   totalUsersInOrg: number;
   totalActiveUsers: number;
   totalPages: number;
@@ -572,7 +572,7 @@ export interface UserSearchQuery {
 }
 
 export interface PendingUsersResponse {
-  message: string;
+  message?: string;
   totalUsersInOrg: number;
   totalPendingUsers: number;
   totalPages: number;

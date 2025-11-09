@@ -178,8 +178,16 @@ const loadOrganization = async () => {
             <div className="mt-2 h-4 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded"></div>
           ) : organization?.id ? (
             <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400 group relative">
-              <BuildingOfficeIcon className="h-4 w-4 mr-1" />
-              <span className='uppercase'>{organization?.name ?? "N/A"}</span>
+              {organization?.logo ? (
+                <img
+                  src={organization?.logo}
+                  alt={organization?.name}
+                  className="w-7 h-7 object-cover center"
+                />
+              ) : (
+                <BuildingOfficeIcon className="h-4 w-4 mr-1" />
+              )}
+              <span className="uppercase">{organization?.name ?? 'N/A'}</span>
               <span className="ml-3 text-zinc-900 dark:text-yellow-500 font-medium">
                 {organization?.organizationCode ?? 'N/A'}
               </span>

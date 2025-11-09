@@ -220,19 +220,24 @@ export function UserManagement() {
   const loadActiveUsers = async (page = 1, limit = 10) => {
     if (!currentUser?.organizationId) return;
     try {
-      const response = await adminService.getActiveUsers(currentUser.organizationId, page, limit);
-      if (response) {
-        const filteredUsers = response.users?.filter(user => user.role !== 'admin') || [];
-        setUsers(filteredUsers);
-        setActiveTotalPages(response.totalPages || 1);
-        // 🔹 Keep a separate total count that doesn’t change on pagination
-        setTotalActiveUsers({
-          ...response,
-          totalActiveUsers: response.totalActiveUsers ?? filteredUsers.length,
-        });
+      const response = await adminService.getActiveUsers(currentUser.organizationId, page, limit) as ActiveUsersResponse;
+      const filteredUsers = response?.users?.filter(user => user.role !== 'admin') || [];
+      setUsers(filteredUsers);
+      setActiveTotalPages(response?.totalPages || 1);
 
-        setTotalOrgUsers(response?.totalUsersInOrg);
-      }
+      // ✅ Recalculate counts excluding admins
+      const filteredActiveCount = filteredUsers.length;
+      const filteredTotalOrgCount = response?.users
+        ? response.users.filter(u => u.role !== 'admin').length
+        : filteredActiveCount;
+
+      setTotalActiveUsers({
+        ...response,
+        totalActiveUsers: filteredActiveCount,
+      });
+
+      setTotalOrgUsers(filteredTotalOrgCount);
+
     } catch (error) {
       toast.error('Failed to load users');
     } finally {
@@ -248,9 +253,10 @@ export function UserManagement() {
       if (response) {
         const filteredPending = response.users?.filter(user => user.role !== 'admin') || [];
         setPendingUsers(filteredPending);
-        setPendingTotalPages(response.totalPages || 1);
-        // 🔹 Keep overall pending count fixed
-        setTotalPendingUsers(response?.totalPendingUsers);
+
+        // ✅ Recalculate pending count excluding admins
+        const filteredPendingCount = filteredPending.length;
+        setTotalPendingUsers(filteredPendingCount);
       }
     } catch (error) {
       toast.error('Failed to load pending users');
@@ -311,31 +317,30 @@ export function UserManagement() {
     setIsProcessing(false); // reset processing state
   };
 
-const confirmSuspendUser = async () => {
-  if (!userToSuspend) return;
+  const confirmSuspendUser = async () => {
+    if (!userToSuspend) return;
 
-  const newStatus = userToSuspend.isArchived ? 'active' : 'pending';
-  setStatusLoading(userToSuspend.id);
+    const newStatus = userToSuspend.isArchived ? 'active' : 'pending';
+    setStatusLoading(userToSuspend.id);
 
-  try {
-    await adminService.updateUserStatus(userToSuspend.id, { newStatus });
-    toast.success(
-      newStatus === 'pending'
-        ? `${userToSuspend.firstName} has been suspended`
-        : `${userToSuspend.firstName} reactivated successfully`
-    );
-    setShowSuspendConfirm(false);
-    setUserToSuspend(null);
+    try {
+      await adminService.updateUserStatus(userToSuspend.id, { newStatus });
+      toast.success(
+        newStatus === 'pending'
+          ? `${userToSuspend.firstName} has been suspended`
+          : `${userToSuspend.firstName} reactivated successfully`
+      );
+      setShowSuspendConfirm(false);
+      setUserToSuspend(null);
 
-    // Reload both lists
-    await Promise.all([loadActiveUsers(), loadPendingUsers()]);
-  } catch (error: any) {
-    toast.error(error.message || 'Failed to update user status');
-  } finally {
-    setStatusLoading(null);
-  }
-};
-
+      // Reload both lists
+      await Promise.all([loadActiveUsers(), loadPendingUsers()]);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update user status');
+    } finally {
+      setStatusLoading(null);
+    }
+  };
 
   const handleActivateUser = async (user: User) => {
     setUserToActivate(user);
@@ -537,8 +542,6 @@ const confirmSuspendUser = async () => {
     }
   };
 
-
-
   // open Approve Modal
   const openApproveModal = (user: any) => {
     setSelectedUser(user);
@@ -691,7 +694,15 @@ const confirmSuspendUser = async () => {
             <div className="mt-2 h-4 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded"></div>
           ) : organization ? (
             <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400 group relative">
-              <BuildingOfficeIcon className="h-4 w-4 mr-1" />
+              {organization?.logo ? (
+                <img
+                  src={organization?.logo}
+                  alt={organization?.name}
+                  className="w-7 h-7 object-cover center"
+                />
+              ) : (
+                <BuildingOfficeIcon className="h-4 w-4 mr-1" />
+              )}
               <span>{organization.name}</span>
               <span className="ml-3 text-zinc-900 dark:text-yellow-500 font-medium">
                 {organization?.organizationCode ?? 'N/A'}
@@ -1084,7 +1095,7 @@ const confirmSuspendUser = async () => {
         onConfirm={confirmSuspendUser}
         title="Suspend User"
         message="Are you sure you want to suspend this user? They will lose access to the platform."
-        confirmText={statusLoading ? " Suspending..." : "Suspend"}
+        confirmText={statusLoading ? ' Suspending...' : 'Suspend'}
         cancelText="Cancel"
         confirmVariant="danger"
       />

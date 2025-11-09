@@ -29,6 +29,7 @@ import {
   CheckCircleIcon,
   UserPlusIcon,
   ShieldCheckIcon,
+  ClipboardDocumentIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -558,7 +559,16 @@ export function OrganizationManagement() {
     setFilteredOrganizations([]);
     loadOrganizations(currentPage);
   }
-
+  const handleCopy = async (text: string) => {
+    try {
+      const res = await navigator.clipboard.writeText(text);
+      console.log('text Copied [admin DashBoard]', res);
+      toast.success('code copied to clipboard!!');
+    } catch (error) {
+      console.log('failed to copy code [admin dashboard]', error);
+      toast.error('failed to copy text!');
+    }
+  };
 
   useEffect(() => {
     loadOrganizations(currentPage);
@@ -871,18 +881,18 @@ export function OrganizationManagement() {
                               <PencilIcon className="h-4 w-4 mr-1" />
                               Edit
                             </Button>
-                            
+
                             {/* dynamically display admin button  */}
-                            <div className={ org?.organizationCode ? "flex" : "hidden"}>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openAssignAdminModal(org)}
+                            <div className={org?.organizationCode ? 'flex' : 'hidden'}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openAssignAdminModal(org)}
                               >
-                              <UserPlusIcon className="h-4 w-4 mr-1" />
-                              Add Admin
-                            </Button>
-                              </div>
+                                <UserPlusIcon className="h-4 w-4 mr-1" />
+                                Add Admin
+                              </Button>
+                            </div>
                           </div>
 
                           <div className="flex flex-wrap items-center gap-2">
@@ -944,7 +954,18 @@ export function OrganizationManagement() {
                               </Button>
                             )}
                           </div>
-                          <p className="font-medium text-black dark:text-white">Code: {org?.organizationCode ?? 'N/A'}</p>
+                          <div className='flex items-center'>
+                          <p className="font-medium text-black  text-sm dark:text-yellow-500">
+                            {org?.organizationCode ?? 'N/A'}
+                          </p>
+                          <button
+                            className="ml-1 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-gray-200 dark:hover:bg-gray-700"
+                            onClick={() => handleCopy(org?.organizationCode ?? 'N/A')}
+                            title="Copy organization code"
+                            >
+                            <ClipboardDocumentIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          </button>
+                            </div>
                         </div>
                       </CardContent>
                     </Card>

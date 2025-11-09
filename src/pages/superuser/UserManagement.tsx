@@ -545,7 +545,9 @@ useEffect(() =>{
           >
             Previous
           </Button>
-          Page {currentPage} of {totalPages}
+          <p className="text-gray-600 dark:text-gray-400">
+            Page {currentPage} of {totalPages}
+          </p>
           <Button
             variant="outline"
             size="sm"
