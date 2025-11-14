@@ -450,9 +450,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                   className="flex items-center space-x-2 focus:outline-none"
                   aria-label="User profile"
                 >
-                  {user.profileImage ? (
+                  {user.images ? (
                     <img
-                      src={user.profileImage}
+                      src={user.images}
                       alt="Profile"
                       className="h-9 w-9 rounded-full object-cover border-2 border-white dark:border-gray-800 shadow"
                     />

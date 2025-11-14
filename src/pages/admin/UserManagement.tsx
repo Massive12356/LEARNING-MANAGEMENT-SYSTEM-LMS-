@@ -153,7 +153,7 @@ const PendingUsersTable: React.FC<{
 };
 
 export function UserManagement() {
-  const { user: currentUser, viewAsUser } = useAuthStore();
+  const { user: currentUser, viewAsUser, fetchUserById } = useAuthStore();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -537,6 +537,7 @@ export function UserManagement() {
     }
   };
 
+
   // open Approve Modal
   const openApproveModal = (user: any) => {
     setSelectedUser(user);
@@ -562,9 +563,9 @@ export function UserManagement() {
       render: (_, user) => (
         <div className="flex items-center">
           <div className="flex-shrink-0 h-10 w-10">
-            {user.profileImage ? (
+            {user.images ? (
               <img
-                src={user.profileImage}
+                src={user.images}
                 alt="Profile"
                 className="h-10 w-10 rounded-full object-cover border-2 border-white dark:border-gray-800 shadow"
               />
@@ -596,7 +597,7 @@ export function UserManagement() {
             role === 'admin'
               ? 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200'
               : role === 'teacher'
-              ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+              ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
               : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
           }`}
         >
@@ -688,12 +689,12 @@ export function UserManagement() {
           {orgLoading ? (
             <div className="mt-2 h-4 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded"></div>
           ) : organization ? (
-            <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400 group relative">
+            <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400 group relative ">
               {organization?.logo ? (
                 <img
                   src={organization?.logo}
                   alt={organization?.name}
-                  className="w-7 h-7 object-cover center"
+                  className="w-7 h-7 object-cover rounded-full center mr-1"
                 />
               ) : (
                 <BuildingOfficeIcon className="h-4 w-4 mr-1" />

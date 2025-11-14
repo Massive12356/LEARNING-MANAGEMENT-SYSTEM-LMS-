@@ -18,7 +18,7 @@ export const LoginPage: React.FC = () => {
   });
   const [errors, setErrors] = useState<Partial<LoginForm>>({});
 
-  const { login} = useAuthStore();
+  const { login,} = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [loading, setLoading] = useState(false)

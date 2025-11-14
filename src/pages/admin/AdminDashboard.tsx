@@ -22,7 +22,7 @@ import {
 import toast from 'react-hot-toast';
 
 export function AdminDashboard() {
-  const { user } = useAuthStore();
+  const { user,fetchUserById } = useAuthStore();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [dashboardData, setDashboardData] = useState({
     totalUsers: 0,
@@ -62,6 +62,26 @@ const loadOrganization = async () => {
         mockApi.getCourses({ organizationId: user?.organizationId }),
         mockApi.getPrograms({ organizationId: user?.organizationId }),
       ]);
+
+      // //test function
+      // const testUserDetails = async () => {
+      //   try {
+      //     if (!user?.id) {
+      //       console.warn('No user ID found');
+      //       return;
+      //     }
+
+      //     const res = await fetchUserById(user.id);
+      //     console.log('[ComponentFunction] RESPONSE FROM SERVER', res);
+      //   } catch (error: any) {
+      //     console.error(error.message);
+      //   }
+      // };
+
+      // // test user details
+      // useEffect(() => {
+      //   testUserDetails();
+      // }, [user]);
 
       // Mock recent activity and alerts
       const mockRecentUsers = usersData.data.slice(0, 5);

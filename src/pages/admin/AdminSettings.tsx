@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuthStore, normalizeUser } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { mockApi } from '../../services/mockApi';
 import { organizationService } from '../../services/organizationService';
 import { settingsService, NotificationPreferences } from '../../services/settingsService';
 import { User, Organization } from '../../types';
 import { UserIcon, BuildingOfficeIcon, KeyIcon, BellIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { ProfilePictureUpload } from '../../components/ui/ProfilePictureUpload';
-import { formatDate } from '../../utils/dateFormatter';
+import { formatDate, formatDateForInput } from '../../utils/dateFormatter';
 import { adminService } from '../../services/adminService';
 
 export const AdminSettings: React.FC = () => {
@@ -18,16 +17,19 @@ export const AdminSettings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
-  const [updatingPassword,setUpdatingPassword]= useState(false);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
 
   const [profileData, setProfileData] = useState({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
-    email: user?.email || '',
-    birthday: user?.birthday || '',
-    country: user?.country || '',
-    gender: user?.gender || '',
-    levelOfEducation: user?.levelOfEducation || '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    birthday: '',
+    country: '',
+    gender: '',
+    levelOfEducation: '',
+    imageFile: null as File | null,
+    backendImageUrl: '', // image from backend
+    previewUrl: '', // current preview (objectURL or backend)
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -42,31 +44,57 @@ export const AdminSettings: React.FC = () => {
     smsNotifications: false,
   });
 
-  useEffect(() => {
-    // Initialize profile data when user is available
-    if (user) {
-      setProfileData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        email: user.email || '',
-        birthday: user.birthday || '',
-        country: user.country || '',
-        gender: user.gender || '',
-        levelOfEducation: user.levelOfEducation || '',
-      });
+  const [profileImage, setProfileImage] = useState<File | string | null>(null);
 
-      // Load notification preferences
-      const preferences = settingsService.getNotificationPreferences(user.id);
-      console.log('Loaded notification preferences:', preferences);
-      setNotificationPreferences(preferences);
-    }
+  // Load user & organization data once
+  useEffect(() => {
+    if (!user) return;
+
+    const normalizedUser = normalizeUser(user);
+
+    const genderEnumValue: 'Male' | 'Female' | 'Other' | 'Prefer not to say' | '' = (() => {
+      switch (normalizedUser.gender?.toLowerCase()) {
+        case 'male':
+          return 'Male';
+        case 'female':
+          return 'Female';
+        case 'other':
+          return 'Other';
+        case 'prefer not to say':
+          return 'Prefer not to say';
+        default:
+          return '';
+      }
+    })();
+
+    setProfileData({
+      firstName: normalizedUser.firstName || '',
+      lastName: normalizedUser.lastName || '',
+      email: normalizedUser.email || '',
+      birthday: formatDateForInput(normalizedUser.birthday),
+      country: normalizedUser.country || '',
+      gender: genderEnumValue,
+      levelOfEducation: normalizedUser.levelOfEducation || '',
+      imageFile: null,
+      backendImageUrl: normalizedUser.images || '',
+      previewUrl: normalizedUser.images || '',
+    });
+    setProfileImage(normalizedUser.images || null);
+
+    (async () => {
+      try {
+        const prefs = await settingsService.getNotificationPreferences(normalizedUser.id);
+        setNotificationPreferences(prefs);
+      } catch (err) {
+        console.error('Failed to load notification preferences:', err);
+      }
+    })();
 
     loadOrganization();
   }, [user]);
 
   const loadOrganization = async () => {
     if (!user?.organizationDetails?.id) {
-      // If user has no organization, we're done loading
       setOrganization(null);
       setLoading(false);
       return;
@@ -74,7 +102,7 @@ export const AdminSettings: React.FC = () => {
 
     try {
       const orgData = await organizationService.getOrganizationById(
-        user?.organizationDetails?.id.toString()
+        user.organizationDetails.id.toString()
       );
       setOrganization(orgData);
     } catch (error) {
@@ -87,14 +115,99 @@ export const AdminSettings: React.FC = () => {
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!user) return;
 
     try {
-      await updateUser(profileData);
+      const formData = new FormData();
+      formData.append('firstName', profileData.firstName);
+      formData.append('lastName', profileData.lastName);
+      formData.append('email', profileData.email);
+      formData.append('role', user.role); // keep current role
+      formData.append('status', 'active'); // or pull from user.status
+      formData.append('country', profileData.country);
+      if (profileData.gender.trim()) {
+        formData.append('gender', profileData.gender);
+      }
+      formData.append('levelOfEducation', profileData.levelOfEducation);
+      formData.append('birthday', profileData.birthday ? profileData.birthday : '');
+
+      // Notification preferences
+      formData.append(
+        'emailNotificationEnabler',
+        notificationPreferences.emailNotifications ? 'true' : 'false'
+      );
+      formData.append(
+        'smsNotificationEnabler',
+        notificationPreferences.smsNotifications ? 'true' : 'false'
+      );
+      formData.append(
+        'pushNotificationEnabler',
+        notificationPreferences.pushNotifications ? 'true' : 'false'
+      );
+
+      if (profileImage instanceof File) {
+        formData.append('images', profileImage); // new upload
+      } else if (typeof profileImage === 'string') {
+        formData.append('images', profileImage); // keep existing image
+      } else {
+        formData.append('images', ''); // user removed image
+      }
+
+      console.log('PAYLOAD TO SERVER:', formData);
+      // Send FormData to backend
+      await adminService.updateProfileDetails(user.id, formData);
+      const updatedUser = await adminService.getUserById(user.id);
+      console.log('DATA FROM BACKEND', updatedUser);
+      // Update store with normalized User object
+      updateUser(updatedUser);
+
+      // Sync local form state
+      const genderEnumValue: 'Male' | 'Female' | 'Other' | 'Prefer not to say' | '' = (() => {
+        switch (updatedUser.gender?.toLowerCase()) {
+          case 'male':
+            return 'Male';
+          case 'female':
+            return 'Female';
+          case 'other':
+            return 'Other';
+          case 'prefer not to say':
+            return 'Prefer not to say';
+          default:
+            return '';
+        }
+      })();
+
+      // Update local state
+      setProfileData(prev => ({
+        ...prev,
+        firstName: updatedUser.firstName || '',
+        lastName: updatedUser.lastName || '',
+        email: updatedUser.email || '',
+        birthday: formatDateForInput(updatedUser.birthday),
+        country: updatedUser.country || '',
+        gender: updatedUser.gender
+          ? updatedUser.gender.charAt(0).toUpperCase() + updatedUser.gender.slice(1)
+          : '',
+        levelOfEducation: updatedUser.levelOfEducation || '',
+        imageFile: null,
+        backendImageUrl: updatedUser.images || '',
+        previewUrl: updatedUser.images || '',
+      }));
+
+      // In handleProfileUpdate, after successful save:
+      if (profileImage instanceof File) {
+        formData.append('images', profileImage);
+      } else if (typeof profileImage === 'string' && profileImage.trim() !== '') {
+        formData.append('images', profileImage);
+      } else {
+        formData.append('images', '');
+      }
+      setProfileImage(updatedUser.images || null);
+
       toast.success('Profile updated successfully');
-    } catch (error) {
-      toast.error('Failed to update profile');
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || 'Failed to update profile');
     }
   };
 
@@ -104,31 +217,28 @@ export const AdminSettings: React.FC = () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast.error('New passwords do not match');
       return;
-    } 
-    
-    if(!user) return;
-
-   try {
-    setUpdatingPassword(true);
-
-    // prepare the data
-    const payload = {
-      oldPassword: passwordData.currentPassword,
-      password: passwordData.newPassword,
     }
-     // call your service api
-     await adminService.passwordChange(payload as any)
-     toast.success('Password updated successfully');
-     setPasswordData({
-       currentPassword: '',
-       newPassword: '',
-       confirmPassword: '',
-     });
-   } catch (error :any) {
-     toast.error(error.message || "Failed to Update Password")
-   } finally{
-    setUpdatingPassword(false)
-   }
+
+    if (!user) return;
+
+    try {
+      setUpdatingPassword(true);
+      const payload = {
+        oldPassword: passwordData.currentPassword,
+        password: passwordData.newPassword,
+      };
+      await adminService.passwordChange(payload as any);
+      toast.success('Password updated successfully');
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to Update Password');
+    } finally {
+      setUpdatingPassword(false);
+    }
   };
 
   const handleNotificationPreferencesUpdate = (
@@ -142,10 +252,6 @@ export const AdminSettings: React.FC = () => {
       [preference]: value,
     };
 
-    console.log('Updating notification preference:', preference, 'to', value);
-    console.log('Previous preferences:', notificationPreferences);
-    console.log('New preferences:', updatedPreferences);
-
     setNotificationPreferences(updatedPreferences);
     settingsService.saveNotificationPreferences(user.id, updatedPreferences);
     toast.success('Notification preferences updated');
@@ -157,6 +263,27 @@ export const AdminSettings: React.FC = () => {
     { id: 'security', name: 'Security', icon: KeyIcon },
     { id: 'notifications', name: 'Notifications', icon: BellIcon },
   ];
+
+  const handleFileSelect = (file: File | null) => {
+    if (file) {
+      // preview locally before saving
+      const previewUrl = URL.createObjectURL(file);
+      setProfileData(prev => ({
+        ...prev,
+        previewUrl,
+        imageFile: file,
+      }));
+      setProfileImage(file); // keep in sync with backend upload
+    } else {
+      // user removed image
+      setProfileData(prev => ({
+        ...prev,
+        previewUrl: '',
+        imageFile: null,
+      }));
+      setProfileImage(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -199,7 +326,7 @@ export const AdminSettings: React.FC = () => {
           </nav>
         </div>
 
-        {/* Main Content */}
+        {/* Main Panel */}
         <div className="lg:w-3/4">
           {/* Profile Tab */}
           {activeTab === 'profile' && (
@@ -215,13 +342,14 @@ export const AdminSettings: React.FC = () => {
               <CardContent>
                 <div className="flex flex-col items-center mb-6">
                   <ProfilePictureUpload
-                    currentImageUrl={user?.profileImage}
-                    onImageUpdate={imageUrl => {
-                      if (user) {
-                        updateUser({ profileImage: imageUrl || undefined });
-                      }
+                    currentImageUrl={profileData.previewUrl || profileData.backendImageUrl}
+                    onFileSelect={handleFileSelect}
+                    onRemove={() => {
+                      setProfileData(prev => ({ ...prev, previewUrl: '', imageFile: null }));
+                      setProfileImage(null);
                     }}
                   />
+
                   <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                     Click on the profile picture to upload a new one
                   </p>
@@ -276,11 +404,11 @@ export const AdminSettings: React.FC = () => {
                         onChange={e => setProfileData({ ...profileData, gender: e.target.value })}
                         className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
-                        <option value="">Prefer not to say</option>
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                        <option value="non-binary">Non-binary</option>
-                        <option value="other">Other</option>
+                        <option value="">Select gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                        <option value="Prefer not to say">Prefer not to say</option>
                       </select>
                     </div>
 
@@ -379,9 +507,7 @@ export const AdminSettings: React.FC = () => {
                           Enrolled Since
                         </label>
                         <p className="text-sm text-gray-900 dark:text-white">
-                          <p className="text-sm text-gray-900 dark:text-white">
-                            {formatDate(user?.createdAt)}
-                          </p>
+                          {formatDate(user?.createdAt)}
                         </p>
                       </div>
                     </div>
@@ -395,14 +521,12 @@ export const AdminSettings: React.FC = () => {
                       </p>
                     </div>
 
-                    {/* Dev Reset Button - Only shown in development */}
                     {import.meta.env.DEV && (
                       <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            // Reset organization to default (Tech Academy)
                             setOrganization(null);
                             setTimeout(() => loadOrganization(), 500);
                             toast.success('Organization data refreshed');
@@ -496,74 +620,44 @@ export const AdminSettings: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                        Email Notifications
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Receive notifications via email
-                      </p>
-                    </div>
-                    <Button
-                      variant={notificationPreferences.emailNotifications ? 'primary' : 'outline'}
-                      size="sm"
-                      onClick={() =>
-                        handleNotificationPreferencesUpdate(
-                          'emailNotifications',
-                          !notificationPreferences.emailNotifications
-                        )
-                      }
-                    >
-                      {notificationPreferences.emailNotifications ? 'Enabled' : 'Disabled'}
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                        Push Notifications
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Receive push notifications on your devices
-                      </p>
-                    </div>
-                    <Button
-                      variant={notificationPreferences.pushNotifications ? 'primary' : 'outline'}
-                      size="sm"
-                      onClick={() =>
-                        handleNotificationPreferencesUpdate(
-                          'pushNotifications',
-                          !notificationPreferences.pushNotifications
-                        )
-                      }
-                    >
-                      {notificationPreferences.pushNotifications ? 'Enabled' : 'Disabled'}
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                        SMS Notifications
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Receive text messages for important updates
-                      </p>
-                    </div>
-                    <Button
-                      variant={notificationPreferences.smsNotifications ? 'primary' : 'outline'}
-                      size="sm"
-                      onClick={() =>
-                        handleNotificationPreferencesUpdate(
-                          'smsNotifications',
-                          !notificationPreferences.smsNotifications
-                        )
-                      }
-                    >
-                      {notificationPreferences.smsNotifications ? 'Enabled' : 'Disabled'}
-                    </Button>
-                  </div>
+                  {(['emailNotifications', 'pushNotifications', 'smsNotifications'] as const).map(
+                    pref => {
+                      const titles = {
+                        emailNotifications: 'Email Notifications',
+                        pushNotifications: 'Push Notifications',
+                        smsNotifications: 'SMS Notifications',
+                      };
+                      const descriptions = {
+                        emailNotifications: 'Receive notifications via email',
+                        pushNotifications: 'Receive push notifications on your devices',
+                        smsNotifications: 'Receive text messages for important updates',
+                      };
+                      return (
+                        <div key={pref} className="flex items-center justify-between">
+                          <div>
+                            <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                              {titles[pref]}
+                            </h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              {descriptions[pref]}
+                            </p>
+                          </div>
+                          <Button
+                            variant={notificationPreferences[pref] ? 'primary' : 'outline'}
+                            size="sm"
+                            onClick={() =>
+                              handleNotificationPreferencesUpdate(
+                                pref,
+                                !notificationPreferences[pref]
+                              )
+                            }
+                          >
+                            {notificationPreferences[pref] ? 'Enabled' : 'Disabled'}
+                          </Button>
+                        </div>
+                      );
+                    }
+                  )}
                 </div>
               </CardContent>
             </Card>

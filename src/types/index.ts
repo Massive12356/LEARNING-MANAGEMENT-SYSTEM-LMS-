@@ -12,18 +12,28 @@ export interface User {
   lastName: string;
   role: UserRole;
   organizationId?: string;
-  profileImage?: string;
-  birthday?: string;
-  country?: string;
-  gender?: string;
-  levelOfEducation?: string;
+  images?: string | null;
+  birthday?: string | null;
+  country?: string | null;
+  gender?: string | null;
+  levelOfEducation?: string | null;
   isArchived: boolean;
-  lastLogin?: Date;
+  lastLogin?: Date | null;
   createdAt: Date;
   updatedAt: Date;
   organizationDetails?: OrganizationDetails;
   newStatus: UserStatus;
+
+  // Optional backend-only fields
+  password?: string;
+  otp?: string;
+  otpExpiresAt?: string;
+  status?: 'pending' | 'active' | 'suspended';
+  isVerified?: boolean;
+  isDeleted?: boolean;
 }
+
+
 export interface OrganizationDetails {
   id: number;
   code: string;

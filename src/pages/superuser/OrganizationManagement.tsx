@@ -29,7 +29,9 @@ import {
   CheckCircleIcon,
   UserPlusIcon,
   ShieldCheckIcon,
+  ShieldExclamationIcon,
   ClipboardDocumentIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -55,6 +57,9 @@ export function OrganizationManagement() {
   const [orgLoading, setOrgLoading] = useState(false);
   const [userLoading, setUserLoading] = useState(false);
   const [searchMode, setSearchMode] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [selectedOrgForDelete, setSelectedOrgForDelete] = useState<number | null>(null);
+  const [deletingOrg, setDeletingOrg] = useState(false);
 
   const [newOrgData, setNewOrgData] = useState({
     name: '',
@@ -319,7 +324,7 @@ export function OrganizationManagement() {
 
   const openAssignAdminModal = (org: Organization) => {
     setSelectedOrgId(org.id);
-    setSelectOrgName(org.name);
+    setSelectOrgName(org.name); // Get organization name and set it in state
     setGeneratedCode(org.organizationCode || '');
     setAdminData(prev => ({
       ...prev,
@@ -328,6 +333,40 @@ export function OrganizationManagement() {
     setShowAssignAdminModal(true);
   };
 
+  // handle show delete organization modal
+  const openDeleteOrganizationModal = (org: Organization) => {
+    setSelectedOrgForDelete(Number(org.id));
+    setSelectOrgName(org.name); // Get organization name and set it in state
+    setShowDeleteConfirmation(true);
+  };
+
+  //  handle cancel deleting organization
+  const handleCancelDelete = () => {
+    setSelectedOrgForDelete(null);
+    setShowDeleteConfirmation(false);
+  };
+
+ // handle delete organization
+ const handleDeleteOrganization = async (orgId: number | null) => {
+  if(!orgId){
+    toast.error('No organization selected for deletion.');
+    return;
+  }
+  setDeletingOrg(true);
+  try {
+    await organizationService.deleteOrganization(orgId);
+    toast.success('Organization deleted successfully');
+    await Promise.all([loadOrganizations(), loadActiveOrganizations()])
+    setShowDeleteConfirmation(false); // Close the modal after successful deletion
+  } catch (error: any) {
+    toast.error('Failed to delete organization');
+    console.log(error.message)
+  } finally {
+    setDeletingOrg(false);
+  }
+};
+
+  // handle create admin
   const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectOrgName) {
@@ -550,7 +589,6 @@ export function OrganizationManagement() {
   }, [searchTerm]);
 
   // handle search form
-
   const handleClearSearch = () => {
     setSearchTerm('');
     setSearchMode(false);
@@ -888,6 +926,15 @@ export function OrganizationManagement() {
                             >
                               <PencilIcon className="h-4 w-4 mr-1" />
                               Edit
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openDeleteOrganizationModal(org)}
+                            >
+                              <TrashIcon className="h-4 w-4 mr-1" />
+                              Delete
                             </Button>
 
                             {/* dynamically display admin button  */}
@@ -1361,6 +1408,64 @@ export function OrganizationManagement() {
           </div>
         </form>
       </Modal>
+
+      {/* Delete Organization Modal */}
+      <Modal
+  isOpen={showDeleteConfirmation}
+  onClose={handleCancelDelete}
+  title=""
+>
+  <div className="flex flex-col items-center text-center p-2">
+
+    {/* Warning Icon */}
+    <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mb-4">
+      <ExclamationTriangleIcon className="w-8 h-8 text-red-600" />
+    </div>
+
+    {/* Title */}
+    <h2 className="text-xl font-semibold text-gray-900 mb-2">
+      This action is irreversible
+    </h2>
+
+    {/* Subtitle */}
+    <p className="text-sm text-gray-600 max-w-sm mb-5">
+      You are about to permanently delete the{" "}
+      <span className="font-semibold text-gray-900">
+        {selectOrgName}
+      </span>{" "}
+      organization.
+    </p>
+
+    {/* Warning Box */}
+    <div className="w-full p-4 rounded-lg bg-red-50 border border-red-200 text-left mb-6">
+      <p className="text-sm text-red-700">
+        <span className="font-semibold">Caution:</span> Deleting this
+        organization will also permanently delete all associated codes and
+        linked data. This action cannot be undone.
+      </p>
+    </div>
+
+    {/* Footer Buttons */}
+    <div className="flex justify-between w-full space-x-3">
+      <button
+        onClick={handleCancelDelete}
+        className="w-full py-2.5 rounded-lg bg-gray-100 text-gray-800 font-medium hover:bg-gray-200 transition"
+      >
+        Cancel
+      </button>
+
+      <button
+        onClick={() => handleDeleteOrganization(selectedOrgForDelete)}
+        disabled={deletingOrg}
+        className="w-full py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition disabled:opacity-50"
+      >
+        {deletingOrg ? "Deleting..." : "Delete"}
+      </button>
+    </div>
+  </div>
+</Modal>
+
+
 
       {/* Generate Join Code Modal */}
       <Modal

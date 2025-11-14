@@ -9,9 +9,15 @@ import {
   ActiveUsersResponse,
   PendingUsersResponse,
   UserStatus,
+  EmailTemplate,
 } from '../types';
 import apiClient from './apiClient';
 import { AxiosError } from 'axios';
+ import {
+   mapTypeToBackend,
+   mapTypeToFrontend,
+   FrontendTemplateType,
+ } from '../utils/emialConverter';
 
 class AdminService {
   async createAdmin(adminData: Omit<RegisterPayload, 'organizationId'>): Promise<User> {
@@ -177,6 +183,44 @@ class AdminService {
       const err = error as AxiosError<{ message?: string }>;
       console.error('Error updating user:', err.response?.data || err.message);
       throw new Error(err.response?.data?.message || 'Failed to update user');
+    }
+  }
+
+  async getUserById(id: string): Promise<User> {
+    try {
+      const response = await apiClient.get(`/user/${id}`);
+      console.log('[adminService] RESPONSE FROM BACKEND', response.data);
+      if (!response.data.user) {
+        throw new Error('User data not found in response');
+      }
+      return response.data.user; // <- Extract the actual user object
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[adminService] ERROR RESPONSE FROM BACKEND',
+        err?.response?.data?.message || err?.message
+      );
+      throw new Error(err?.response?.data?.message || err?.message || 'Failed to Fetch details');
+    }
+  }
+
+  // adminService.ts
+  async updateProfileDetails(userId: string, formData: FormData): Promise<User> {
+    try {
+      if (formData.entries().next().done) {
+        throw new Error('No valid fields or files provided for update.');
+      }
+
+      const response = await apiClient.put<User>(
+        `/user/Edit/User-profile/admin/${userId}`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+
+      return response.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      throw new Error(err?.response?.data?.message || err.message || 'Failed to update details');
     }
   }
 
@@ -407,15 +451,62 @@ class AdminService {
     }
   }
 
-  async passwordChange(payload: {oldPassword: string; password:string}): Promise<User> {
+  async passwordChange(payload: { oldPassword: string; password: string }): Promise<User> {
     try {
       const response = await apiClient.post('/user/Edit-Password', payload);
       console.log('[adminService] RESPONSE FROM SERVER', response.data);
       return response.data || response.data.data;
     } catch (error) {
-      const err = error as AxiosError<{message?:string}>
-      console.log('[adminService] RESPONSE FROM SERVER', err?.response?.data || err?.message)
-      throw new Error(err?.response?.data?.message || err?.message)
+      const err = error as AxiosError<{ message?: string }>;
+      console.log('[adminService] RESPONSE FROM SERVER', err?.response?.data || err?.message);
+      throw new Error(err?.response?.data?.message || err?.message);
+    }
+  }
+
+  // Save or update an email template
+
+  // ✅ Create or update a template
+  async updateEmailTemplate(payload: EmailTemplate): Promise<EmailTemplate> {
+    try {
+      const backendPayload = {
+        type: mapTypeToBackend(payload.type),
+        title: payload.subject,
+        body: payload.body,
+        notes: `Template for ${payload.type}`,
+        organizationId: payload.organizationId || 'SYM-ORG-53Q838P-2025',
+      };
+
+      const response = await apiClient.post('/templates/save', backendPayload);
+      console.log('[adminService] RESPONSE FROM BACKEND', response.data);
+      return response.data?.data || response.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.error('[adminService] ERROR', err.response?.data?.message || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to save template');
+    }
+  }
+
+  // ✅ Get template by type
+  async getEmailTemplate(type: FrontendTemplateType): Promise<EmailTemplate> {
+    try {
+      const backendType = mapTypeToBackend(type);
+      const response = await apiClient.get(`/templates/${backendType}`);
+      console.log('[adminService] RESPONSE FROM BACKEND', response.data);
+
+      const data = response.data?.data || response.data;
+
+      return {
+        id: data.id || '',
+        type: mapTypeToFrontend(data.type), // ✅ now strictly typed
+        subject: data.title,
+        body: data.body,
+        variables: ['firstName', 'lastName', 'organizationName', 'email'],
+        organizationId: data.organizationId,
+      };
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.error('[adminService] ERROR', err.response?.data?.message || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to fetch template');
     }
   }
 }
