@@ -356,7 +356,7 @@ export function OrganizationManagement() {
   try {
     await organizationService.deleteOrganization(orgId);
     toast.success('Organization deleted successfully');
-    await Promise.all([loadOrganizations(), loadActiveOrganizations()])
+    await Promise.all([loadOrganizations(currentPage), loadActiveOrganizations()])
     setShowDeleteConfirmation(false); // Close the modal after successful deletion
   } catch (error: any) {
     toast.error('Failed to delete organization');
@@ -1423,15 +1423,15 @@ export function OrganizationManagement() {
     </div>
 
     {/* Title */}
-    <h2 className="text-xl font-semibold text-gray-900 mb-2">
+    <h2 className="text-xl font-semibold text-gray-900 mb-2 dark:text-gray-200">
       This action is irreversible
     </h2>
 
     {/* Subtitle */}
-    <p className="text-sm text-gray-600 max-w-sm mb-5">
+    <p className="text-sm text-gray-600 max-w-sm mb-5 dark:text-gray-400">
       You are about to permanently delete the{" "}
-      <span className="font-semibold text-gray-900">
-        {selectOrgName}
+      <span className="font-semibold text-gray-900 dark:text-gray-300">
+        "{selectOrgName}"
       </span>{" "}
       organization.
     </p>
