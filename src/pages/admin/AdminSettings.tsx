@@ -3,9 +3,10 @@ import { useAuthStore, normalizeUser } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { Switch } from '../../components/ui/Switch';
 import { organizationService } from '../../services/organizationService';
 import { settingsService, NotificationPreferences } from '../../services/settingsService';
-import { User, Organization } from '../../types';
+import { User, Organization,NotificationPayload } from '../../types';
 import { UserIcon, BuildingOfficeIcon, KeyIcon, BellIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { ProfilePictureUpload } from '../../components/ui/ProfilePictureUpload';
@@ -18,6 +19,7 @@ export const AdminSettings: React.FC = () => {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
   const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [notifying, setNotifying] = useState ({email: false, sms: false, push:false});
 
   const [profileData, setProfileData] = useState({
     firstName: '',
@@ -200,7 +202,7 @@ export const AdminSettings: React.FC = () => {
       } else if (typeof profileImage === 'string' && profileImage.trim() !== '') {
         formData.append('images', profileImage);
       } else {
-        formData.append('images', '');
+        formData.append('images', "");
       }
       setProfileImage(updatedUser.images || null);
 
@@ -241,21 +243,60 @@ export const AdminSettings: React.FC = () => {
     }
   };
 
-  const handleNotificationPreferencesUpdate = (
-    preference: keyof NotificationPreferences,
-    value: boolean
-  ) => {
-    if (!user) return;
+  // const handleNotificationPreferencesUpdate = (
+  //   preference: keyof NotificationPreferences,
+  //   value: boolean
+  // ) => {
+  //   if (!user) return;
 
-    const updatedPreferences = {
-      ...notificationPreferences,
-      [preference]: value,
-    };
+  //   const updatedPreferences = {
+  //     ...notificationPreferences,
+  //     [preference]: value,
+  //   };
 
-    setNotificationPreferences(updatedPreferences);
-    settingsService.saveNotificationPreferences(user.id, updatedPreferences);
-    toast.success('Notification preferences updated');
-  };
+  //   setNotificationPreferences(updatedPreferences);
+  //   // await adminService.notificationSettings(user.id, updatedPreferences);
+  //   toast.success('Notification preferences updated');
+  // };
+
+  //  handle notification preferences
+ const handleToggle = async (type: 'email' | 'sms' | 'push', value: boolean) => {
+   setNotifying((prev:any) => ({ ...prev, [type]: true }));
+
+   const payload: NotificationPayload = {
+     enable: value ,
+   };
+
+   try {
+     if (type === 'email') {
+       await settingsService.emailNotificationSettings(payload);
+     }
+     if (type === 'sms') {
+       await settingsService.smsNotificationSettings(payload);
+     }
+     if (type === 'push') {
+       await settingsService.pushNotificationSettings(payload);
+     }
+
+     const map = {
+       email: 'emailNotifications',
+       sms: 'smsNotifications',
+       push: 'pushNotifications',
+     } as const;
+
+     setNotificationPreferences((prev:any) => ({
+       ...prev,
+       [map[type]]: value,
+     }));
+
+     toast.success(`${type.toUpperCase()} notifications ${value ? 'enabled' : 'disabled'}`);
+   } catch (error: any) {
+     toast.error(error?.message || 'Failed to update notification settings');
+   } finally {
+     setNotifying((prev:any) => ({ ...prev, [type]: false }));
+   }
+ };
+
 
   const tabs = [
     { id: 'profile', name: 'Profile', icon: UserIcon },
@@ -608,6 +649,7 @@ export const AdminSettings: React.FC = () => {
           )}
 
           {/* Notifications Tab */}
+          {/* Notifications Tab */}
           {activeTab === 'notifications' && (
             <Card>
               <CardHeader>
@@ -632,6 +674,14 @@ export const AdminSettings: React.FC = () => {
                         pushNotifications: 'Receive push notifications on your devices',
                         smsNotifications: 'Receive text messages for important updates',
                       };
+
+                      // Map the pref to the type used in handleToggle
+                      const typeMap = {
+                        emailNotifications: 'email',
+                        pushNotifications: 'push',
+                        smsNotifications: 'sms',
+                      } as const;
+
                       return (
                         <div key={pref} className="flex items-center justify-between">
                           <div>
@@ -642,18 +692,14 @@ export const AdminSettings: React.FC = () => {
                               {descriptions[pref]}
                             </p>
                           </div>
-                          <Button
-                            variant={notificationPreferences[pref] ? 'primary' : 'outline'}
-                            size="sm"
-                            onClick={() =>
-                              handleNotificationPreferencesUpdate(
-                                pref,
-                                !notificationPreferences[pref]
-                              )
-                            }
-                          >
-                            {notificationPreferences[pref] ? 'Enabled' : 'Disabled'}
-                          </Button>
+
+                          <Switch
+                            checked={notificationPreferences[pref]}
+                            onChange={value => handleToggle(typeMap[pref], value)}
+                            disabled={notifying[typeMap[pref]]}
+                            loading={notifying[typeMap[pref]]}
+                            size="md"
+                          />
                         </div>
                       );
                     }

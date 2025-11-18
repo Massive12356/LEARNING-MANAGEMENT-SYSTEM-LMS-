@@ -1,65 +1,49 @@
+import { AxiosError } from 'axios';
+import apiClient from './apiClient';
+import { NotificationPayload } from '../types';
+
 class SettingsService {
-  private NOTIFICATION_SETTINGS_KEY = 'notification_settings';
-
-  // Get notification preferences for a user
-  getNotificationPreferences(userId: string): NotificationPreferences {
+  // EMAIL
+  async emailNotificationSettings(payload: NotificationPayload) {
     try {
-      const settingsStr = localStorage.getItem(`${this.NOTIFICATION_SETTINGS_KEY}_${userId}`);
-      console.log(`Loading notification preferences for user ${userId}:`, settingsStr);
-      
-      if (!settingsStr) {
-        // Return default settings if none exist
-        const defaultPrefs = this.getDefaultNotificationPreferences();
-        console.log(`No preferences found, returning defaults:`, defaultPrefs);
-        return defaultPrefs;
-      }
-      
-      const settings = JSON.parse(settingsStr);
-      console.log(`Raw settings from localStorage:`, settings);
-      
-      const normalizedPrefs = {
-        emailNotifications: settings.emailNotifications !== false, // Default to true
-        pushNotifications: settings.pushNotifications !== false,   // Default to true
-        smsNotifications: settings.smsNotifications === true,      // Default to false
-      };
-      
-      console.log(`Normalized preferences:`, normalizedPrefs);
-      return normalizedPrefs;
+      const response = await apiClient.put('/user/notificationpreferences/email', payload);
+      console.log('[settingsService] EMAIL RESPONSE:', response.data);
+      return response.data;
     } catch (error) {
-      console.error('Error loading notification settings:', error);
-      return this.getDefaultNotificationPreferences();
+      const err = error as AxiosError<{ message?: string }>;
+      const message = err.response?.data?.message || err.message;
+      console.error('[settingsService] EMAIL ERROR:', message);
+      throw new Error(message);
     }
   }
 
-  // Save notification preferences for a user
-  saveNotificationPreferences(userId: string, preferences: NotificationPreferences): void {
+  // SMS
+  async smsNotificationSettings(payload: NotificationPayload) {
     try {
-      console.log(`Saving notification preferences for user ${userId}:`, preferences);
-      localStorage.setItem(
-        `${this.NOTIFICATION_SETTINGS_KEY}_${userId}`, 
-        JSON.stringify(preferences)
-      );
+      const response = await apiClient.put('/user/notificationpreferences/sms', payload);
+      console.log('[settingsService] SMS RESPONSE:', response.data);
+      return response.data;
     } catch (error) {
-      console.error('Error saving notification settings:', error);
+      const err = error as AxiosError<{ message?: string }>;
+      const message = err.response?.data?.message || err.message;
+      console.error('[settingsService] SMS ERROR:', message);
+      throw new Error(message);
     }
   }
 
-  // Get default notification preferences
-  private getDefaultNotificationPreferences(): NotificationPreferences {
-    const defaults = {
-      emailNotifications: true,
-      pushNotifications: true,
-      smsNotifications: false,
-    };
-    console.log(`Returning default preferences:`, defaults);
-    return defaults;
+  // PUSH
+  async pushNotificationSettings(payload: NotificationPayload) {
+    try {
+      const response = await apiClient.put('/user/notificationpreferences/push', payload);
+      console.log('[settingsService] PUSH RESPONSE:', response.data);
+      return response.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      const message = err.response?.data?.message || err.message;
+      console.error('[settingsService] PUSH ERROR:', message);
+      throw new Error(message);
+    }
   }
-}
-
-export interface NotificationPreferences {
-  emailNotifications: boolean;
-  pushNotifications: boolean;
-  smsNotifications: boolean;
 }
 
 export const settingsService = new SettingsService();
