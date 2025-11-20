@@ -8,21 +8,18 @@ import {
   SystemUsageResponse,
   ActiveUsersResponse,
   PendingUsersResponse,
-<<<<<<< HEAD
   SuspendedUsersResponse,
   DeletedUsersResponse,
-=======
   UserStatus,
   EmailTemplate,
->>>>>>> 1268a192e9d7ca81f8f87a3b8f8ad74e297ea695
 } from '../types';
 import apiClient from './apiClient';
 import { AxiosError } from 'axios';
- import {
-   mapTypeToBackend,
-   mapTypeToFrontend,
-   FrontendTemplateType,
- } from '../utils/emialConverter';
+import {
+  mapTypeToBackend,
+  mapTypeToFrontend,
+  FrontendTemplateType,
+} from '../utils/emialConverter';
 
 class AdminService {
   async createAdmin(adminData: Omit<RegisterPayload, 'organizationId'>): Promise<User> {
@@ -446,7 +443,6 @@ class AdminService {
     }
   }
 
-<<<<<<< HEAD
   async getSuspendedUsers(
     organizationId: string,
     page: number = 1,
@@ -496,7 +492,9 @@ class AdminService {
       const err = error as AxiosError<{ message?: string }>;
       console.error('[adminService] ERROR GETTING DELETED USERS', err.response?.data || err.message);
       throw new Error(err.response?.data?.message || 'Failed to get deleted users data');
-=======
+    }
+  }
+
   async updateUserStatus(id: string, payload: { newStatus: UserStatus }): Promise<User> {
     try {
       const response = await apiClient.put<User>(`/user/change/status/${id}`, payload);
@@ -565,7 +563,6 @@ class AdminService {
       const err = error as AxiosError<{ message?: string }>;
       console.error('[adminService] ERROR', err.response?.data?.message || err.message);
       throw new Error(err.response?.data?.message || 'Failed to fetch template');
->>>>>>> 1268a192e9d7ca81f8f87a3b8f8ad74e297ea695
     }
   }
 }
