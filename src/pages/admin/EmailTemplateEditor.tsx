@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { mockApi } from '../../services/mockApi';
 import { EmailTemplate } from '../../types';
+import { FrontendTemplateType } from '../../utils/emialConverter';
 import { 
   EnvelopeIcon,
   EyeIcon,
@@ -13,6 +13,10 @@ import {
   AcademicCapIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { adminService } from '../../services/adminService';
+import {Organization} from '../../types';
+import { useAuthStore } from '../../stores/authStore';
+import { organizationService } from '../../services/organizationService';
 
 export function EmailTemplateEditor() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
@@ -20,56 +24,80 @@ export function EmailTemplateEditor() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const { user: currentUser, viewAsUser } = useAuthStore();
+  const [organization, setOrganization] = useState<Organization | null>(null); 
 
   const [templateData, setTemplateData] = useState({
     subject: '',
     body: ''
   });
 
-  const templateTypes = [
-    {
-      type: 'welcome',
-      name: 'Welcome Email',
-      description: 'Sent to new users after registration',
-      icon: UserIcon,
-      variables: ['firstName', 'lastName', 'organizationName', 'email']
-    },
-    {
-      type: 'password-reset',
-      name: 'Password Reset',
-      description: 'Sent when users request password reset',
-      icon: KeyIcon,
-      variables: ['firstName', 'organizationName', 'resetLink', 'email']
-    },
-    {
-      type: 'course-completion',
-      name: 'Course Completion',
-      description: 'Sent when users complete a course',
-      icon: AcademicCapIcon,
-      variables: ['firstName', 'courseName', 'organizationName', 'certificateAvailable']
-    }
-  ];
+ const templateTypes: {
+   type: FrontendTemplateType;
+   name: string;
+   description: string;
+   icon: any;
+   variables: string[];
+ }[] = [
+   {
+     type: 'welcome',
+     name: 'Welcome Email',
+     description: 'Sent to new users after registration',
+     icon: UserIcon,
+     variables: ['firstName', 'lastName', 'organizationName', 'email'],
+   },
+   {
+     type: 'password-reset',
+     name: 'Password Reset',
+     description: 'Sent when users request password reset',
+     icon: KeyIcon,
+     variables: ['firstName', 'organizationName', 'resetLink', 'email'],
+   },
+   {
+     type: 'course-completion',
+     name: 'Course Completion',
+     description: 'Sent when users complete a course',
+     icon: AcademicCapIcon,
+     variables: ['firstName', 'courseName', 'organizationName', 'certificateAvailable'],
+   },
+ ];
+
 
   useEffect(() => {
     loadTemplates();
+    loadOrganization();
   }, []);
 
   const loadTemplates = async () => {
     try {
-      const templatesData = await mockApi.getEmailTemplates();
+      const templatesData = await Promise.all(
+        templateTypes.map(t => adminService.getEmailTemplate(t.type))
+      );
       setTemplates(templatesData);
-      
-      // Select first template by default
-      if (templatesData.length > 0) {
-        selectTemplate(templatesData[0]);
-      }
-    } catch (error) {
-      console.error('Failed to load email templates:', error);
+
+      if (templatesData.length > 0) selectTemplate(templatesData[0]);
+    } catch (err: any) {
+      console.error( err?.message || 'Failed to load email templates:');
       toast.error('Failed to load email templates');
     } finally {
       setLoading(false);
     }
   };
+
+  const loadOrganization = async () => {
+      if (!currentUser?.organizationDetails?.id) return;
+  
+      try {
+        const orgData = await organizationService.getOrganizationById(
+          String(currentUser.organizationDetails?.id)
+        );
+        setOrganization(orgData);
+        console.log('EMAIL TEMPLATE', orgData)
+      } catch (error) {
+        console.error('Failed to load organization:', error);
+      }
+    };
+
 
   const selectTemplate = (template: EmailTemplate) => {
     setSelectedTemplate(template);
@@ -85,30 +113,28 @@ export function EmailTemplateEditor() {
 
     setSaving(true);
     try {
-      await mockApi.updateEmailTemplate(selectedTemplate.id, templateData);
-      
+      // Merge templateData with selectedTemplate
+      const payload: EmailTemplate = {
+        ...selectedTemplate,
+        subject: templateData.subject,
+        body: templateData.body,
+      };
+
+      const updatedTemplate = await adminService.updateEmailTemplate(payload);
+
       // Update local state
-      setTemplates(prev => prev.map(t => 
-        t.id === selectedTemplate.id 
-          ? { ...t, ...templateData }
-          : t
-      ));
-      
-      // Update selected template with new data
-      if (selectedTemplate) {
-        setSelectedTemplate({
-          ...selectedTemplate,
-          ...templateData
-        });
-      }
-      
+      setTemplates(prev => prev.map(t => (t.id === updatedTemplate.id ? updatedTemplate : t)));
+      setSelectedTemplate(updatedTemplate);
+
       toast.success('Email template saved successfully');
-    } catch (error) {
+    } catch (err:any) {
+      console.error( err?.message||'Failed to save template:');
       toast.error('Failed to save email template');
     } finally {
       setSaving(false);
     }
   };
+
 
   const getPreviewContent = () => {
     if (!selectedTemplate) return { subject: '', body: '' };

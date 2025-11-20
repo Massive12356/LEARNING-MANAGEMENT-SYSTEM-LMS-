@@ -29,6 +29,9 @@ import {
   CheckCircleIcon,
   UserPlusIcon,
   ShieldCheckIcon,
+  ShieldExclamationIcon,
+  ClipboardDocumentIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -54,6 +57,9 @@ export function OrganizationManagement() {
   const [orgLoading, setOrgLoading] = useState(false);
   const [userLoading, setUserLoading] = useState(false);
   const [searchMode, setSearchMode] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [selectedOrgForDelete, setSelectedOrgForDelete] = useState<number | null>(null);
+  const [deletingOrg, setDeletingOrg] = useState(false);
 
   const [newOrgData, setNewOrgData] = useState({
     name: '',
@@ -318,7 +324,7 @@ export function OrganizationManagement() {
 
   const openAssignAdminModal = (org: Organization) => {
     setSelectedOrgId(org.id);
-    setSelectOrgName(org.name);
+    setSelectOrgName(org.name); // Get organization name and set it in state
     setGeneratedCode(org.organizationCode || '');
     setAdminData(prev => ({
       ...prev,
@@ -327,7 +333,40 @@ export function OrganizationManagement() {
     setShowAssignAdminModal(true);
   };
 
+  // handle show delete organization modal
+  const openDeleteOrganizationModal = (org: Organization) => {
+    setSelectedOrgForDelete(Number(org.id));
+    setSelectOrgName(org.name); // Get organization name and set it in state
+    setShowDeleteConfirmation(true);
+  };
 
+  //  handle cancel deleting organization
+  const handleCancelDelete = () => {
+    setSelectedOrgForDelete(null);
+    setShowDeleteConfirmation(false);
+  };
+
+ // handle delete organization
+ const handleDeleteOrganization = async (orgId: number | null) => {
+  if(!orgId){
+    toast.error('No organization selected for deletion.');
+    return;
+  }
+  setDeletingOrg(true);
+  try {
+    await organizationService.deleteOrganization(orgId);
+    toast.success('Organization deleted successfully');
+    await Promise.all([loadOrganizations(currentPage), loadActiveOrganizations()])
+    setShowDeleteConfirmation(false); // Close the modal after successful deletion
+  } catch (error: any) {
+    toast.error('Failed to delete organization');
+    console.log(error.message)
+  } finally {
+    setDeletingOrg(false);
+  }
+};
+
+  // handle create admin
   const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectOrgName) {
@@ -549,16 +588,23 @@ export function OrganizationManagement() {
     return () => clearTimeout(timeout);
   }, [searchTerm]);
 
-
   // handle search form
-
-  const handleClearSearch = ()=>{
-    setSearchTerm("");
+  const handleClearSearch = () => {
+    setSearchTerm('');
     setSearchMode(false);
     setFilteredOrganizations([]);
     loadOrganizations(currentPage);
-  }
-
+  };
+  const handleCopy = async (text: string) => {
+    try {
+      const res = await navigator.clipboard.writeText(text);
+      console.log('text Copied [admin DashBoard]', res);
+      toast.success('code copied to clipboard!!');
+    } catch (error) {
+      console.log('failed to copy code [admin dashboard]', error);
+      toast.error('failed to copy text!');
+    }
+  };
 
   useEffect(() => {
     loadOrganizations(currentPage);
@@ -775,9 +821,19 @@ export function OrganizationManagement() {
                           <div className="flex items-center space-x-3 min-w-0">
                             <div
                               className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
-                              style={{ backgroundColor: org?.primaryColor }}
+                              style={{
+                                backgroundColor: org?.logo ? 'transparent' : org?.primaryColor,
+                              }}
                             >
-                              <BuildingOfficeIcon className="h-6 w-6 text-white" />
+                              {org?.logo ? (
+                                <img
+                                  src={org?.logo}
+                                  alt={org?.name}
+                                  className="w-9 h-9 object-cover center mr-1 rounded-full"
+                                />
+                              ) : (
+                                <BuildingOfficeIcon className="h-6 w-6 text-white" />
+                              )}
                             </div>
                             <div className="min-w-0">
                               <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
@@ -875,11 +931,23 @@ export function OrganizationManagement() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => openAssignAdminModal(org)}
+                              onClick={() => openDeleteOrganizationModal(org)}
                             >
-                              <UserPlusIcon className="h-4 w-4 mr-1" />
-                              Add Admin
+                              <TrashIcon className="h-4 w-4 mr-1" />
+                              Delete
                             </Button>
+
+                            {/* dynamically display admin button  */}
+                            <div className={org?.organizationCode ? 'flex' : 'hidden'}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openAssignAdminModal(org)}
+                              >
+                                <UserPlusIcon className="h-4 w-4 mr-1" />
+                                Add Admin
+                              </Button>
+                            </div>
                           </div>
 
                           <div className="flex flex-wrap items-center gap-2">
@@ -941,7 +1009,18 @@ export function OrganizationManagement() {
                               </Button>
                             )}
                           </div>
-                          <p className="font-medium text-black dark:text-white">Code: {org?.organizationCode ?? 'N/A'}</p>
+                          <div className="flex items-center">
+                            <p className="font-medium text-black  text-sm dark:text-yellow-500">
+                              {org?.organizationCode ?? 'N/A'}
+                            </p>
+                            <button
+                              className={`ml-1 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-gray-200 dark:hover:bg-gray-700 ${org?.organizationCode ? "flex" : "hidden"}`}
+                              onClick={() => handleCopy(org?.organizationCode ?? 'N/A')}
+                              title="Copy organization code"
+                            >
+                              <ClipboardDocumentIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            </button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -1329,6 +1408,64 @@ export function OrganizationManagement() {
           </div>
         </form>
       </Modal>
+
+      {/* Delete Organization Modal */}
+      <Modal
+  isOpen={showDeleteConfirmation}
+  onClose={handleCancelDelete}
+  title=""
+>
+  <div className="flex flex-col items-center text-center p-2">
+
+    {/* Warning Icon */}
+    <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mb-4">
+      <ExclamationTriangleIcon className="w-8 h-8 text-red-600" />
+    </div>
+
+    {/* Title */}
+    <h2 className="text-xl font-semibold text-gray-900 mb-2 dark:text-gray-200">
+      This action is irreversible
+    </h2>
+
+    {/* Subtitle */}
+    <p className="text-sm text-gray-600 max-w-sm mb-5 dark:text-gray-400">
+      You are about to permanently delete the{" "}
+      <span className="font-semibold text-gray-900 dark:text-gray-300">
+        "{selectOrgName}"
+      </span>{" "}
+      organization.
+    </p>
+
+    {/* Warning Box */}
+    <div className="w-full p-4 rounded-lg bg-red-50 border border-red-200 text-left mb-6">
+      <p className="text-sm text-red-700">
+        <span className="font-semibold">Caution:</span> Deleting this
+        organization will also permanently delete all associated codes and
+        linked data. This action cannot be undone.
+      </p>
+    </div>
+
+    {/* Footer Buttons */}
+    <div className="flex justify-between w-full space-x-3">
+      <button
+        onClick={handleCancelDelete}
+        className="w-full py-2.5 rounded-lg bg-gray-100 text-gray-800 font-medium hover:bg-gray-200 transition"
+      >
+        Cancel
+      </button>
+
+      <button
+        onClick={() => handleDeleteOrganization(selectedOrgForDelete)}
+        disabled={deletingOrg}
+        className="w-full py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition disabled:opacity-50"
+      >
+        {deletingOrg ? "Deleting..." : "Delete"}
+      </button>
+    </div>
+  </div>
+</Modal>
+
+
 
       {/* Generate Join Code Modal */}
       <Modal

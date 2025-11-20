@@ -1,4 +1,5 @@
 export type UserRole = 'student' | 'teacher' | 'admin' | 'superuser';
+export type UserStatus = "active" | 'pending'
 
 export type CourseStatus = 'draft' | 'live';
 export type ProgramStatus = 'draft' | 'live';
@@ -11,17 +12,28 @@ export interface User {
   lastName: string;
   role: UserRole;
   organizationId?: string;
-  profileImage?: string;
-  birthday?: string;
-  country?: string;
-  gender?: string;
-  levelOfEducation?: string;
+  images?: string | null;
+  birthday?: string | null;
+  country?: string | null;
+  gender?: string | null;
+  levelOfEducation?: string | null;
   isArchived: boolean;
-  lastLogin?: Date;
+  lastLogin?: Date | null;
   createdAt: Date;
   updatedAt: Date;
   organizationDetails?: OrganizationDetails;
+  newStatus: UserStatus;
+
+  // Optional backend-only fields
+  password?: string;
+  otp?: string;
+  otpExpiresAt?: string;
+  status?: 'pending' | 'active' | 'suspended';
+  isVerified?: boolean;
+  isDeleted?: boolean;
 }
+
+
 export interface OrganizationDetails {
   id: number;
   code: string;
@@ -562,7 +574,7 @@ export interface UserSearchQuery {
 }
 
  export interface ActiveUsersResponse {
-  message: string;
+  message?: string;
   totalUsersInOrg: number;
   totalActiveUsers: number;
   totalPages: number;
@@ -571,7 +583,7 @@ export interface UserSearchQuery {
 }
 
 export interface PendingUsersResponse {
-  message: string;
+  message?: string;
   totalUsersInOrg: number;
   totalPendingUsers: number;
   totalPages: number;

@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { ProfilePictureUpload } from '../../components/ui/ProfilePictureUpload';
+import { formatDate } from '../../utils/dateFormatter';
 
 export const TeacherSettings: React.FC = () => {
   const { user, updateUser } = useAuthStore();
@@ -149,9 +150,7 @@ export const TeacherSettings: React.FC = () => {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Settings
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
         <p className="mt-2 text-gray-600 dark:text-gray-400">
           Manage your account settings and preferences
         </p>
@@ -161,7 +160,7 @@ export const TeacherSettings: React.FC = () => {
         {/* Sidebar */}
         <div className="lg:w-1/4">
           <nav className="space-y-1">
-            {tabs.map((tab) => {
+            {tabs.map(tab => {
               const Icon = tab.icon;
               return (
                 <button
@@ -198,7 +197,7 @@ export const TeacherSettings: React.FC = () => {
                 <div className="flex flex-col items-center mb-6">
                   <ProfilePictureUpload
                     currentImageUrl={user?.profileImage}
-                    onImageUpdate={(imageUrl) => {
+                    onImageUpdate={imageUrl => {
                       if (user) {
                         updateUser({ profileImage: imageUrl || undefined });
                       }
@@ -208,19 +207,19 @@ export const TeacherSettings: React.FC = () => {
                     Click on the profile picture to upload a new one
                   </p>
                 </div>
-                
+
                 <form onSubmit={handleProfileUpdate} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Input
                       label="First Name"
                       value={profileData.firstName}
-                      onChange={(e) => setProfileData({ ...profileData, firstName: e.target.value })}
+                      onChange={e => setProfileData({ ...profileData, firstName: e.target.value })}
                       required
                     />
                     <Input
                       label="Last Name"
                       value={profileData.lastName}
-                      onChange={(e) => setProfileData({ ...profileData, lastName: e.target.value })}
+                      onChange={e => setProfileData({ ...profileData, lastName: e.target.value })}
                       required
                     />
                   </div>
@@ -229,7 +228,7 @@ export const TeacherSettings: React.FC = () => {
                     label="Email Address"
                     type="email"
                     value={profileData.email}
-                    onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                    onChange={e => setProfileData({ ...profileData, email: e.target.value })}
                     required
                     disabled
                   />
@@ -239,12 +238,12 @@ export const TeacherSettings: React.FC = () => {
                       label="Birthday"
                       type="date"
                       value={profileData.birthday}
-                      onChange={(e) => setProfileData({ ...profileData, birthday: e.target.value })}
+                      onChange={e => setProfileData({ ...profileData, birthday: e.target.value })}
                     />
                     <Input
                       label="Country"
                       value={profileData.country}
-                      onChange={(e) => setProfileData({ ...profileData, country: e.target.value })}
+                      onChange={e => setProfileData({ ...profileData, country: e.target.value })}
                     />
                   </div>
 
@@ -255,7 +254,7 @@ export const TeacherSettings: React.FC = () => {
                       </label>
                       <select
                         value={profileData.gender}
-                        onChange={(e) => setProfileData({ ...profileData, gender: e.target.value })}
+                        onChange={e => setProfileData({ ...profileData, gender: e.target.value })}
                         className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option value="">Prefer not to say</option>
@@ -272,7 +271,9 @@ export const TeacherSettings: React.FC = () => {
                       </label>
                       <select
                         value={profileData.levelOfEducation}
-                        onChange={(e) => setProfileData({ ...profileData, levelOfEducation: e.target.value })}
+                        onChange={e =>
+                          setProfileData({ ...profileData, levelOfEducation: e.target.value })
+                        }
                         className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option value="">Select level</option>
@@ -286,9 +287,7 @@ export const TeacherSettings: React.FC = () => {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button type="submit">
-                      Save Changes
-                    </Button>
+                    <Button type="submit">Save Changes</Button>
                   </div>
                 </form>
               </CardContent>
@@ -310,7 +309,7 @@ export const TeacherSettings: React.FC = () => {
                 {organization ? (
                   <div className="space-y-6">
                     <div className="flex items-center space-x-4">
-                      <div 
+                      <div
                         className="w-16 h-16 rounded-lg flex items-center justify-center"
                         style={{ backgroundColor: organization.primaryColor }}
                       >
@@ -318,10 +317,10 @@ export const TeacherSettings: React.FC = () => {
                       </div>
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                          {organization.name}
+                          {organization?.name ?? 'N/A'}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {organization.description}
+                          {organization?.description ?? 'N/A'}
                         </p>
                       </div>
                     </div>
@@ -331,13 +330,15 @@ export const TeacherSettings: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Status
                         </label>
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          organization.status === 'active' 
-                            ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                            : organization.status === 'suspended'
-                            ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
-                            : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
-                        }`}>
+                        <span
+                          className={`px-2 py-1 text-xs rounded-full ${
+                            organization.status === 'active'
+                              ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                              : organization.status === 'suspended'
+                              ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                              : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
+                          }`}
+                        >
                           {organization.status}
                         </span>
                       </div>
@@ -347,7 +348,7 @@ export const TeacherSettings: React.FC = () => {
                           Enrolled Since
                         </label>
                         <p className="text-sm text-gray-900 dark:text-white">
-                          {user?.createdAt.toLocaleDateString()}
+                          {formatDate(user?.createdAt)}
                         </p>
                       </div>
                     </div>
@@ -364,9 +365,9 @@ export const TeacherSettings: React.FC = () => {
                     {/* Dev Reset Button - Only shown in development */}
                     {import.meta.env.DEV && (
                       <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => {
                             // Reset organization to default (Tech Academy)
                             setOrganization(null);
@@ -386,7 +387,8 @@ export const TeacherSettings: React.FC = () => {
                       No Organization Enrollment
                     </h3>
                     <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                      You are not currently enrolled in any organization. Contact your administrator for enrollment.
+                      You are not currently enrolled in any organization. Contact your administrator
+                      for enrollment.
                     </p>
                   </div>
                 )}
@@ -411,7 +413,9 @@ export const TeacherSettings: React.FC = () => {
                     label="Current Password"
                     type="password"
                     value={passwordData.currentPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                    onChange={e =>
+                      setPasswordData({ ...passwordData, currentPassword: e.target.value })
+                    }
                     required
                   />
 
@@ -419,7 +423,9 @@ export const TeacherSettings: React.FC = () => {
                     label="New Password"
                     type="password"
                     value={passwordData.newPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                    onChange={e =>
+                      setPasswordData({ ...passwordData, newPassword: e.target.value })
+                    }
                     required
                     helpText="Must be at least 8 characters"
                   />
@@ -428,14 +434,14 @@ export const TeacherSettings: React.FC = () => {
                     label="Confirm New Password"
                     type="password"
                     value={passwordData.confirmPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                    onChange={e =>
+                      setPasswordData({ ...passwordData, confirmPassword: e.target.value })
+                    }
                     required
                   />
 
                   <div className="flex justify-end">
-                    <Button type="submit">
-                      Update Password
-                    </Button>
+                    <Button type="submit">Update Password</Button>
                   </div>
                 </form>
               </CardContent>
@@ -464,10 +470,15 @@ export const TeacherSettings: React.FC = () => {
                         Receive notifications via email
                       </p>
                     </div>
-                    <Button 
-                      variant={notificationPreferences.emailNotifications ? "primary" : "outline"} 
+                    <Button
+                      variant={notificationPreferences.emailNotifications ? 'primary' : 'outline'}
                       size="sm"
-                      onClick={() => handleNotificationPreferencesUpdate('emailNotifications', !notificationPreferences.emailNotifications)}
+                      onClick={() =>
+                        handleNotificationPreferencesUpdate(
+                          'emailNotifications',
+                          !notificationPreferences.emailNotifications
+                        )
+                      }
                     >
                       {notificationPreferences.emailNotifications ? 'Enabled' : 'Disabled'}
                     </Button>
@@ -482,10 +493,15 @@ export const TeacherSettings: React.FC = () => {
                         Receive push notifications on your devices
                       </p>
                     </div>
-                    <Button 
-                      variant={notificationPreferences.pushNotifications ? "primary" : "outline"} 
+                    <Button
+                      variant={notificationPreferences.pushNotifications ? 'primary' : 'outline'}
                       size="sm"
-                      onClick={() => handleNotificationPreferencesUpdate('pushNotifications', !notificationPreferences.pushNotifications)}
+                      onClick={() =>
+                        handleNotificationPreferencesUpdate(
+                          'pushNotifications',
+                          !notificationPreferences.pushNotifications
+                        )
+                      }
                     >
                       {notificationPreferences.pushNotifications ? 'Enabled' : 'Disabled'}
                     </Button>
@@ -500,10 +516,15 @@ export const TeacherSettings: React.FC = () => {
                         Receive text messages for important updates
                       </p>
                     </div>
-                    <Button 
-                      variant={notificationPreferences.smsNotifications ? "primary" : "outline"} 
+                    <Button
+                      variant={notificationPreferences.smsNotifications ? 'primary' : 'outline'}
                       size="sm"
-                      onClick={() => handleNotificationPreferencesUpdate('smsNotifications', !notificationPreferences.smsNotifications)}
+                      onClick={() =>
+                        handleNotificationPreferencesUpdate(
+                          'smsNotifications',
+                          !notificationPreferences.smsNotifications
+                        )
+                      }
                     >
                       {notificationPreferences.smsNotifications ? 'Enabled' : 'Disabled'}
                     </Button>

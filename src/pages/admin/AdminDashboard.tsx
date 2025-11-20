@@ -22,7 +22,7 @@ import {
 import toast from 'react-hot-toast';
 
 export function AdminDashboard() {
-  const { user } = useAuthStore();
+  const { user,fetchUserById } = useAuthStore();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [dashboardData, setDashboardData] = useState({
     totalUsers: 0,
@@ -62,6 +62,26 @@ const loadOrganization = async () => {
         mockApi.getCourses({ organizationId: user?.organizationId }),
         mockApi.getPrograms({ organizationId: user?.organizationId }),
       ]);
+
+      // //test function
+      // const testUserDetails = async () => {
+      //   try {
+      //     if (!user?.id) {
+      //       console.warn('No user ID found');
+      //       return;
+      //     }
+
+      //     const res = await fetchUserById(user.id);
+      //     console.log('[ComponentFunction] RESPONSE FROM SERVER', res);
+      //   } catch (error: any) {
+      //     console.error(error.message);
+      //   }
+      // };
+
+      // // test user details
+      // useEffect(() => {
+      //   testUserDetails();
+      // }, [user]);
 
       // Mock recent activity and alerts
       const mockRecentUsers = usersData.data.slice(0, 5);
@@ -178,8 +198,16 @@ const loadOrganization = async () => {
             <div className="mt-2 h-4 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded"></div>
           ) : organization?.id ? (
             <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400 group relative">
-              <BuildingOfficeIcon className="h-4 w-4 mr-1" />
-              <span className='uppercase'>{organization?.name ?? "N/A"}</span>
+              {organization?.logo ? (
+                <img
+                  src={organization?.logo}
+                  alt={organization?.name}
+                  className="w-7 h-7 object-cover center mr-1 rounded-full"
+                />
+              ) : (
+                <BuildingOfficeIcon className="h-4 w-4 mr-1" />
+              )}
+              <span className="uppercase">{organization?.name ?? 'N/A'}</span>
               <span className="ml-3 text-zinc-900 dark:text-yellow-500 font-medium">
                 {organization?.organizationCode ?? 'N/A'}
               </span>

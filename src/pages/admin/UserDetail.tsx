@@ -144,8 +144,8 @@ export function UserDetail() {
     if (!user) return;
     
     try {
-      await mockApi.updateUser(user.id, { profileImage: imageUrl || undefined });
-      setUser({ ...user, profileImage: imageUrl || undefined });
+      await mockApi.updateUser(user.id, { images: imageUrl || undefined });
+      setUser({ ...user, images: imageUrl || undefined });
       toast.success('Profile picture updated!');
     } catch (error) {
       toast.error('Failed to update profile picture');
@@ -254,7 +254,7 @@ export function UserDetail() {
                     Profile Picture
                   </h3>
                   <ProfilePictureUpload
-                    currentImageUrl={user.profileImage}
+                    currentImageUrl={user.images}
                     onImageUpdate={handleProfilePictureUpdate}
                     size="lg"
                     disabled={!editing}

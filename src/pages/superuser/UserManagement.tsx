@@ -434,7 +434,7 @@ useEffect(() =>{
         <div className="flex items-center">
           <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
             <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-              {user.firstName.charAt(0)}{user.lastName.charAt(0)}
+              {user.firstName.charAt(0).toUpperCase()}{user.lastName.charAt(0).toUpperCase()}
             </span>
           </div>
           <div className="ml-4">
@@ -468,8 +468,16 @@ useEffect(() =>{
       render: (_, user) => {
         const org = organizations.find(o => o.organizationCode === user.organizationId);
         return (
-          <div className="flex items-center">
-            <BuildingOfficeIcon className="h-4 w-4 text-gray-400 mr-1" />
+          <div className="flex items-center gap-1">
+            {org?.logo ? (
+              <img
+                src={org?.logo}
+                alt={org?.name}
+                className="h-7 w-7 rounded object-cover"
+              />
+            ) : (
+              <BuildingOfficeIcon className="h-4 w-4 text-gray-400 mr-1" />
+            )}
             <span className="text-gray-900 dark:text-white">
               {org ? org.name : 'No Organization'}
             </span>
@@ -527,10 +535,8 @@ useEffect(() =>{
 
     return (
       <div className="flex justify-between items-center mt-6">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Page {currentPage} of {totalPages} • Total Users: {totalUsers}
-        </p>
-        <div className="flex space-x-2">
+        <p className="text-sm text-gray-600 dark:text-gray-400">Total Users: {totalUsers}</p>
+        <div className="flex items-center gap-2 space-x-2">
           <Button
             variant="outline"
             size="sm"
@@ -539,7 +545,9 @@ useEffect(() =>{
           >
             Previous
           </Button>
-          {pages}
+          <p className="text-gray-600 dark:text-gray-400">
+            Page {currentPage} of {totalPages}
+          </p>
           <Button
             variant="outline"
             size="sm"
@@ -681,6 +689,7 @@ useEffect(() =>{
       </Card>
 
       {/* Add User Modal */}
+      {/* Add User Modal */}
       <Modal
         isOpen={showAddUserModal}
         onClose={() => setShowAddUserModal(false)}
@@ -734,6 +743,7 @@ useEffect(() =>{
             </select>
           </div>
 
+          {/* --- Organization Field --- */}
           <div className="space-y-1">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Organization
@@ -752,40 +762,66 @@ useEffect(() =>{
             </select>
           </div>
 
-          <div className="flex justify-end space-x-3">
-            <Button variant="outline" onClick={() => setShowAddUserModal(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddUser} disabled={creatingUser}>
-              {creatingUser ? (
-                <>
-                  <svg
-                    className="animate-spin h-4 w-4 mr-2 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v8z"
-                    ></path>
-                  </svg>
-                  Creating...
-                </>
-              ) : (
-                'Create User'
-              )}
-            </Button>
-          </div>
+          {/* --- Conditional Red Notice --- */}
+          {(() => {
+            const selectedOrg = organizations.find(
+              org => String(org.id) === newUserData.organizationId
+            );
+            var showNotice = selectedOrg && !selectedOrg.organizationCode;
+            return (
+              showNotice && (
+                <p className="text-sm text-red-600 font-medium">
+                  ⚠️ The selected organization does not have an <strong>organization code</strong>{' '}
+                  generated yet.
+                </p>
+              )
+            );
+          })()}
+
+          {/* --- Footer Buttons --- */}
+          {(() => {
+            const selectedOrg = organizations.find(
+              org => String(org.id) === newUserData.organizationId
+            );
+            const disableCreate = creatingUser || (selectedOrg && !selectedOrg.organizationCode); //Disable logic
+
+            return (
+              <div className="flex justify-end space-x-3">
+                <Button variant="outline" onClick={() => setShowAddUserModal(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleAddUser} disabled={disableCreate}>
+                  {creatingUser ? (
+                    <>
+                      <svg
+                        className="animate-spin h-4 w-4 mr-2 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v8z"
+                        ></path>
+                      </svg>
+                      Creating...
+                    </>
+                  ) : (
+                    'Create User'
+                  )}
+                </Button>
+              </div>
+            );
+          })()}
         </div>
       </Modal>
 

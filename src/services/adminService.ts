@@ -8,11 +8,21 @@ import {
   SystemUsageResponse,
   ActiveUsersResponse,
   PendingUsersResponse,
+<<<<<<< HEAD
   SuspendedUsersResponse,
   DeletedUsersResponse,
+=======
+  UserStatus,
+  EmailTemplate,
+>>>>>>> 1268a192e9d7ca81f8f87a3b8f8ad74e297ea695
 } from '../types';
 import apiClient from './apiClient';
 import { AxiosError } from 'axios';
+ import {
+   mapTypeToBackend,
+   mapTypeToFrontend,
+   FrontendTemplateType,
+ } from '../utils/emialConverter';
 
 class AdminService {
   async createAdmin(adminData: Omit<RegisterPayload, 'organizationId'>): Promise<User> {
@@ -181,6 +191,44 @@ class AdminService {
     }
   }
 
+  async getUserById(id: string): Promise<User> {
+    try {
+      const response = await apiClient.get(`/user/${id}`);
+      console.log('[adminService] RESPONSE FROM BACKEND', response.data);
+      if (!response.data.user) {
+        throw new Error('User data not found in response');
+      }
+      return response.data.user; // <- Extract the actual user object
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[adminService] ERROR RESPONSE FROM BACKEND',
+        err?.response?.data?.message || err?.message
+      );
+      throw new Error(err?.response?.data?.message || err?.message || 'Failed to Fetch details');
+    }
+  }
+
+  // adminService.ts
+  async updateProfileDetails(userId: string, formData: FormData): Promise<User> {
+    try {
+      if (formData.entries().next().done) {
+        throw new Error('No valid fields or files provided for update.');
+      }
+
+      const response = await apiClient.put<User>(
+        `/user/Edit/User-profile/admin/${userId}`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+
+      return response.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      throw new Error(err?.response?.data?.message || err.message || 'Failed to update details');
+    }
+  }
+
   async superuserUpdateUser(userId: string, userData: Partial<User>): Promise<User> {
     try {
       // Use real API to update user
@@ -283,13 +331,13 @@ class AdminService {
       );
 
       console.log(
-        `[adminService] PAGINATED RESPONSE (page=${page}, limit=${page}):`,
+        `[adminService] ACTIVE PAGINATED RESPONSE (page=${pageSize}, limit=${page}):`,
         response.data
       );
       return response.data;
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
-      console.error('[adminService] ERRO GETTING ACTIVE USERS', err.response?.data || err.message);
+      console.error('[adminService] ERROR GETTING ACTIVE USERS', err.response?.data || err.message);
       throw new Error(err.response?.data?.message || 'Failed to get data');
     }
   }
@@ -309,7 +357,7 @@ class AdminService {
       );
 
       console.log(
-        `[adminService] PAGINATED RESPONSE (page=${page}, limit=${page}):`,
+        `[adminService] PENDING PAGINATED RESPONSE (page=${page}, limit=${page}):`,
         response.data
       );
       return response.data;
@@ -373,9 +421,7 @@ class AdminService {
 
   async deleteUser(userIds: string[]): Promise<User> {
     try {
-      const response = await apiClient.patch('/user/organization/soft-delete',
-      { userIds },
-      );
+      const response = await apiClient.patch('/user/organization/soft-delete', { userIds });
       console.log('[adminService] RESPONSE FROM SERVER:', response.data);
       return response.data || response.data.data;
     } catch (error) {
@@ -385,11 +431,14 @@ class AdminService {
     }
   }
 
-  async addBulkUsers(payload:any[]) : Promise<User>{
+  async addBulkUsers(payload: any[]): Promise<User> {
     try {
-      const response = await apiClient.post('/user/send-invitation/bulk-users/organization',payload);
+      const response = await apiClient.post(
+        '/user/send-invitation/bulk-users/organization',
+        payload
+      );
       console.log('[adminService] RESPONSE FROM SERVER:', response.data);
-      return response?.data || response?.data.data
+      return response?.data || response?.data.data;
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
       console.log('[adminService]ERROR RESPONSE FROM SERVER:', err?.response?.data || err?.message);
@@ -397,6 +446,7 @@ class AdminService {
     }
   }
 
+<<<<<<< HEAD
   async getSuspendedUsers(
     organizationId: string,
     page: number = 1,
@@ -446,6 +496,76 @@ class AdminService {
       const err = error as AxiosError<{ message?: string }>;
       console.error('[adminService] ERROR GETTING DELETED USERS', err.response?.data || err.message);
       throw new Error(err.response?.data?.message || 'Failed to get deleted users data');
+=======
+  async updateUserStatus(id: string, payload: { newStatus: UserStatus }): Promise<User> {
+    try {
+      const response = await apiClient.put<User>(`/user/change/status/${id}`, payload);
+      console.log('[adminService] RESPONSE FROM BACKEND:', response.data);
+      return response.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.error('adminService', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to change status');
+    }
+  }
+
+  async passwordChange(payload: { oldPassword: string; password: string }): Promise<User> {
+    try {
+      const response = await apiClient.post('/user/Edit-Password', payload);
+      console.log('[adminService] RESPONSE FROM SERVER', response.data);
+      return response.data || response.data.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log('[adminService] RESPONSE FROM SERVER', err?.response?.data || err?.message);
+      throw new Error(err?.response?.data?.message || err?.message);
+    }
+  }
+
+  // Save or update an email template
+
+  // ✅ Create or update a template
+  async updateEmailTemplate(payload: EmailTemplate): Promise<EmailTemplate> {
+    try {
+      const backendPayload = {
+        type: mapTypeToBackend(payload.type),
+        title: payload.subject,
+        body: payload.body,
+        notes: `Template for ${payload.type}`,
+        organizationId: payload.organizationId || 'SYM-ORG-53Q838P-2025',
+      };
+
+      const response = await apiClient.post('/templates/save', backendPayload);
+      console.log('[adminService] RESPONSE FROM BACKEND', response.data);
+      return response.data?.data || response.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.error('[adminService] ERROR', err.response?.data?.message || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to save template');
+    }
+  }
+
+  // ✅ Get template by type
+  async getEmailTemplate(type: FrontendTemplateType): Promise<EmailTemplate> {
+    try {
+      const backendType = mapTypeToBackend(type);
+      const response = await apiClient.get(`/templates/${backendType}`);
+      console.log('[adminService] RESPONSE FROM BACKEND', response.data);
+
+      const data = response.data?.data || response.data;
+
+      return {
+        id: data.id || '',
+        type: mapTypeToFrontend(data.type), // ✅ now strictly typed
+        subject: data.title,
+        body: data.body,
+        variables: ['firstName', 'lastName', 'organizationName', 'email'],
+        organizationId: data.organizationId,
+      };
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.error('[adminService] ERROR', err.response?.data?.message || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to fetch template');
+>>>>>>> 1268a192e9d7ca81f8f87a3b8f8ad74e297ea695
     }
   }
 }

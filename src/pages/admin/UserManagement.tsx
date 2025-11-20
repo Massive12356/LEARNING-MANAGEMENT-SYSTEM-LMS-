@@ -155,7 +155,7 @@ const PendingUsersTable: React.FC<{
 };
 
 export function UserManagement() {
-  const { user: currentUser, viewAsUser } = useAuthStore();
+  const { user: currentUser, viewAsUser, fetchUserById } = useAuthStore();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -195,7 +195,10 @@ export function UserManagement() {
   const [showBulkArchiveConfirm, setShowBulkArchiveConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-  const [totalOrgUsers, setTotalOrgUsers] =useState(0);
+  const [totalOrgUsers, setTotalOrgUsers] = useState(0);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [statusLoading, setStatusLoading] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   const [inviteData, setInviteData] = useState({
     email: '',
@@ -237,7 +240,12 @@ export function UserManagement() {
         const filteredUsers = response.users?.filter(user => user.role !== 'admin') || [];
         setUsers(filteredUsers);
         setActiveTotalPages(response.totalPages || 1);
+<<<<<<< HEAD
         // 🔹 Keep a separate total count that doesn't change on pagination
+=======
+        
+        // 🔹 Keep a separate total count that doesn’t change on pagination
+>>>>>>> 1268a192e9d7ca81f8f87a3b8f8ad74e297ea695
         setTotalActiveUsers({
           ...response,
           totalActiveUsers: response.totalActiveUsers ?? filteredUsers.length,
@@ -301,7 +309,11 @@ export function UserManagement() {
         setPendingUsers(filteredPending);
         setPendingTotalPages(response.totalPages || 1);
         // 🔹 Keep overall pending count fixed
+<<<<<<< HEAD
         setTotalPendingUsers(response.totalPendingUsers ?? filteredPending.length);
+=======
+        setTotalPendingUsers(response?.totalPendingUsers);
+>>>>>>> 1268a192e9d7ca81f8f87a3b8f8ad74e297ea695
       }
     } catch (error) {
       toast.error('Failed to load pending users');
@@ -341,7 +353,8 @@ export function UserManagement() {
         organizationId: '',
       });
       setShowInviteModal(false);
-      loadPendingUsers();
+      // ✅ Update both lists and totals
+      await Promise.all([loadPendingUsers(), loadActiveUsers(), loadOrganization()]);
     } catch (error) {
       // 👇 Display the error thrown from the service
       if (error instanceof Error) {
@@ -358,21 +371,31 @@ export function UserManagement() {
   const handleSuspendUser = async (user: User) => {
     setUserToSuspend(user);
     setShowSuspendConfirm(true);
+    setIsProcessing(false); // reset processing state
   };
 
   const confirmSuspendUser = async () => {
     if (!userToSuspend) return;
 
+    const newStatus = userToSuspend.isArchived ? 'active' : 'pending';
+    setStatusLoading(userToSuspend.id);
+
     try {
-      // Use the real API endpoint for suspending users
-      await adminService.suspendUser(userToSuspend.id);
-      toast.success('User suspended successfully');
-      loadActiveUsers();
-    } catch (error) {
-      toast.error('Failed to suspend user');
-    } finally {
+      await adminService.updateUserStatus(userToSuspend.id, { newStatus });
+      toast.success(
+        newStatus === 'pending'
+          ? `${userToSuspend.firstName} has been suspended`
+          : `${userToSuspend.firstName} reactivated successfully`
+      );
       setShowSuspendConfirm(false);
       setUserToSuspend(null);
+
+      // Reload both lists
+      await Promise.all([loadActiveUsers(), loadPendingUsers()]);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update user status');
+    } finally {
+      setStatusLoading(null);
     }
   };
 
@@ -495,55 +518,58 @@ export function UserManagement() {
   };
 
   const handleFileUpload = async (files: File[]) => {
-    try {
-      // check if file is uploaded
-      const file = files[0];
-      if (!file) {
-        toast.error('Please select a CSV file');
-        return;
-      }
-      // check if file has correct extension
-      if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
-        toast.error('Invalid file type. Please upload a CSV file.');
-        return;
-      }
+    const file = files[0];
+    if (!file) {
+      toast.error('Please select a CSV file');
+      return;
+    }
+    if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+      toast.error('Invalid file type. Please upload a CSV file.');
+      return;
+    }
 
-      // Parse CSV into JSON
-      Papa.parse<CSVUserRecord>(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: async result => {
+    setSelectedFile(file);
+    setIsImporting(true);
+
+    Papa.parse<CSVUserRecord>(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async result => {
+        try {
           const records = result.data;
-          console.log('Parsed Records:', records);
+          if (!records.length) {
+            toast.error('CSV file is empty');
+            setIsImporting(false);
+            return;
+          }
 
-          // Validate CSV structure
           const requiredFields = ['email', 'firstName', 'lastName', 'role'];
           const hasAllFields = requiredFields.every(f => f in records[0]);
           if (!hasAllFields) {
             toast.error('CSV file missing required columns');
+            setIsImporting(false);
             return;
           }
 
-          // Attach organization code automatically
           const payload = records.map((r: any) => ({
             ...r,
             organizationId: organization?.organizationCode,
           }));
 
-          console.log('PAYLOAD TO BACKEND:', payload);
-
-          // ✅ Send to backend via your service
           await adminService.addBulkUsers(payload);
-
           toast.success(`Successfully imported ${payload.length} users`);
           setShowBulkImportModal(false);
-          loadPendingUsers();
-        },
-      });
-    } catch (error) {
-      console.error('Bulk import error:', error);
-      toast.error('Failed to import users');
-    }
+          // Update both lists and totals
+          await Promise.all([loadPendingUsers(), loadActiveUsers(), loadOrganization()]);
+        } catch (error) {
+          console.error('Bulk import error:', error);
+          toast.error('Failed to import users');
+        } finally {
+          // Set importing to false here — after everything
+          setIsImporting(false);
+        }
+      },
+    });
   };
 
   // confirm Approve function
@@ -573,6 +599,7 @@ export function UserManagement() {
     }
   };
 
+
   // open Approve Modal
   const openApproveModal = (user: any) => {
     setSelectedUser(user);
@@ -584,6 +611,11 @@ export function UserManagement() {
     setShowRejectModal(true);
   };
 
+  const handleCancel = () => {
+    setShowBulkImportModal(false);
+    setSelectedFile(null);
+  };
+
   // Define table columns
   const columns: Column<User>[] = [
     {
@@ -593,9 +625,9 @@ export function UserManagement() {
       render: (_, user) => (
         <div className="flex items-center">
           <div className="flex-shrink-0 h-10 w-10">
-            {user.profileImage ? (
+            {user.images ? (
               <img
-                src={user.profileImage}
+                src={user.images}
                 alt="Profile"
                 className="h-10 w-10 rounded-full object-cover border-2 border-white dark:border-gray-800 shadow"
               />
@@ -627,7 +659,7 @@ export function UserManagement() {
             role === 'admin'
               ? 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200'
               : role === 'teacher'
-              ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+              ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
               : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
           }`}
         >
@@ -662,25 +694,20 @@ export function UserManagement() {
       sortable: false,
       render: (_, user) => (
         <div className="flex items-center space-x-2">
-          {user.isArchived ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleActivateUser(user)}
-              className="text-green-600 hover:text-green-700 border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
-            >
-              Activate
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleSuspendUser(user)}
-              className="text-yellow-600 hover:text-yellow-700 border-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
-            >
-              Suspend
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleSuspendUser(user)}
+            disabled={statusLoading === user.id}
+            className={`${
+              user.isArchived
+                ? 'text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
+                : 'text-yellow-600 border-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
+            }`}
+          >
+            {statusLoading === user.id ? 'Pending...' : user.isArchived ? 'Activate' : 'Suspend'}
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -781,8 +808,16 @@ export function UserManagement() {
           {orgLoading ? (
             <div className="mt-2 h-4 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded"></div>
           ) : organization ? (
-            <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400 group relative">
-              <BuildingOfficeIcon className="h-4 w-4 mr-1" />
+            <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400 group relative ">
+              {organization?.logo ? (
+                <img
+                  src={organization?.logo}
+                  alt={organization?.name}
+                  className="w-7 h-7 object-cover rounded-full center mr-1"
+                />
+              ) : (
+                <BuildingOfficeIcon className="h-4 w-4 mr-1" />
+              )}
               <span>{organization.name}</span>
               <span className="ml-3 text-zinc-900 dark:text-yellow-500 font-medium">
                 {organization?.organizationCode ?? 'N/A'}
@@ -860,6 +895,7 @@ export function UserManagement() {
         </nav>
       </div>
 
+<<<<<<< HEAD
       {/* Search Bar */}
       <div className="mb-6">
         <div className="relative max-w-md">
@@ -897,6 +933,9 @@ export function UserManagement() {
           )}
         </div>
       </div>
+=======
+      {/* Filters and Search */}
+>>>>>>> 1268a192e9d7ca81f8f87a3b8f8ad74e297ea695
 
       {/* Bulk Actions */}
       {selectedUsers.length > 0 && (
@@ -982,9 +1021,8 @@ export function UserManagement() {
           loading={loading}
         />
       )}
-
       {activeTab === 'pending' && pendingTotalPages > 1 && (
-        <div className="flex justify-between items-center mt-4">
+        <div className="flex items-center justify-end gap-3 mt-4">
           <Button
             variant="outline"
             size="sm"
@@ -1216,9 +1254,24 @@ export function UserManagement() {
               maxSize={5 * 1024 * 1024} // 5MB
               maxFiles={1}
               legacyMode={true} // Use legacy File[] mode
-              onUpload={handleFileUpload}
+              onUpload={files => {
+                // This will now only fire when you manually call it
+                setSelectedFile(files[0]);
+              }}
               dropzoneText="Drop your CSV file here, or click to browse"
             />
+            {/* ✅ Show selected file name */}
+            {selectedFile && (
+              <div className="flex items-center justify-between p-3 bg-gray-100 rounded-md">
+                <span className="text-sm text-gray-700 truncate">📄 {selectedFile.name}</span>
+                <button
+                  className="text-xs text-red-500 hover:underline"
+                  onClick={() => setSelectedFile(null)}
+                >
+                  Remove
+                </button>
+              </div>
+            )}
           </div>
 
           <div>
@@ -1232,11 +1285,44 @@ export function UserManagement() {
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3">
-            <Button variant="outline" onClick={() => setShowBulkImportModal(false)}>
+          <div className="flex justify-end gap-3 mt-6">
+            <Button
+              onClick={handleCancel}
+              variant="outline"
+              className="w-32"
+              disabled={isImporting}
+            >
               Cancel
             </Button>
-            <Button>Import Users</Button>
+            <Button
+              onClick={() => selectedFile && handleFileUpload([selectedFile])}
+              className="w-32 flex items-center justify-center"
+              disabled={isImporting}
+            >
+              {isImporting ? (
+                <>
+                  <svg
+                    className="animate-spin h-4 w-4 mr-2 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  Importing...
+                </>
+              ) : (
+                'Import Users'
+              )}
+            </Button>
           </div>
         </div>
       </Modal>
@@ -1267,7 +1353,7 @@ export function UserManagement() {
         onConfirm={confirmSuspendUser}
         title="Suspend User"
         message="Are you sure you want to suspend this user? They will lose access to the platform."
-        confirmText="Suspend"
+        confirmText={statusLoading ? ' Suspending...' : 'Suspend'}
         cancelText="Cancel"
         confirmVariant="danger"
       />
