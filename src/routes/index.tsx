@@ -28,6 +28,7 @@ import { DiscoverCoursesPage } from '../pages/student/courses/DiscoverCoursesPag
 
 // Teacher Pages
 import { TeacherDashboard } from '../pages/teacher/TeacherDashboard';
+import { TeacherTodoPage } from '../pages/teacher/TeacherTodoPage';
 import { CourseBuilder } from '../pages/teacher/CourseBuilder';
 import { CourseList as TeacherCourseList } from '../pages/teacher/CourseList';
 import CertificateManagement from '../pages/teacher/CertificateManagement';
@@ -149,6 +150,7 @@ export const AppRoutes: React.FC = () => {
           <DashboardLayout>
             <Routes>
               <Route path="dashboard" element={<TeacherDashboard />} />
+              <Route path="todo" element={<TeacherTodoPage />} />
               <Route path="courses" element={<TeacherCourseList />} />
               <Route path="courses/new" element={<CourseBuilder />} />
               <Route path="courses/:courseId/edit" element={<CourseBuilder />} />

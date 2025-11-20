@@ -77,6 +77,8 @@ export const mockUsers: User[] = [
 export const mockOrganizations: Organization[] = [
   {
     id: 'org-1',
+    adminUserId: 'user-3',
+    organizationCode: 'TECHACAD123',
     name: 'Tech Academy',
     status: 'active',
     description: 'Leading technology education platform for modern learners',
@@ -85,9 +87,18 @@ export const mockOrganizations: Organization[] = [
     emailCopyBranding: 'Best regards,\nThe Tech Academy Team',
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-15'),
+    maxUsers: 1000,
+    expiryDay: new Date('2025-01-01'),
+    organizationDetails: {
+      id: 1,
+      code: 'TECHACAD123',
+      name: 'Tech Academy'
+    }
   },
   {
     id: 'org-2',
+    adminUserId: 'user-3',
+    organizationCode: 'BIZINST456',
     name: 'Business Skills Institute',
     status: 'active',
     description: 'Professional development and business skills training',
@@ -96,6 +107,13 @@ export const mockOrganizations: Organization[] = [
     emailCopyBranding: 'Sincerely,\nBusiness Skills Institute',
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-10'),
+    maxUsers: 500,
+    expiryDay: new Date('2025-01-01'),
+    organizationDetails: {
+      id: 2,
+      code: 'BIZINST456',
+      name: 'Business Skills Institute'
+    }
   }
 ];
 
@@ -168,6 +186,143 @@ const sampleModules: Module[] = [
         moduleId: 'module-2',
         duration: 25,
         isRequired: true,
+      }
+    ]
+  }
+];
+
+// Add the enhanced demo course with all content types
+const enhancedDemoModules: Module[] = [
+  {
+    id: 'module-1',
+    title: 'HTML Fundamentals',
+    description: 'Learn the basics of HTML and semantic markup',
+    order: 0,
+    courseId: 'demo-course',
+    lessons: [
+      {
+        id: 'lesson-1',
+        title: 'Introduction to HTML',
+        description: 'Understanding the structure of web pages',
+        type: 'video',
+        content: {
+          videoUrl: 'https://www.youtube.com/watch?v=Ihy0QziLDf0',
+          duration: 15
+        },
+        order: 0,
+        moduleId: 'module-1',
+        duration: 15,
+        isRequired: true
+      },
+      {
+        id: 'lesson-2',
+        title: 'HTML Text Elements',
+        description: 'Working with headings, paragraphs, and text formatting',
+        type: 'text',
+        content: {
+          textContent: '<h3>HTML Text Elements</h3><p>In this lesson, we\'ll explore the various text elements available in HTML.</p><h4>Headings</h4><p>HTML provides six levels of headings, from <code>&lt;h1&gt;</code> to <code>&lt;h6&gt;</code>.</p><h4>Paragraphs</h4><p>Paragraphs are defined with the <code>&lt;p&gt;</code> tag.</p>'
+        },
+        order: 1,
+        moduleId: 'module-1',
+        duration: 10,
+        isRequired: true
+      }
+    ]
+  },
+  {
+    id: 'module-2',
+    title: 'CSS Styling',
+    description: 'Make your websites beautiful with CSS',
+    order: 1,
+    courseId: 'demo-course',
+    lessons: [
+      {
+        id: 'lesson-3',
+        title: 'CSS Basics',
+        description: 'Introduction to Cascading Style Sheets',
+        type: 'video',
+        content: {
+          videoUrl: 'https://www.youtube.com/watch?v=1PnVor36_40',
+          duration: 20
+        },
+        order: 0,
+        moduleId: 'module-2',
+        duration: 20,
+        isRequired: true
+      },
+      {
+        id: 'lesson-4',
+        title: 'Layout Techniques',
+        description: 'Modern CSS layout with Flexbox and Grid',
+        type: 'pdf',
+        content: {
+          pdfUrl: 'https://css-tricks.com/wp-content/uploads/2018/03/CSS-Tricks-CSS-Layout-Landscapes.pdf'
+        },
+        order: 1,
+        moduleId: 'module-2',
+        duration: 25,
+        isRequired: true
+      }
+    ]
+  },
+  {
+    id: 'module-3',
+    title: 'Advanced Content Types',
+    description: 'Working with different content formats',
+    order: 2,
+    courseId: 'demo-course',
+    lessons: [
+      {
+        id: 'lesson-5',
+        title: 'Interactive PDF Resources',
+        description: 'Downloadable course materials and resources',
+        type: 'pdf',
+        content: {
+          pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+        },
+        order: 0,
+        moduleId: 'module-3',
+        duration: 5,
+        isRequired: false
+      },
+      {
+        id: 'lesson-6',
+        title: 'Project Files',
+        description: 'Starter files for hands-on exercises',
+        type: 'attachment',
+        content: {
+          attachmentUrl: 'https://example.com/starter-files.zip'
+        },
+        order: 1,
+        moduleId: 'module-3',
+        duration: 0,
+        isRequired: true
+      },
+      {
+        id: 'lesson-7',
+        title: 'Knowledge Check',
+        description: 'Test your understanding of key concepts',
+        type: 'quiz',
+        content: {
+          quizData: null
+        },
+        order: 2,
+        moduleId: 'module-3',
+        duration: 15,
+        isRequired: true
+      },
+      {
+        id: 'lesson-8',
+        title: 'Learning Reflection',
+        description: 'Reflect on what you\'ve learned in this module',
+        type: 'reflection',
+        content: {
+          reflectionPrompt: 'How will you apply what you\'ve learned in this module to your own projects?'
+        },
+        order: 3,
+        moduleId: 'module-3',
+        duration: 10,
+        isRequired: false
       }
     ]
   }
@@ -272,6 +427,134 @@ export const mockCourses: Course[] = [
     ],
     createdAt: new Date('2024-01-10'),
     updatedAt: new Date('2024-01-12'),
+  }
+  // Single comprehensive demo course for teachers to edit
+  ,
+  {
+    id: 'demo-course',
+    title: 'Web Development Fundamentals - Editable Template',
+    description: '<p>This is a pre-created course template that you can customize for your students. It includes modules on HTML, CSS, and JavaScript fundamentals.</p><p><strong>How to use this template:</strong></p><ul><li>Edit the course title and description to match your needs</li><li>Modify the content of existing lessons</li><li>Add new lessons or modules</li><li>Change the order of modules and lessons</li><li>Upload your own videos and resources</li></ul>',
+    coverImage: 'https://picsum.photos/800/450?random=4',
+    tags: ['html', 'css', 'javascript', 'web development', 'beginner'],
+    status: 'draft',
+    isTracked: true,
+    allowSelfPacing: true,
+    requiresCertificate: true,
+    isGraded: true,
+    organizationId: 'org-1',
+    teacherId: 'user-2',
+    modules: [
+      {
+        id: 'module-1-template',
+        title: 'HTML Basics',
+        description: 'Learn the fundamentals of HTML markup',
+        order: 0,
+        courseId: 'demo-course',
+        lessons: [
+          {
+            id: 'lesson-1-template',
+            title: 'Introduction to HTML',
+            description: 'Understanding the structure of web pages',
+            type: 'video',
+            content: {
+              videoUrl: 'https://www.youtube.com/watch?v=Ihy0QziLDf0',
+              duration: 15
+            },
+            order: 0,
+            moduleId: 'module-1-template',
+            duration: 15,
+            isRequired: true
+          },
+          {
+            id: 'lesson-2-template',
+            title: 'HTML Text Elements',
+            description: 'Working with headings, paragraphs, and text formatting',
+            type: 'text',
+            content: {
+              textContent: '<h3>HTML Text Elements</h3><p>In this lesson, we\'ll explore the various text elements available in HTML.</p><h4>Headings</h4><p>HTML provides six levels of headings, from <code>&lt;h1&gt;</code> to <code>&lt;h6&gt;</code>.</p><h4>Paragraphs</h4><p>Paragraphs are defined with the <code>&lt;p&gt;</code> tag.</p>'
+            },
+            order: 1,
+            moduleId: 'module-1-template',
+            duration: 10,
+            isRequired: true
+          }
+        ]
+      },
+      {
+        id: 'module-2-template',
+        title: 'CSS Styling',
+        description: 'Style your web pages with CSS',
+        order: 1,
+        courseId: 'demo-course',
+        lessons: [
+          {
+            id: 'lesson-3-template',
+            title: 'CSS Basics',
+            description: 'Introduction to Cascading Style Sheets',
+            type: 'video',
+            content: {
+              videoUrl: 'https://www.youtube.com/watch?v=1PnVor36_40',
+              duration: 20
+            },
+            order: 0,
+            moduleId: 'module-2-template',
+            duration: 20,
+            isRequired: true
+          },
+          {
+            id: 'lesson-4-template',
+            title: 'Layout Techniques',
+            description: 'Modern CSS layout with Flexbox and Grid',
+            type: 'pdf',
+            content: {
+              pdfUrl: 'https://css-tricks.com/wp-content/uploads/2018/03/CSS-Tricks-CSS-Layout-Landscapes.pdf'
+            },
+            order: 1,
+            moduleId: 'module-2-template',
+            duration: 25,
+            isRequired: true
+          }
+        ]
+      },
+      {
+        id: 'module-3-template',
+        title: 'JavaScript Fundamentals',
+        description: 'Add interactivity to your websites',
+        order: 2,
+        courseId: 'demo-course',
+        lessons: [
+          {
+            id: 'lesson-5-template',
+            title: 'JavaScript Variables and Data Types',
+            description: 'Learn about variables and data types in JavaScript',
+            type: 'video',
+            content: {
+              videoUrl: 'https://www.youtube.com/watch?v=hdI2bqOjy3c',
+              duration: 18
+            },
+            order: 0,
+            moduleId: 'module-3-template',
+            duration: 18,
+            isRequired: true
+          },
+          {
+            id: 'lesson-6-template',
+            title: 'DOM Manipulation',
+            description: 'Interacting with HTML elements using JavaScript',
+            type: 'text',
+            content: {
+              textContent: '<h3>DOM Manipulation</h3><p>The Document Object Model (DOM) is a programming interface for web documents.</p><p>It represents the page so that programs can change the document structure, style, and content.</p>'
+            },
+            order: 1,
+            moduleId: 'module-3-template',
+            duration: 15,
+            isRequired: true
+          }
+        ]
+      }
+    ],
+    createdAt: new Date(),
+    updatedAt: new Date()
   }
 ];
 

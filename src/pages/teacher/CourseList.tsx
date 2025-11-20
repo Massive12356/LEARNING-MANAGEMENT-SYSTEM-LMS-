@@ -49,8 +49,8 @@ export function CourseList() {
     }
     
     try {
+      // Load all courses for the teacher's organization (without teacher filter for demo)
       const coursesData = await mockApi.getCourses({ 
-        teacherId: user.id,
         organizationId: user.organizationId
       });
       setCourses(coursesData);
