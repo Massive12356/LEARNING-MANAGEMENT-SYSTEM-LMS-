@@ -933,11 +933,41 @@ export function UserManagement() {
           loading={loading}
         />
       ) : activeTab === 'pending' ? (
-        <PendingUsersTable
-          pendingUsers={pendingUsers}
-          onApprove={user => openApproveModal(user)}
-          onReject={user => openRejectModal(user)}
-        />
+        <div className="space-y-4">
+          {/* Search Input for Pending Users */}
+          <div className="flex justify-between items-center">
+            <div className="relative w-64">
+              <Input
+                type="text"
+                placeholder="Search pending users..."
+                value={pendingSearchTerm}
+                onChange={(e) => handleSearch(e.target.value)}
+                className="pl-10"
+              />
+              {pendingSearchTerm && (
+                <button
+                  onClick={clearSearch}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+          
+          <PendingUsersTable
+            pendingUsers={pendingUsers}
+            onApprove={user => openApproveModal(user)}
+            onReject={user => openRejectModal(user)}
+          />
+        </div>
       ) : activeTab === 'suspended' ? (
         <DataTable
           data={suspendedUsers}
