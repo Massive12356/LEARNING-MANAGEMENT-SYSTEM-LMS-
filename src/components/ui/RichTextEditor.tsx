@@ -12,6 +12,8 @@ import {
   Bars3BottomLeftIcon
 } from '@heroicons/react/24/outline';
 import { Button } from './Button';
+import { Modal } from './Modal';
+import { Input } from './Input';
 
 interface RichTextEditorProps {
   value: string;
@@ -70,6 +72,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const valueRef = useRef(value);
   const isComposingRef = useRef(false);
   const skipNextInputRef = useRef(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
 
   // Update editor content when external value changes
   useEffect(() => {
@@ -223,9 +231,65 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
         const listItem = range.startContainer.parentElement?.closest('li');
-        if (listItem && !listItem.textContent?.trim()) {
-          e.preventDefault();
-          execCommand('outdent');
+        if (listItem) {
+          // If the list item is empty, remove it and exit the list
+          if (!listItem.textContent?.trim()) {
+            e.preventDefault();
+            
+            // Get the parent list
+            const list = listItem.closest('ul, ol');
+            if (list) {
+              // Remove the empty list item
+              listItem.remove();
+              
+              // If this was the last item in the list, remove the empty list
+              if (list.children.length === 0) {
+                const nextElement = list.nextSibling;
+                list.remove();
+                
+                // Create a new paragraph
+                const newP = document.createElement('p');
+                newP.innerHTML = '<br>';
+                
+                // Insert after the list or at the end
+                if (nextElement) {
+                  nextElement.parentElement?.insertBefore(newP, nextElement);
+                } else {
+                  editorRef.current?.appendChild(newP);
+                }
+                
+                // Move cursor to the new paragraph
+                const newRange = document.createRange();
+                newRange.setStart(newP, 0);
+                newRange.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(newRange);
+              } else {
+                // Just move cursor to next line
+                const newP = document.createElement('p');
+                newP.innerHTML = '<br>';
+                list.after(newP);
+                
+                // Move cursor to the new paragraph
+                const newRange = document.createRange();
+                newRange.setStart(newP, 0);
+                newRange.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(newRange);
+              }
+              
+              // Update the editor content
+              setTimeout(() => {
+                if (editorRef.current) {
+                  const newValue = editorRef.current.innerHTML;
+                  if (newValue !== valueRef.current) {
+                    valueRef.current = newValue;
+                    onChange(newValue);
+                  }
+                }
+              }, 0);
+            }
+          }
         }
       }
     }
@@ -239,53 +303,85 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         if (listItem) {
           e.preventDefault();
           if (e.shiftKey) {
-            execCommand('outdent');
+            document.execCommand('outdent');
           } else {
-            execCommand('indent');
+            document.execCommand('indent');
           }
+          
+          // Update the editor content
+          setTimeout(() => {
+            if (editorRef.current) {
+              const newValue = editorRef.current.innerHTML;
+              if (newValue !== valueRef.current) {
+                valueRef.current = newValue;
+                onChange(newValue);
+              }
+            }
+          }, 0);
         }
       }
     }
-  }, [execCommand]);
+  }, [execCommand, onChange]);
 
   const insertLink = useCallback(() => {
-    const url = prompt('Enter URL:');
-    if (url) {
-      execCommand('createLink', url);
-    }
-  }, [execCommand]);
+    // Instead of using prompt, show our custom modal
+    setLinkUrl('');
+    setShowLinkModal(true);
+  }, []);
 
   const insertImage = useCallback(() => {
-    const url = prompt('Enter image URL:');
-    if (url) {
-      execCommand('insertImage', url);
-    }
-  }, [execCommand]);
+    // Instead of using prompt, show our custom modal
+    setImageUrl('');
+    setShowImageModal(true);
+  }, []);
 
   const insertVideo = useCallback(() => {
-    const url = prompt('Enter video URL (YouTube, Vimeo, etc.):');
-    if (url) {
-      let embedUrl = url;
+    // Instead of using prompt, show our custom modal
+    setVideoUrl('');
+    setShowVideoModal(true);
+  }, []);
+
+  const handleInsertLink = useCallback(() => {
+    if (linkUrl) {
+      execCommand('createLink', linkUrl);
+    }
+    setShowLinkModal(false);
+    setLinkUrl('');
+  }, [execCommand, linkUrl]);
+
+  const handleInsertImage = useCallback(() => {
+    if (imageUrl) {
+      execCommand('insertImage', imageUrl);
+    }
+    setShowImageModal(false);
+    setImageUrl('');
+  }, [execCommand, imageUrl]);
+
+  const handleInsertVideo = useCallback(() => {
+    if (videoUrl) {
+      let embedUrl = videoUrl;
       
       // Convert YouTube URLs to embed format
-      if (url.includes('youtube.com/watch')) {
-        const videoId = url.split('v=')[1]?.split('&')[0];
+      if (videoUrl.includes('youtube.com/watch')) {
+        const videoId = videoUrl.split('v=')[1]?.split('&')[0];
         embedUrl = `https://www.youtube.com/embed/${videoId}`;
-      } else if (url.includes('youtu.be/')) {
-        const videoId = url.split('youtu.be/')[1]?.split('?')[0];
+      } else if (videoUrl.includes('youtu.be/')) {
+        const videoId = videoUrl.split('youtu.be/')[1]?.split('?')[0];
         embedUrl = `https://www.youtube.com/embed/${videoId}`;
       }
       
       // Convert Vimeo URLs
-      if (url.includes('vimeo.com/')) {
-        const videoId = url.split('vimeo.com/')[1]?.split('?')[0];
+      if (videoUrl.includes('vimeo.com/')) {
+        const videoId = videoUrl.split('vimeo.com/')[1]?.split('?')[0];
         embedUrl = `https://player.vimeo.com/video/${videoId}`;
       }
 
       const iframe = `<iframe src="${embedUrl}" width="560" height="315" frameborder="0" allowfullscreen></iframe>`;
       execCommand('insertHTML', iframe);
     }
-  }, [execCommand]);
+    setShowVideoModal(false);
+    setVideoUrl('');
+  }, [execCommand, videoUrl]);
 
   const handleFormatChange = useCallback((format: string) => {
     execCommand('formatBlock', format);
@@ -313,6 +409,181 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       editorRef.current.innerHTML = value;
     }
   }, []);
+
+  // Fix for list commands - robust implementation that works with manual DOM manipulation
+  const toggleUnorderedList = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return;
+    
+    const range = selection.getRangeAt(0);
+    const container = range.commonAncestorContainer;
+    
+    // Check if we're inside a list item
+    const listItem = container.nodeType === Node.ELEMENT_NODE 
+      ? (container as Element).closest('li')
+      : container.parentElement?.closest('li');
+    
+    if (listItem) {
+      // We're in a list item, try to toggle off
+      try {
+        document.execCommand('styleWithCSS', false, 'false');
+        document.execCommand('insertUnorderedList', false, undefined);
+      } catch (error) {
+        // If execCommand fails, manually convert to paragraph
+        const parentList = listItem.closest('ul, ol');
+        if (parentList) {
+          // Create a new paragraph with the list item content
+          const newP = document.createElement('p');
+          newP.innerHTML = listItem.innerHTML || '<br>';
+          
+          // Replace the list item with the paragraph
+          listItem.replaceWith(newP);
+          
+          // If the list is now empty, remove it
+          if (parentList.children.length === 0) {
+            parentList.remove();
+          }
+          
+          // Move cursor to the new paragraph
+          const newRange = document.createRange();
+          newRange.setStart(newP, 0);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        }
+      }
+    } else {
+      // We're not in a list, try to create one
+      try {
+        document.execCommand('styleWithCSS', false, 'false');
+        document.execCommand('insertUnorderedList', false, undefined);
+      } catch (error) {
+        // If execCommand fails, manually create a list
+        if (range.collapsed) {
+          // For collapsed selection, create an empty list
+          const list = document.createElement('ul');
+          const newItem = document.createElement('li');
+          newItem.innerHTML = '<br>';
+          list.appendChild(newItem);
+          
+          range.insertNode(list);
+          
+          // Move cursor to the new list item
+          const newRange = document.createRange();
+          newRange.setStart(newItem, 0);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        } else {
+          // For range selection, wrap content in list
+          const list = document.createElement('ul');
+          const newItem = document.createElement('li');
+          
+          // Extract selected content
+          const fragment = range.extractContents();
+          newItem.appendChild(fragment);
+          list.appendChild(newItem);
+          
+          range.insertNode(list);
+        }
+      }
+    }
+    
+    // Update the editor content
+    if (editorRef.current) {
+      const newValue = editorRef.current.innerHTML;
+      valueRef.current = newValue;
+      skipNextInputRef.current = true;
+      onChange(newValue);
+    }
+  }, [onChange]);
+
+  const toggleOrderedList = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return;
+    
+    const range = selection.getRangeAt(0);
+    const container = range.commonAncestorContainer;
+    
+    // Check if we're inside a list item
+    const listItem = container.nodeType === Node.ELEMENT_NODE 
+      ? (container as Element).closest('li')
+      : container.parentElement?.closest('li');
+    
+    if (listItem) {
+      // We're in a list item, try to toggle off
+      try {
+        document.execCommand('styleWithCSS', false, 'false');
+        document.execCommand('insertOrderedList', false, undefined);
+      } catch (error) {
+        // If execCommand fails, manually convert to paragraph
+        const parentList = listItem.closest('ul, ol');
+        if (parentList) {
+          // Create a new paragraph with the list item content
+          const newP = document.createElement('p');
+          newP.innerHTML = listItem.innerHTML || '<br>';
+          
+          // Replace the list item with the paragraph
+          listItem.replaceWith(newP);
+          
+          // If the list is now empty, remove it
+          if (parentList.children.length === 0) {
+            parentList.remove();
+          }
+          
+          // Move cursor to the new paragraph
+          const newRange = document.createRange();
+          newRange.setStart(newP, 0);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        }
+      }
+    } else {
+      // We're not in a list, try to create one
+      try {
+        document.execCommand('styleWithCSS', false, 'false');
+        document.execCommand('insertOrderedList', false, undefined);
+      } catch (error) {
+        // If execCommand fails, manually create a list
+        if (range.collapsed) {
+          // For collapsed selection, create an empty list
+          const list = document.createElement('ol');
+          const newItem = document.createElement('li');
+          newItem.innerHTML = '<br>';
+          list.appendChild(newItem);
+          
+          range.insertNode(list);
+          
+          // Move cursor to the new list item
+          const newRange = document.createRange();
+          newRange.setStart(newItem, 0);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        } else {
+          // For range selection, wrap content in list
+          const list = document.createElement('ol');
+          const newItem = document.createElement('li');
+          
+          // Extract selected content
+          const fragment = range.extractContents();
+          newItem.appendChild(fragment);
+          list.appendChild(newItem);
+          
+          range.insertNode(list);
+        }
+      }
+    }
+    
+    // Update the editor content
+    if (editorRef.current) {
+      const newValue = editorRef.current.innerHTML;
+      valueRef.current = newValue;
+      skipNextInputRef.current = true;
+      onChange(newValue);
+    }
+  }, [onChange]);
 
   return (
     <div className={`border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden ${className}`}>
@@ -358,17 +629,17 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
             <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
 
-            {/* Lists */}
+            {/* Lists - Fixed implementation */}
             <ToolbarButton
               icon={ListBulletIcon}
               title="Bullet List"
-              onClick={() => execCommand('insertUnorderedList')}
+              onClick={toggleUnorderedList}
               disabled={disabled}
             />
             <ToolbarButton
               icon={NumberedListIcon}
               title="Numbered List"
-              onClick={() => execCommand('insertOrderedList')}
+              onClick={toggleOrderedList}
               disabled={disabled}
             />
 
@@ -454,6 +725,123 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           </div>
         )}
       </div>
+
+      {/* Link Modal */}
+      <Modal
+        isOpen={showLinkModal}
+        onClose={() => {
+          setShowLinkModal(false);
+          setLinkUrl('');
+        }}
+        title="Insert Link"
+      >
+        <div className="space-y-4">
+          <Input
+            label="URL"
+            type="url"
+            value={linkUrl}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            placeholder="https://example.com"
+            autoFocus
+          />
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowLinkModal(false);
+                setLinkUrl('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleInsertLink}
+              disabled={!linkUrl}
+            >
+              Insert Link
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Image Modal */}
+      <Modal
+        isOpen={showImageModal}
+        onClose={() => {
+          setShowImageModal(false);
+          setImageUrl('');
+        }}
+        title="Insert Image"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Image URL"
+            type="url"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+            placeholder="https://example.com/image.jpg"
+            autoFocus
+          />
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowImageModal(false);
+                setImageUrl('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleInsertImage}
+              disabled={!imageUrl}
+            >
+              Insert Image
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Video Modal */}
+      <Modal
+        isOpen={showVideoModal}
+        onClose={() => {
+          setShowVideoModal(false);
+          setVideoUrl('');
+        }}
+        title="Insert Video"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Video URL"
+            type="url"
+            value={videoUrl}
+            onChange={(e) => setVideoUrl(e.target.value)}
+            placeholder="https://youtube.com/watch?v=..."
+            autoFocus
+          />
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Supports YouTube, Vimeo, and other video platforms
+          </p>
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowVideoModal(false);
+                setVideoUrl('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleInsertVideo}
+              disabled={!videoUrl}
+            >
+              Insert Video
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

@@ -56,6 +56,8 @@ export interface CertificateDesign {
     text: string;
     opacity: number;
   };
+  borderColor?: string;
+  backgroundUrl?: string;
 }
 
 class CertificateService {
@@ -112,9 +114,16 @@ class CertificateService {
 
     const { width, height } = design.layout;
     
-    // Background
+    // Background color
     this.ctx.fillStyle = design.backgroundColor;
     this.ctx.fillRect(0, 0, width, height);
+
+    // Background image (if provided)
+    if (design.backgroundUrl) {
+      // Note: In a real implementation, you would draw the background image here
+      // For now, we'll just log that it should be drawn
+      console.log('Background image should be drawn:', design.backgroundUrl);
+    }
 
     // Watermark
     if (design.watermark) {
@@ -131,7 +140,8 @@ class CertificateService {
 
     // Border
     if (design.borderStyle !== 'none') {
-      this.ctx.strokeStyle = design.primaryColor;
+      const borderColor = design.borderColor || design.primaryColor;
+      this.ctx.strokeStyle = borderColor;
       this.ctx.lineWidth = 4;
       
       switch (design.borderStyle) {
@@ -154,8 +164,9 @@ class CertificateService {
 
     const { width, height } = design.layout;
     const margin = 30;
+    const borderColor = design.borderColor || design.primaryColor;
     
-    this.ctx.strokeStyle = design.primaryColor;
+    this.ctx.strokeStyle = borderColor;
     this.ctx.lineWidth = 2;
     
     // Outer border
@@ -190,8 +201,9 @@ class CertificateService {
     const { width, height } = design.layout;
     const cornerLength = 40;
     const margin = 30;
+    const borderColor = design.borderColor || design.primaryColor;
     
-    this.ctx.strokeStyle = design.primaryColor;
+    this.ctx.strokeStyle = borderColor;
     this.ctx.lineWidth = 3;
     
     // Top-left corner

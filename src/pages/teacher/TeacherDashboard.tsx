@@ -3,10 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { TodoList } from '../../components/ui/TodoList';
 import { RichTextDisplay } from '../../components/ui/RichTextEditor';
 import { mockApi } from '../../services/mockApi';
-import { useTodos } from '../../hooks/useTodos';
 import { Course, Organization } from '../../types';
 import { organizationService } from '../../services/organizationService';
 import { 
@@ -27,9 +25,6 @@ export function TeacherDashboard() {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'analytics'>('overview');
-
-  // Todo functionality
-  const { todos, addTodo, updateTodo, deleteTodo } = useTodos(user?.id || '');
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -304,24 +299,6 @@ export function TeacherDashboard() {
         ) : (
           <DetailedAnalytics />
         )}
-
-        {/* Todo List */}
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Your Tasks
-            </h2>
-          </CardHeader>
-          <CardContent>
-            <TodoList 
-              items={todos} 
-              userId={user?.id || ''}
-              onAdd={addTodo} 
-              onUpdate={updateTodo} 
-              onDelete={deleteTodo} 
-            />
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { Card, CardContent } from '../../components/ui/Card';
@@ -17,6 +17,8 @@ import {
   RegisterPayload,
   ActiveUsersResponse,
   PendingUsersResponse,
+  SuspendedUsersResponse,
+  DeletedUsersResponse,
 } from '../../types';
 import {
   PlusIcon,
@@ -160,15 +162,27 @@ export function UserManagement() {
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [organization, setOrganization] = useState<Organization | null>(null);
-  const [activeTab, setActiveTab] = useState<'active' | 'pending'>('active');
+  const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'suspended' | 'deleted'>('active');
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
   const [totalPendingUsers, setTotalPendingUsers] = useState<number>(0);
+  const [totalSuspendedUsers, setTotalSuspendedUsers] = useState<number>(0);
+  const [totalDeletedUsers, setTotalDeletedUsers] = useState<number>(0);
   const [invitingUsers, setInvitingUsers] = useState(false);
   const [totalActiveUsers, setTotalActiveUsers] = useState<ActiveUsersResponse | null>(null);
+  const [suspendedUsers, setSuspendedUsers] = useState<User[]>([]);
+  const [deletedUsers, setDeletedUsers] = useState<User[]>([]);
   const [activePage, setActivePage] = useState(1);
   const [pendingPage, setPendingPage] = useState(1);
+  const [suspendedPage, setSuspendedPage] = useState(1);
+  const [deletedPage, setDeletedPage] = useState(1);
   const [activeTotalPages, setActiveTotalPages] = useState(1);
   const [pendingTotalPages, setPendingTotalPages] = useState(1);
+  const [suspendedTotalPages, setSuspendedTotalPages] = useState(1);
+  const [deletedTotalPages, setDeletedTotalPages] = useState(1);
+  const [activeSearchTerm, setActiveSearchTerm] = useState('');
+  const [pendingSearchTerm, setPendingSearchTerm] = useState('');
+  const [suspendedSearchTerm, setSuspendedSearchTerm] = useState('');
+  const [deletedSearchTerm, setDeletedSearchTerm] = useState('');
 
   const [pageSize] = useState(10);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -217,16 +231,17 @@ export function UserManagement() {
     }
   }, [currentUser?.id]);
 
-  const loadActiveUsers = async (page = 1, limit = 10) => {
+  const loadActiveUsers = async (page = 1, limit = 10, search = '') => {
     if (!currentUser?.organizationId) return;
     try {
-      const response = await adminService.getActiveUsers(currentUser.organizationId, page, limit);
+      // Pass search term to the API
+      const response = await adminService.getActiveUsers(currentUser.organizationId, page, limit, search);
       if (response) {
         const filteredUsers = response.users?.filter(user => user.role !== 'admin') || [];
         setUsers(filteredUsers);
         setActiveTotalPages(response.totalPages || 1);
         
-        // 🔹 Keep a separate total count that doesn’t change on pagination
+        // 🔹 Keep a separate total count that doesn't change on pagination
         setTotalActiveUsers({
           ...response,
           totalActiveUsers: response.totalActiveUsers ?? filteredUsers.length,
@@ -241,11 +256,50 @@ export function UserManagement() {
     }
   };
 
-  const loadPendingUsers = async (page = 1, limit = 10) => {
+  const loadSuspendedUsers = async (page = 1, limit = 10, search = '') => {
     if (!currentUser?.organizationId) return;
     setLoading(true);
     try {
-      const response = await adminService.getPendingUsers(currentUser.organizationId, page, limit);
+      // Pass search term to the API
+      const response = await adminService.getSuspendedUsers(currentUser.organizationId, page, limit, search);
+      if (response) {
+        const filteredSuspended = response.users?.filter(user => user.role !== 'admin') || [];
+        setSuspendedUsers(filteredSuspended);
+        setSuspendedTotalPages(response.totalPages || 1);
+        setTotalSuspendedUsers(response.totalSuspendedUsers ?? filteredSuspended.length);
+      }
+    } catch (error) {
+      toast.error('Failed to load suspended users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadDeletedUsers = async (page = 1, limit = 10, search = '') => {
+    if (!currentUser?.organizationId) return;
+    setLoading(true);
+    try {
+      // Pass search term to the API
+      const response = await adminService.getDeletedUsers(currentUser.organizationId, page, limit, search);
+      if (response) {
+        const filteredDeleted = response.users?.filter(user => user.role !== 'admin') || [];
+        setDeletedUsers(filteredDeleted);
+        setDeletedTotalPages(response.totalPages || 1);
+        setTotalDeletedUsers(response.totalDeletedUsers ?? filteredDeleted.length);
+      }
+    } catch (error) {
+      toast.error('Failed to load deleted users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadPendingUsers = async (page = 1, limit = 10, search = '') => {
+    if (!currentUser?.organizationId) return;
+    setLoading(true);
+    try {
+      // Pass search term to the API
+      const response = await adminService.getPendingUsers(currentUser.organizationId, page, limit, search);
       if (response) {
         const filteredPending = response.users?.filter(user => user.role !== 'admin') || [];
         setPendingUsers(filteredPending);
@@ -662,20 +716,77 @@ export function UserManagement() {
   useEffect(() => {
     if (!currentUser?.organizationId) return;
 
-    // Load both datasets once on mount
-    loadActiveUsers(1, pageSize);
-    loadPendingUsers(1, pageSize);
+    // Load datasets once on mount
+    loadActiveUsers(1, pageSize, activeSearchTerm);
+    loadPendingUsers(1, pageSize, pendingSearchTerm);
     loadOrganization();
   }, [currentUser?.organizationId]);
 
   useEffect(() => {
     if (activeTab === 'active') {
-      loadActiveUsers(activePage, pageSize);
-    } else {
-      loadPendingUsers(pendingPage, pageSize);
+      loadActiveUsers(activePage, pageSize, activeSearchTerm);
+    } else if (activeTab === 'pending') {
+      loadPendingUsers(pendingPage, pageSize, pendingSearchTerm);
+    } else if (activeTab === 'suspended') {
+      loadSuspendedUsers(suspendedPage, pageSize, suspendedSearchTerm);
+    } else if (activeTab === 'deleted') {
+      loadDeletedUsers(deletedPage, pageSize, deletedSearchTerm);
     }
     loadOrganization();
-  }, [currentUser, loadOrganization, activePage, pendingPage, activeTab]);
+  }, [currentUser, loadOrganization, activePage, pendingPage, suspendedPage, deletedPage, activeTab]);
+
+  const handleSearch = useCallback((searchTerm: string) => {
+    if (activeTab === 'active') {
+      setActiveSearchTerm(searchTerm);
+      setActivePage(1); // Reset to first page when searching
+    } else if (activeTab === 'pending') {
+      setPendingSearchTerm(searchTerm);
+      setPendingPage(1); // Reset to first page when searching
+    } else if (activeTab === 'suspended') {
+      setSuspendedSearchTerm(searchTerm);
+      setSuspendedPage(1); // Reset to first page when searching
+    } else if (activeTab === 'deleted') {
+      setDeletedSearchTerm(searchTerm);
+      setDeletedPage(1); // Reset to first page when searching
+    }
+  }, [activeTab]);
+
+  // Debounced search effect
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (activeTab === 'active') {
+        loadActiveUsers(activePage, pageSize, activeSearchTerm);
+      } else if (activeTab === 'pending') {
+        loadPendingUsers(pendingPage, pageSize, pendingSearchTerm);
+      } else if (activeTab === 'suspended') {
+        loadSuspendedUsers(suspendedPage, pageSize, suspendedSearchTerm);
+      } else if (activeTab === 'deleted') {
+        loadDeletedUsers(deletedPage, pageSize, deletedSearchTerm);
+      }
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [activeSearchTerm, pendingSearchTerm, suspendedSearchTerm, deletedSearchTerm]);
+
+  const clearSearch = () => {
+    if (activeTab === 'active') {
+      setActiveSearchTerm('');
+      setActivePage(1);
+      loadActiveUsers(1, pageSize, '');
+    } else if (activeTab === 'pending') {
+      setPendingSearchTerm('');
+      setPendingPage(1);
+      loadPendingUsers(1, pageSize, '');
+    } else if (activeTab === 'suspended') {
+      setSuspendedSearchTerm('');
+      setSuspendedPage(1);
+      loadSuspendedUsers(1, pageSize, '');
+    } else if (activeTab === 'deleted') {
+      setDeletedSearchTerm('');
+      setDeletedPage(1);
+      loadDeletedUsers(1, pageSize, '');
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -750,7 +861,26 @@ export function UserManagement() {
           >
             Pending Signups ({totalPendingUsers})
           </button>
-
+          <button
+            onClick={() => setActiveTab('suspended')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'suspended'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            Suspended Users ({totalSuspendedUsers})
+          </button>
+          <button
+            onClick={() => setActiveTab('deleted')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'deleted'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            Deleted Users ({totalDeletedUsers})
+          </button>
           <span className="whitespace-nowrap py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 dark:text-gray-400">
             Total Users ({totalOrgUsers ?? 0})
           </span>
@@ -802,11 +932,45 @@ export function UserManagement() {
           emptyMessage="No users found. Get started by inviting your first user."
           loading={loading}
         />
-      ) : (
+      ) : activeTab === 'pending' ? (
         <PendingUsersTable
           pendingUsers={pendingUsers}
           onApprove={user => openApproveModal(user)}
           onReject={user => openRejectModal(user)}
+        />
+      ) : activeTab === 'suspended' ? (
+        <DataTable
+          data={suspendedUsers}
+          columns={columns}
+          searchable
+          sortable
+          filterable
+          pagination
+          pageSize={pageSize}
+          currentPage={suspendedPage}
+          totalPages={suspendedTotalPages}
+          onPageChange={setSuspendedPage}
+          selectable
+          onSelectionChange={setSelectedUsers}
+          emptyMessage="No suspended users found."
+          loading={loading}
+        />
+      ) : (
+        <DataTable
+          data={deletedUsers}
+          columns={columns}
+          searchable
+          sortable
+          filterable
+          pagination
+          pageSize={pageSize}
+          currentPage={deletedPage}
+          totalPages={deletedTotalPages}
+          onPageChange={setDeletedPage}
+          selectable
+          onSelectionChange={setSelectedUsers}
+          emptyMessage="No deleted users found."
+          loading={loading}
         />
       )}
       {activeTab === 'pending' && pendingTotalPages > 1 && (
@@ -827,6 +991,56 @@ export function UserManagement() {
             size="sm"
             disabled={pendingPage === pendingTotalPages}
             onClick={() => setPendingPage(prev => Math.min(prev + 1, pendingTotalPages))}
+          >
+            Next
+          </Button>
+        </div>
+      )}
+
+      {/* Pagination for suspended users */}
+      {activeTab === 'suspended' && suspendedTotalPages > 1 && (
+        <div className="flex justify-between items-center mt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={suspendedPage === 1}
+            onClick={() => setSuspendedPage(prev => Math.max(prev - 1, 1))}
+          >
+            Previous
+          </Button>
+          <span className="text-sm text-gray-600 dark:text-gray-300">
+            Page {suspendedPage} of {suspendedTotalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={suspendedPage === suspendedTotalPages}
+            onClick={() => setSuspendedPage(prev => Math.min(prev + 1, suspendedTotalPages))}
+          >
+            Next
+          </Button>
+        </div>
+      )}
+
+      {/* Pagination for deleted users */}
+      {activeTab === 'deleted' && deletedTotalPages > 1 && (
+        <div className="flex justify-between items-center mt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={deletedPage === 1}
+            onClick={() => setDeletedPage(prev => Math.max(prev - 1, 1))}
+          >
+            Previous
+          </Button>
+          <span className="text-sm text-gray-600 dark:text-gray-300">
+            Page {deletedPage} of {deletedTotalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={deletedPage === deletedTotalPages}
+            onClick={() => setDeletedPage(prev => Math.min(prev + 1, deletedTotalPages))}
           >
             Next
           </Button>

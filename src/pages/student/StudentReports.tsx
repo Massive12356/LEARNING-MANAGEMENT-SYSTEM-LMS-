@@ -36,10 +36,10 @@ export function StudentReports() {
 
   // Check for new certificates and send notifications
   useEffect(() => {
-    if (reportData && reportData.certificates.length > 0) {
+    if (reportData && reportData.certificates.length > 0 && user?.role !== 'student') {
       reportData.certificates.forEach((certificate: any) => {
         if (!notifiedCertificates.includes(certificate.id)) {
-          // Send notification for new certificate
+          // Send notification for new certificate (only for non-student roles)
           studentReportService.sendCertificateNotification(
             user?.id || '',
             certificate.title,

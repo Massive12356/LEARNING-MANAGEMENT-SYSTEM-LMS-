@@ -860,6 +860,21 @@ class MockApiService {
   async generateCertificate(userId: string, courseId?: string, programId?: string): Promise<Certificate> {
     await delay(1000);
     
+    // Get user details
+    const user = this.users.find(u => u.id === userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    
+    // Get course details if provided
+    let courseTitle = 'Sample Course';
+    if (courseId) {
+      const course = this.courses.find(c => c.id === courseId);
+      if (course) {
+        courseTitle = course.title;
+      }
+    }
+    
     // TODO: Replace with real certificate generation (pdf-lib, html2pdf, etc.)
     const certificate: Certificate = {
       id: `cert-${Date.now()}`,
@@ -867,8 +882,8 @@ class MockApiService {
       courseId,
       programId,
       templateData: {
-        name: 'John Student',
-        course: 'Sample Course',
+        name: `${user.firstName} ${user.lastName}`,
+        course: courseTitle,
         completionDate: new Date().toLocaleDateString(),
         organization: 'LMS Platform',
         variables: {}

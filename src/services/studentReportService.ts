@@ -267,13 +267,18 @@ class StudentReportService {
   sendCertificateNotification(userId: string, courseTitle: string, certificateId: string): void {
     // In a real implementation, this would get the teacher/admin info
     // For demo purposes, we'll use mock data
-    notificationService.createCertificateNotification(
-      userId,
-      certificateId,
-      courseTitle,
-      'system',
-      'System'
-    );
+    try {
+      notificationService.createCertificateNotification(
+        userId,
+        certificateId,
+        courseTitle,
+        'system',
+        'System'
+      );
+    } catch (error) {
+      // Silently handle permission errors for certificate notifications
+      console.log('Could not send certificate notification (permission denied)');
+    }
   }
 
   // Download certificate

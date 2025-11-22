@@ -64,7 +64,14 @@ export function CourseBuilder() {
     title: '',
     description: '',
     type: 'video' as 'video' | 'text' | 'pdf' | 'attachment' | 'quiz' | 'reflection',
-    content: {} as any,
+    content: {
+      videoUrl: '',
+      textContent: '',
+      pdfUrl: '',
+      attachmentUrl: '',
+      quizData: null,
+      reflectionPrompt: ''
+    } as any,
     duration: 0,
     isRequired: true
   });
@@ -102,7 +109,154 @@ export function CourseBuilder() {
     }
   };
 
-  const handleSaveCourse = async () => {
+  // Load demo data for new courses
+  useEffect(() => {
+    if (!isEditing) {
+      // Set demo course data
+      setCourseData({
+        title: 'Web Development Fundamentals - Editable Template',
+        description: '<p>This is a pre-created course template that you can customize for your students. It includes modules on HTML, CSS, and JavaScript fundamentals.</p><p><strong>How to use this template:</strong></p><ul><li>Edit the course title and description to match your needs</li><li>Modify the content of existing lessons</li><li>Add new lessons or modules</li><li>Change the order of modules and lessons</li><li>Upload your own videos and resources</li></ul>',
+        tags: ['html', 'css', 'javascript', 'web development', 'beginner'],
+        status: 'draft',
+        isTracked: true,
+        allowSelfPacing: true,
+        requiresCertificate: true,
+        isGraded: true
+      });
+      
+      // Set demo modules and lessons if it's a new course
+      const demoCourse: Course = {
+        id: 'demo-course',
+        title: 'Web Development Fundamentals - Editable Template',
+        description: '<p>This is a pre-created course template that you can customize for your students. It includes modules on HTML, CSS, and JavaScript fundamentals.</p>',
+        coverImage: 'https://picsum.photos/800/450?random=4',
+        tags: ['html', 'css', 'javascript', 'web development', 'beginner'],
+        status: 'draft',
+        isTracked: true,
+        allowSelfPacing: true,
+        requiresCertificate: true,
+        isGraded: true,
+        organizationId: '',
+        teacherId: '',
+        modules: [
+          {
+            id: 'module-1-template',
+            title: 'HTML Basics',
+            description: 'Learn the fundamentals of HTML markup',
+            order: 0,
+            courseId: 'demo-course',
+            lessons: [
+              {
+                id: 'lesson-1-template',
+                title: 'Introduction to HTML',
+                description: 'Understanding the structure of web pages',
+                type: 'video',
+                content: {
+                  videoUrl: 'https://www.youtube.com/watch?v=Ihy0QziLDf0',
+                  duration: 15
+                },
+                order: 0,
+                moduleId: 'module-1-template',
+                duration: 15,
+                isRequired: true
+              },
+              {
+                id: 'lesson-2-template',
+                title: 'HTML Text Elements',
+                description: 'Working with headings, paragraphs, and text formatting',
+                type: 'text',
+                content: {
+                  textContent: '<h3>HTML Text Elements</h3><p>In this lesson, we\'ll explore the various text elements available in HTML.</p><h4>Headings</h4><p>HTML provides six levels of headings, from <code>&lt;h1&gt;</code> to <code>&lt;h6&gt;</code>.</p><h4>Paragraphs</h4><p>Paragraphs are defined with the <code>&lt;p&gt;</code> tag.</p>'
+                },
+                order: 1,
+                moduleId: 'module-1-template',
+                duration: 10,
+                isRequired: true
+              }
+            ]
+          },
+          {
+            id: 'module-2-template',
+            title: 'CSS Styling',
+            description: 'Style your web pages with CSS',
+            order: 1,
+            courseId: 'demo-course',
+            lessons: [
+              {
+                id: 'lesson-3-template',
+                title: 'CSS Basics',
+                description: 'Introduction to Cascading Style Sheets',
+                type: 'video',
+                content: {
+                  videoUrl: 'https://www.youtube.com/watch?v=1PnVor36_40',
+                  duration: 20
+                },
+                order: 0,
+                moduleId: 'module-2-template',
+                duration: 20,
+                isRequired: true
+              },
+              {
+                id: 'lesson-4-template',
+                title: 'Layout Techniques',
+                description: 'Modern CSS layout with Flexbox and Grid',
+                type: 'pdf',
+                content: {
+                  pdfUrl: 'https://css-tricks.com/wp-content/uploads/2018/03/CSS-Tricks-CSS-Layout-Landscapes.pdf'
+                },
+                order: 1,
+                moduleId: 'module-2-template',
+                duration: 25,
+                isRequired: true
+              }
+            ]
+          },
+          {
+            id: 'module-3-template',
+            title: 'JavaScript Fundamentals',
+            description: 'Add interactivity to your websites',
+            order: 2,
+            courseId: 'demo-course',
+            lessons: [
+              {
+                id: 'lesson-5-template',
+                title: 'JavaScript Variables and Data Types',
+                description: 'Learn about variables and data types in JavaScript',
+                type: 'video',
+                content: {
+                  videoUrl: 'https://www.youtube.com/watch?v=hdI2bqOjy3c',
+                  duration: 18
+                },
+                order: 0,
+                moduleId: 'module-3-template',
+                duration: 18,
+                isRequired: true
+              },
+              {
+                id: 'lesson-6-template',
+                title: 'DOM Manipulation',
+                description: 'Interacting with HTML elements using JavaScript',
+                type: 'text',
+                content: {
+                  textContent: '<h3>DOM Manipulation</h3><p>The Document Object Model (DOM) is a programming interface for web documents.</p><p>It represents the page so that programs can change the document structure, style, and content.</p>'
+                },
+                order: 1,
+                moduleId: 'module-3-template',
+                duration: 15,
+                isRequired: true
+              }
+            ]
+          }
+        ],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      setCourse(demoCourse);
+    }
+  }, [isEditing]);
+
+  const handleSaveCourseDetails = async () => {
     if (!courseData.title.trim()) {
       toast.error('Course title is required');
       return;
@@ -112,7 +266,7 @@ export function CourseBuilder() {
     try {
       if (isEditing && course) {
         await mockApi.updateCourse(course.id, courseData);
-        toast.success('Course updated successfully');
+        toast.success('Course details saved successfully');
       } else {
         const newCourse = await mockApi.createCourse({
           ...courseData,
@@ -122,9 +276,27 @@ export function CourseBuilder() {
         toast.success('Course created successfully');
       }
     } catch (error) {
-      toast.error('Failed to save course');
+      toast.error('Failed to save course details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveContent = async () => {
+    // In a real implementation, this would save the modules and lessons to separate tables
+    toast.success('Content saved successfully');
+  };
+
+  const handleSaveSettings = async () => {
+    if (isEditing && course) {
+      try {
+        await mockApi.updateCourse(course.id, courseData);
+        toast.success('Settings saved successfully');
+      } catch (error) {
+        toast.error('Failed to save settings');
+      }
+    } else {
+      toast.error('Please save course details first');
     }
   };
 
@@ -226,13 +398,49 @@ export function CourseBuilder() {
       return;
     }
 
+    // Create lesson based on type
+    let lessonContent = {};
+    switch (lessonData.type) {
+      case 'video':
+        lessonContent = {
+          videoUrl: lessonData.content.videoUrl,
+          duration: lessonData.duration
+        };
+        break;
+      case 'text':
+        lessonContent = {
+          textContent: lessonData.content.textContent
+        };
+        break;
+      case 'pdf':
+        lessonContent = {
+          pdfUrl: lessonData.content.pdfUrl
+        };
+        break;
+      case 'attachment':
+        lessonContent = {
+          attachmentUrl: lessonData.content.attachmentUrl
+        };
+        break;
+      case 'quiz':
+        lessonContent = {
+          quizData: lessonData.content.quizData
+        };
+        break;
+      case 'reflection':
+        lessonContent = {
+          reflectionPrompt: lessonData.content.reflectionPrompt
+        };
+        break;
+    }
+
     // Mock lesson creation
     const newLesson: Lesson = {
       id: `lesson-${Date.now()}`,
       title: lessonData.title,
       description: lessonData.description,
       type: lessonData.type,
-      content: lessonData.content,
+      content: lessonContent,
       order: 0,
       moduleId: selectedModuleId,
       duration: lessonData.duration,
@@ -260,7 +468,14 @@ export function CourseBuilder() {
       title: '',
       description: '',
       type: 'video',
-      content: {},
+      content: {
+        videoUrl: '',
+        textContent: '',
+        pdfUrl: '',
+        attachmentUrl: '',
+        quizData: null,
+        reflectionPrompt: ''
+      },
       duration: 0,
       isRequired: true
     });
@@ -270,11 +485,43 @@ export function CourseBuilder() {
 
   const handleEditLesson = (lesson: Lesson) => {
     setEditingLesson(lesson);
+    
+    // Initialize content based on lesson type
+    let content = {
+      videoUrl: '',
+      textContent: '',
+      pdfUrl: '',
+      attachmentUrl: '',
+      quizData: null,
+      reflectionPrompt: ''
+    };
+    
+    switch (lesson.type) {
+      case 'video':
+        content.videoUrl = lesson.content?.videoUrl || '';
+        break;
+      case 'text':
+        content.textContent = lesson.content?.textContent || '';
+        break;
+      case 'pdf':
+        content.pdfUrl = lesson.content?.pdfUrl || '';
+        break;
+      case 'attachment':
+        content.attachmentUrl = lesson.content?.attachmentUrl || '';
+        break;
+      case 'quiz':
+        content.quizData = lesson.content?.quizData || null;
+        break;
+      case 'reflection':
+        content.reflectionPrompt = lesson.content?.reflectionPrompt || '';
+        break;
+    }
+    
     setLessonData({
       title: lesson.title,
       description: lesson.description,
       type: lesson.type,
-      content: lesson.content,
+      content: content,
       duration: lesson.duration || 0,
       isRequired: lesson.isRequired
     });
@@ -290,6 +537,42 @@ export function CourseBuilder() {
 
     if (!editingLesson) return;
 
+    // Create lesson based on type
+    let lessonContent = {};
+    switch (lessonData.type) {
+      case 'video':
+        lessonContent = {
+          videoUrl: lessonData.content.videoUrl,
+          duration: lessonData.duration
+        };
+        break;
+      case 'text':
+        lessonContent = {
+          textContent: lessonData.content.textContent
+        };
+        break;
+      case 'pdf':
+        lessonContent = {
+          pdfUrl: lessonData.content.pdfUrl
+        };
+        break;
+      case 'attachment':
+        lessonContent = {
+          attachmentUrl: lessonData.content.attachmentUrl
+        };
+        break;
+      case 'quiz':
+        lessonContent = {
+          quizData: lessonData.content.quizData
+        };
+        break;
+      case 'reflection':
+        lessonContent = {
+          reflectionPrompt: lessonData.content.reflectionPrompt
+        };
+        break;
+    }
+
     if (course) {
       const updatedModules = course.modules.map(module => {
         if (module.id === editingLesson.moduleId) {
@@ -300,7 +583,7 @@ export function CourseBuilder() {
                   title: lessonData.title,
                   description: lessonData.description,
                   type: lessonData.type,
-                  content: lessonData.content,
+                  content: lessonContent,
                   duration: lessonData.duration,
                   isRequired: lessonData.isRequired
                 }
@@ -326,7 +609,14 @@ export function CourseBuilder() {
       title: '',
       description: '',
       type: 'video',
-      content: {},
+      content: {
+        videoUrl: '',
+        textContent: '',
+        pdfUrl: '',
+        attachmentUrl: '',
+        quizData: null,
+        reflectionPrompt: ''
+      },
       duration: 0,
       isRequired: true
     });
@@ -375,7 +665,6 @@ export function CourseBuilder() {
   const tabs = [
     { id: 'details', name: 'Course Details' },
     { id: 'content', name: 'Content & Modules' },
-    { id: 'students', name: `Students${studentCount > 0 ? ` (${studentCount})` : ''}` },
     { id: 'settings', name: 'Settings' },
     { id: 'preview', name: 'Preview' }
   ];
@@ -439,6 +728,12 @@ export function CourseBuilder() {
                 }}
                 dropzoneText="Upload a cover image for your course"
               />
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={handleSaveCourseDetails} loading={loading}>
+                Save Course Details
+              </Button>
             </div>
           </div>
         );
@@ -573,31 +868,12 @@ export function CourseBuilder() {
                 </Button>
               </div>
             )}
-          </div>
-        );
 
-      case 'students':
-        return (
-          <div className="space-y-6">
-            {isEditing && course ? (
-              <>
-                <StudentManagement 
-                  courseId={course.id} 
-                  onStudentCountChange={setStudentCount}
-                />
-                <AnnouncementForm courseId={course.id} />
-              </>
-            ) : (
-              <div className="text-center py-12">
-                <UserGroupIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                  Course Not Yet Created
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Save your course first to manage student enrollments.
-                </p>
-              </div>
-            )}
+            <div className="flex justify-end">
+              <Button onClick={handleSaveContent}>
+                Save Content
+              </Button>
+            </div>
           </div>
         );
 
@@ -617,7 +893,7 @@ export function CourseBuilder() {
                 <select
                   value={courseData.status}
                   onChange={(e) => setCourseData(prev => ({ ...prev, status: e.target.value as 'draft' | 'live' }))}
-                  className="px-3 py-2 border border-gray-3300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 >
                   <option value="draft">Draft</option>
                   <option value="live">Live</option>
@@ -704,6 +980,12 @@ export function CourseBuilder() {
                 </label>
               </div>
             </div>
+
+            <div className="flex justify-end">
+              <Button onClick={handleSaveSettings} loading={loading}>
+                Save Settings
+              </Button>
+            </div>
           </div>
         );
 
@@ -732,6 +1014,320 @@ export function CourseBuilder() {
     }
   };
 
+  const renderLessonForm = () => {
+    return (
+      <div className="space-y-6">
+        <Input
+          label="Lesson Title"
+          value={lessonData.title}
+          onChange={(e) => setLessonData(prev => ({ ...prev, title: e.target.value }))}
+          placeholder="Enter lesson title"
+          required
+        />
+
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Lesson Description
+          </label>
+          <textarea
+            value={lessonData.description}
+            onChange={(e) => setLessonData(prev => ({ ...prev, description: e.target.value }))}
+            rows={3}
+            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Briefly describe what students will learn in this lesson"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Lesson Type
+          </label>
+          <select
+            value={lessonData.type}
+            onChange={(e) => setLessonData(prev => ({ 
+              ...prev, 
+              type: e.target.value as any,
+              content: {
+                videoUrl: '',
+                textContent: '',
+                pdfUrl: '',
+                attachmentUrl: '',
+                quizData: null,
+                reflectionPrompt: ''
+              }
+            }))}
+            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="video">Video</option>
+            <option value="text">Text Content</option>
+            <option value="pdf">PDF Document</option>
+            <option value="attachment">File Attachment</option>
+            <option value="quiz">Quiz</option>
+            <option value="reflection">Reflection</option>
+          </select>
+        </div>
+
+        {lessonData.type === 'video' && (
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Video URL
+              </label>
+              <input
+                type="text"
+                value={lessonData.content.videoUrl || ''}
+                onChange={(e) => setLessonData(prev => ({
+                  ...prev,
+                  content: {
+                    ...prev.content,
+                    videoUrl: e.target.value
+                  }
+                }))}
+                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Supports YouTube, Vimeo, or direct video links
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Video Duration (minutes)
+              </label>
+              <input
+                type="number"
+                value={lessonData.duration || ''}
+                onChange={(e) => setLessonData(prev => ({ ...prev, duration: parseInt(e.target.value) || 0 }))}
+                min="0"
+                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Estimated time to complete"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Or Upload Video
+              </label>
+              <FileUploader
+                accept="video/*"
+                maxSize={100 * 1024 * 1024} // 100MB
+                maxFiles={1}
+                legacyMode={false}
+                onUpload={async (uploadResults) => {
+                  // Handle video upload
+                  console.log('Video uploaded:', uploadResults[0]);
+                  setLessonData(prev => ({
+                    ...prev,
+                    content: {
+                      ...prev.content,
+                      videoUrl: uploadResults[0]?.url || ''
+                    }
+                  }));
+                }}
+                dropzoneText="Upload a video file (MP4, MOV, AVI)"
+              />
+            </div>
+          </div>
+        )}
+
+        {lessonData.type === 'text' && (
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Text Content
+            </label>
+            <RichTextEditor
+              value={lessonData.content.textContent || ''}
+              onChange={(value) => setLessonData(prev => ({
+                ...prev,
+                content: {
+                  ...prev.content,
+                  textContent: value
+                }
+              }))}
+              placeholder="Write your lesson content here..."
+              minHeight="200px"
+            />
+          </div>
+        )}
+
+        {lessonData.type === 'pdf' && (
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                PDF URL
+              </label>
+              <input
+                type="text"
+                value={lessonData.content.pdfUrl || ''}
+                onChange={(e) => setLessonData(prev => ({
+                  ...prev,
+                  content: {
+                    ...prev.content,
+                    pdfUrl: e.target.value
+                  }
+                }))}
+                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="https://example.com/document.pdf"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Or Upload PDF
+              </label>
+              <FileUploader
+                accept=".pdf"
+                maxSize={50 * 1024 * 1024} // 50MB
+                maxFiles={1}
+                legacyMode={false}
+                onUpload={async (uploadResults) => {
+                  // Handle PDF upload
+                  console.log('PDF uploaded:', uploadResults[0]);
+                  setLessonData(prev => ({
+                    ...prev,
+                    content: {
+                      ...prev.content,
+                      pdfUrl: uploadResults[0]?.url || ''
+                    }
+                  }));
+                }}
+                dropzoneText="Upload a PDF document"
+              />
+            </div>
+          </div>
+        )}
+
+        {lessonData.type === 'attachment' && (
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Attachment URL
+              </label>
+              <input
+                type="text"
+                value={lessonData.content.attachmentUrl || ''}
+                onChange={(e) => setLessonData(prev => ({
+                  ...prev,
+                  content: {
+                    ...prev.content,
+                    attachmentUrl: e.target.value
+                  }
+                }))}
+                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="https://example.com/resource.zip"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Or Upload File
+              </label>
+              <FileUploader
+                accept="*"
+                maxSize={100 * 1024 * 1024} // 100MB
+                maxFiles={1}
+                legacyMode={false}
+                onUpload={async (uploadResults) => {
+                  // Handle file upload
+                  console.log('File uploaded:', uploadResults[0]);
+                  setLessonData(prev => ({
+                    ...prev,
+                    content: {
+                      ...prev.content,
+                      attachmentUrl: uploadResults[0]?.url || ''
+                    }
+                  }));
+                }}
+                dropzoneText="Upload any file type"
+              />
+            </div>
+          </div>
+        )}
+
+        {lessonData.type === 'quiz' && (
+          <div className="space-y-4">
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+              <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">
+                Quiz Builder
+              </h4>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                Quiz functionality would be implemented here with question types, answers, and scoring.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {lessonData.type === 'reflection' && (
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Reflection Prompt
+            </label>
+            <textarea
+              value={lessonData.content.reflectionPrompt || ''}
+              onChange={(e) => setLessonData(prev => ({
+                ...prev,
+                content: {
+                  ...prev.content,
+                  reflectionPrompt: e.target.value
+                }
+              }))}
+              rows={4}
+              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Ask students to reflect on what they've learned..."
+            />
+          </div>
+        )}
+
+        <div className="flex items-center justify-between">
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={lessonData.isRequired}
+              onChange={(e) => setLessonData(prev => ({ ...prev, isRequired: e.target.checked }))}
+              className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+            />
+            <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+              This lesson is required
+            </span>
+          </label>
+
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowLessonModal(false);
+                setEditingLesson(null);
+                setLessonData({
+                  title: '',
+                  description: '',
+                  type: 'video',
+                  content: {
+                    videoUrl: '',
+                    textContent: '',
+                    pdfUrl: '',
+                    attachmentUrl: '',
+                    quizData: null,
+                    reflectionPrompt: ''
+                  },
+                  duration: 0,
+                  isRequired: true
+                });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={editingLesson ? handleUpdateLesson : handleAddLesson}
+            >
+              {editingLesson ? 'Update Lesson' : 'Add Lesson'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="max-w-6xl mx-auto">
       {/* Header */}
@@ -747,9 +1343,6 @@ export function CourseBuilder() {
         <div className="flex items-center space-x-4">
           <Button variant="outline" onClick={() => navigate('/teacher/courses')}>
             Cancel
-          </Button>
-          <Button onClick={handleSaveCourse} loading={loading}>
-            {isEditing ? 'Save Changes' : 'Create Course'}
           </Button>
         </div>
       </div>
@@ -828,204 +1421,34 @@ export function CourseBuilder() {
       </Modal>
 
       {/* Add Lesson Modal */}
-      <Modal
-        isOpen={showLessonModal}
-        onClose={() => {
-          setShowLessonModal(false);
-          setEditingLesson(null);
-          setLessonData({
-            title: '',
-            description: '',
-            type: 'video',
-            content: {},
-            duration: 0,
-            isRequired: true
-          });
-        }}
-        title={editingLesson ? 'Edit Lesson' : 'Add New Lesson'}
-        size="lg"
-      >
-        <div className="space-y-4">
-          <Input
-            label="Lesson Title"
-            value={lessonData.title}
-            onChange={(e) => setLessonData(prev => ({ ...prev, title: e.target.value }))}
-            placeholder="Enter lesson title"
-          />
-          
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Lesson Description
-            </label>
-            <RichTextEditor
-              value={lessonData.description}
-              onChange={(value) => setLessonData(prev => ({ ...prev, description: value }))}
-              placeholder="Brief description of the lesson"
-              minHeight="100px"
-              showToolbar={false}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Lesson Type
-              </label>
-              <select
-                value={lessonData.type}
-                onChange={(e) => setLessonData(prev => ({ ...prev, type: e.target.value as any }))}
-                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="video">Video</option>
-                <option value="text">Text Content</option>
-                <option value="pdf">PDF Document</option>
-                <option value="attachment">File Attachment</option>
-                <option value="quiz">Knowledge Check</option>
-                <option value="reflection">Reflection Exercise</option>
-              </select>
-            </div>
-
-            <Input
-              label="Duration (minutes)"
-              type="number"
-              value={lessonData.duration}
-              onChange={(e) => setLessonData(prev => ({ ...prev, duration: parseInt(e.target.value) || 0 }))}
-              placeholder="0"
-            />
-          </div>
-
-          {/* Video-specific fields */}
-          {lessonData.type === 'video' && (
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Video Source
-                </label>
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    type="button"
-                    className={`px-4 py-2 text-sm font-medium rounded-lg border ${
-                      lessonData.content?.type === 'upload' || !lessonData.content?.type
-                        ? 'bg-blue-100 border-blue-500 text-blue-700 dark:bg-blue-900 dark:border-blue-400 dark:text-blue-200'
-                        : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => setLessonData(prev => ({
-                      ...prev,
-                      content: { ...prev.content, type: 'upload' }
-                    }))}
-                  >
-                    Upload Video
-                  </button>
-                  <button
-                    type="button"
-                    className={`px-4 py-2 text-sm font-medium rounded-lg border ${
-                      lessonData.content?.type === 'embed'
-                        ? 'bg-blue-100 border-blue-500 text-blue-700 dark:bg-blue-900 dark:border-blue-400 dark:text-blue-200'
-                        : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => setLessonData(prev => ({
-                      ...prev,
-                      content: { ...prev.content, type: 'embed' }
-                    }))}
-                  >
-                    Embed Video
-                  </button>
-                </div>
-              </div>
-
-              {lessonData.content?.type === 'upload' && (
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Upload Video
-                  </label>
-                  <FileUploader
-                    accept="video/*"
-                    maxSize={100 * 1024 * 1024} // 100MB
-                    maxFiles={1}
-                    legacyMode={false}
-                    onUpload={async (uploadResults) => {
-                      const videoUrl = uploadResults[0].url;
-                      setLessonData(prev => ({
-                        ...prev,
-                        content: {
-                          ...prev.content,
-                          url: videoUrl,
-                          filename: uploadResults[0].filename
-                        }
-                      }));
-                    }}
-                    dropzoneText="Upload a video file (MP4, MOV, AVI)"
-                  />
-                  {lessonData.content?.url && (
-                    <div className="mt-2 text-sm text-green-600 dark:text-green-400">
-                      Video uploaded successfully: {lessonData.content.filename}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {lessonData.content?.type === 'embed' && (
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Embed Video URL
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="https://www.youtube.com/embed/..."
-                    value={lessonData.content?.embedUrl || ''}
-                    onChange={(e) => setLessonData(prev => ({
-                      ...prev,
-                      content: {
-                        ...prev.content,
-                        embedUrl: e.target.value
-                      }
-                    }))}
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Supported platforms: YouTube, Vimeo, etc. Use the embed URL, not the watch URL.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="required"
-              checked={lessonData.isRequired}
-              onChange={(e) => setLessonData(prev => ({ ...prev, isRequired: e.target.checked }))}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label htmlFor="required" className="ml-2 block text-sm text-gray-900 dark:text-white">
-              This lesson is required for course completion
-            </label>
-          </div>
-
-          <div className="flex justify-end space-x-3">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setShowLessonModal(false);
-                setEditingLesson(null);
-                setLessonData({
-                  title: '',
-                  description: '',
-                  type: 'video',
-                  content: {},
-                  duration: 0,
-                  isRequired: true
-                });
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={editingLesson ? handleUpdateLesson : handleAddLesson}>
-              {editingLesson ? 'Update Lesson' : 'Add Lesson'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      {showLessonModal && (
+        <Modal
+          isOpen={showLessonModal}
+          onClose={() => {
+            setShowLessonModal(false);
+            setEditingLesson(null);
+            setLessonData({
+              title: '',
+              description: '',
+              type: 'video',
+              content: {
+                videoUrl: '',
+                textContent: '',
+                pdfUrl: '',
+                attachmentUrl: '',
+                quizData: null,
+                reflectionPrompt: ''
+              },
+              duration: 0,
+              isRequired: true
+            });
+          }}
+          title={editingLesson ? 'Edit Lesson' : 'Add New Lesson'}
+          size="lg"
+        >
+          {renderLessonForm()}
+        </Modal>
+      )}
 
     </div>
   );

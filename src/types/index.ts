@@ -510,6 +510,7 @@ export interface RecentOrganizationStats {
 export interface userStats {
   totalUsers: number;
   activeUsers: number;
+
 }
 
 export interface PlatformStatsResponse {
@@ -586,6 +587,24 @@ export interface PendingUsersResponse {
   message?: string;
   totalUsersInOrg: number;
   totalPendingUsers: number;
+  totalPages: number;
+  currentPage: number;
+  users: User[];
+}
+
+export interface SuspendedUsersResponse {
+  message: string;
+  totalUsersInOrg: number;
+  totalSuspendedUsers: number;
+  totalPages: number;
+  currentPage: number;
+  users: User[];
+}
+
+export interface DeletedUsersResponse {
+  message: string;
+  totalUsersInOrg: number;
+  totalDeletedUsers: number;
   totalPages: number;
   currentPage: number;
   users: User[];

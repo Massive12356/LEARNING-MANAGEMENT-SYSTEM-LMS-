@@ -8,16 +8,18 @@ import {
   SystemUsageResponse,
   ActiveUsersResponse,
   PendingUsersResponse,
+  SuspendedUsersResponse,
+  DeletedUsersResponse,
   UserStatus,
   EmailTemplate,
 } from '../types';
 import apiClient from './apiClient';
 import { AxiosError } from 'axios';
- import {
-   mapTypeToBackend,
-   mapTypeToFrontend,
-   FrontendTemplateType,
- } from '../utils/emialConverter';
+import {
+  mapTypeToBackend,
+  mapTypeToFrontend,
+  FrontendTemplateType,
+} from '../utils/emialConverter';
 
 class AdminService {
   async createAdmin(adminData: Omit<RegisterPayload, 'organizationId'>): Promise<User> {
@@ -314,13 +316,14 @@ class AdminService {
   async getActiveUsers(
     organizationId: string,
     page: number = 1,
-    pageSize: number = 10
+    pageSize: number = 10,
+    search: string = ''
   ): Promise<ActiveUsersResponse | null> {
     try {
       const response = await apiClient.get<ActiveUsersResponse>(
         `/user/organization/${organizationId}/active-users`,
         {
-          params: { page, pageSize },
+          params: { page, pageSize, search },
         }
       );
 
@@ -339,13 +342,14 @@ class AdminService {
   async getPendingUsers(
     organizationId: string,
     page: number = 1,
-    pageSize: number = 10
+    pageSize: number = 10,
+    search: string = ''
   ): Promise<PendingUsersResponse | null> {
     try {
       const response = await apiClient.get<PendingUsersResponse>(
         `/user/organization/${organizationId}/pending-users`,
         {
-          params: { page, pageSize },
+          params: { page, pageSize, search },
         }
       );
 
@@ -436,6 +440,58 @@ class AdminService {
       const err = error as AxiosError<{ message?: string }>;
       console.log('[adminService]ERROR RESPONSE FROM SERVER:', err?.response?.data || err?.message);
       throw new Error(err?.response?.data?.message || err?.message);
+    }
+  }
+
+  async getSuspendedUsers(
+    organizationId: string,
+    page: number = 1,
+    pageSize: number = 10,
+    search: string = ''
+  ): Promise<SuspendedUsersResponse | null> {
+    try {
+      const response = await apiClient.get<SuspendedUsersResponse>(
+        `/user/organization/${organizationId}/suspended-users`,
+        {
+          params: { page, pageSize, search },
+        }
+      );
+
+      console.log(
+        `[adminService] SUSPENDED USERS PAGINATED RESPONSE (page=${page}, limit=${pageSize}):`,
+        response.data
+      );
+      return response.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.error('[adminService] ERROR GETTING SUSPENDED USERS', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to get suspended users data');
+    }
+  }
+
+  async getDeletedUsers(
+    organizationId: string,
+    page: number = 1,
+    pageSize: number = 10,
+    search: string = ''
+  ): Promise<DeletedUsersResponse | null> {
+    try {
+      const response = await apiClient.get<DeletedUsersResponse>(
+        `/user/organization/${organizationId}/deleted-users`,
+        {
+          params: { page, pageSize, search },
+        }
+      );
+
+      console.log(
+        `[adminService] DELETED USERS PAGINATED RESPONSE (page=${page}, limit=${pageSize}):`,
+        response.data
+      );
+      return response.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.error('[adminService] ERROR GETTING DELETED USERS', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || 'Failed to get deleted users data');
     }
   }
 
