@@ -392,9 +392,9 @@ class AdminService {
     }
   }
 
-  async suspendUser(id: string): Promise<User> {
+  async suspendUser(userIds: number[]): Promise<User> {
     try {
-      const response = await apiClient.put(`/user/status/suspend/${id}`);
+      const response = await apiClient.patch(`/user/organization/suspended/bulk/users`, {userIds});
       console.log(`[adminService] SUSPEND USER RESPONSE FROM BACKEND`, response.data);
       return response.data || response.data.users;
     } catch (error) {
@@ -464,7 +464,10 @@ class AdminService {
       return response.data;
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
-      console.error('[adminService] ERROR GETTING SUSPENDED USERS', err.response?.data || err.message);
+      console.error(
+        '[adminService] ERROR GETTING SUSPENDED USERS',
+        err.response?.data || err.message
+      );
       throw new Error(err.response?.data?.message || 'Failed to get suspended users data');
     }
   }
@@ -490,7 +493,10 @@ class AdminService {
       return response.data;
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
-      console.error('[adminService] ERROR GETTING DELETED USERS', err.response?.data || err.message);
+      console.error(
+        '[adminService] ERROR GETTING DELETED USERS',
+        err.response?.data || err.message
+      );
       throw new Error(err.response?.data?.message || 'Failed to get deleted users data');
     }
   }
