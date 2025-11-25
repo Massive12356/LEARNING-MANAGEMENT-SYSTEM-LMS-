@@ -375,7 +375,7 @@ export function UserManagement() {
     setStatusLoading(userToSuspend.id);
 
     try {
-      await adminService.rejectProvisionalUser(userToSuspend.id);
+      await adminService.suspendUser([Number(userToSuspend.id)]);
       toast.success(
         `suspended successfully`
       );
@@ -794,6 +794,8 @@ export function UserManagement() {
     // Load datasets once on mount
     loadActiveUsers(1, pageSize, activeSearchTerm);
     loadPendingUsers(1, pageSize, pendingSearchTerm);
+    loadSuspendedUsers(1,pageSize, suspendedSearchTerm)
+    loadDeletedUsers(1,pageSize, deletedSearchTerm)
     loadOrganization();
   }, [currentUser?.organizationId]);
 
