@@ -369,21 +369,18 @@ export function UserManagement() {
   const confirmSuspendUser = async () => {
     if (!userToSuspend) return;
 
-    const newStatus = userToSuspend.isArchived ? 'active' : 'pending';
     setStatusLoading(userToSuspend.id);
 
     try {
-      await adminService.updateUserStatus(userToSuspend.id, { newStatus });
+      await adminService.rejectProvisionalUser(userToSuspend.id);
       toast.success(
-        newStatus === 'pending'
-          ? `${userToSuspend.firstName} has been suspended`
-          : `${userToSuspend.firstName} reactivated successfully`
+        `suspended successfully`
       );
       setShowSuspendConfirm(false);
-      setUserToSuspend(null);
+      setUserToSuspend(null); 
 
       // Reload both lists
-      await Promise.all([loadActiveUsers(), loadPendingUsers()]);
+      await Promise.all([loadActiveUsers(), loadSuspendedUsers()]);
     } catch (error: any) {
       toast.error(error.message || 'Failed to update user status');
     } finally {
@@ -426,7 +423,7 @@ export function UserManagement() {
       console.log('PAYLOAD ID:', [userToDelete.id]);
       await adminService.deleteUser([userToDelete.id]);
       toast.success('User deleted successfully');
-      loadActiveUsers();
+      await Promise.all([loadDeletedUsers(),loadActiveUsers()])
     } catch (error) {
       toast.error('Failed to delete user');
     } finally {
@@ -444,20 +441,18 @@ export function UserManagement() {
       await adminService.approveProvisionalUsers(userId);
       toast.success('User approved successfully');
       // Reload both active and pending users
-      loadActiveUsers();
-      loadPendingUsers();
+      await Promise.all([loadActiveUsers(),loadPendingUsers()])
     } catch (error) {
       toast.error('Failed to approve user');
     }
   };
 
-  const handleRejectUser = async (userId: string) => {
+  const handleRejectUser = async (userId:[]) => {
     try {
-      await adminService.rejectProvisionalUser(userId);
+      await adminService.deleteUser(userId);
       toast.success('User rejected successfully');
       // Reload both active and pending users
-      loadActiveUsers();
-      loadPendingUsers();
+      await Promise.all([loadPendingUsers(),loadDeletedUsers()])
     } catch (error) {
       toast.error('Failed to reject user');
     }
@@ -551,6 +546,7 @@ export function UserManagement() {
           await adminService.addBulkUsers(payload);
           toast.success(`Successfully imported ${payload.length} users`);
           setShowBulkImportModal(false);
+          setSelectedFile(null);
           // Update both lists and totals
           await Promise.all([loadPendingUsers(), loadActiveUsers(), loadOrganization()]);
         } catch (error) {
@@ -626,17 +622,19 @@ export function UserManagement() {
             ) : (
               <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
                 <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                  {user.firstName.charAt(0)}
-                  {user.lastName.charAt(0)}
+                  {user?.firstName?.charAt(0).toUpperCase() ?? 'N'}
+                  {user?.lastName?.charAt(0).toUpperCase() ?? 'O'}
                 </span>
               </div>
             )}
           </div>
           <div className="ml-4">
             <div className="text-sm font-medium text-gray-900 dark:text-white">
-              {user.firstName} {user.lastName}
+              {user?.firstName || user?.lastName
+                ? `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim()
+                : 'N/A'}
             </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">{user?.email ?? 'N/A'}</div>
           </div>
         </div>
       ),
