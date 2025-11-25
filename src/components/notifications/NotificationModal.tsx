@@ -72,9 +72,9 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        {/* Background overlay */}
+        {/* Background overlay with fade animation */}
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" 
+          className="fixed inset-0 bg-black bg-opacity-50 transition-opacity duration-300 ease-out" 
           aria-hidden="true"
           onClick={onClose}
         />
@@ -84,11 +84,11 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
           &#8203;
         </span>
 
-        <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+        <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-xl px-4 pt-5 pb-4 text-left overflow-hidden shadow-2xl transform transition-all duration-300 ease-out sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="absolute top-0 right-0 pt-4 pr-4">
             <button
               type="button"
-              className="bg-white dark:bg-gray-800 rounded-md text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 focus:outline-none"
+              className="bg-white dark:bg-gray-800 rounded-md text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 focus:outline-none transition-colors duration-200"
               onClick={onClose}
             >
               <span className="sr-only">Close</span>
@@ -101,7 +101,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
               {getNotificationIcon(notification.type)}
             </div>
             <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+              <h3 className="text-lg leading-6 font-semibold text-gray-900 dark:text-white">
                 {notification.title}
               </h3>
               <div className="mt-2">
@@ -122,12 +122,12 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
             </div>
           </div>
           
-          <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+          <div className="mt-6 sm:mt-6 sm:flex sm:flex-row-reverse">
             <div className="sm:flex sm:flex-row-reverse sm:space-x-3 sm:space-x-reverse w-full">
               {onDelete && (
                 <button
                   type="button"
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-red-300 dark:border-red-600 shadow-sm px-4 py-2 bg-red-50 dark:bg-red-900/20 text-base font-medium text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-800 focus:outline-none sm:mt-0 sm:w-auto sm:text-sm"
+                  className="mt-3 w-full inline-flex justify-center items-center rounded-md border border-red-300 dark:border-red-600 shadow-sm px-4 py-2 bg-red-50 dark:bg-red-900/20 text-base font-medium text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-800 focus:outline-none transition-colors duration-200 sm:mt-0 sm:w-auto sm:text-sm"
                   onClick={onDelete}
                 >
                   <TrashIcon className="h-5 w-5 mr-2" />
@@ -137,7 +137,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
               {notification.status === 'archived' && onUnarchive ? (
                 <button
                   type="button"
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none sm:mt-0 sm:w-auto sm:text-sm"
+                  className="mt-3 w-full inline-flex justify-center items-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none transition-colors duration-200 sm:mt-0 sm:w-auto sm:text-sm"
                   onClick={() => {
                     onUnarchive();
                     onClose();
@@ -149,7 +149,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
               ) : onArchive ? (
                 <button
                   type="button"
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none sm:mt-0 sm:w-auto sm:text-sm"
+                  className="mt-3 w-full inline-flex justify-center items-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none transition-colors duration-200 sm:mt-0 sm:w-auto sm:text-sm"
                   onClick={onArchive}
                 >
                   <ArchiveBoxIcon className="h-5 w-5 mr-2" />
@@ -159,7 +159,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
               {notification.status === 'unread' && onMarkAsRead && (
                 <button
                   type="button"
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:w-auto sm:text-sm"
+                  className="w-full inline-flex justify-center items-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none transition-colors duration-200 sm:w-auto sm:text-sm"
                   onClick={onMarkAsRead}
                 >
                   Mark as Read
@@ -167,7 +167,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
               )}
               <button
                 type="button"
-                className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none sm:mt-0 sm:w-auto sm:text-sm"
+                className="mt-3 w-full inline-flex justify-center items-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none transition-colors duration-200 sm:mt-0 sm:w-auto sm:text-sm"
                 onClick={onClose}
               >
                 Close

@@ -192,9 +192,12 @@ export function UserManagement() {
   const [userToSuspend, setUserToSuspend] = useState<User | null>(null);
   const [showActivateConfirm, setShowActivateConfirm] = useState(false);
   const [userToActivate, setUserToActivate] = useState<User | null>(null);
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+  const [userToRestore, setUserToRestore] = useState<User | null>(null);
   const [showBulkArchiveConfirm, setShowBulkArchiveConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
   const [totalOrgUsers, setTotalOrgUsers] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [statusLoading, setStatusLoading] = useState<string | null>(null);
@@ -410,6 +413,44 @@ export function UserManagement() {
     } finally {
       setShowActivateConfirm(false);
       setUserToActivate(null);
+    }
+  };
+
+  const handleRestoreUser = async (user: User) => {
+    setUserToRestore(user);
+    setShowRestoreConfirm(true);
+  };
+
+  const confirmRestoreUser = async () => {
+    if (!userToRestore) return;
+    
+    setIsRestoring(true);
+    try {
+      // For suspended users, we activate them
+      // For deleted users, we update their status to active
+      if (activeTab === 'suspended') {
+        await adminService.activateUser(userToRestore.id);
+        toast.success('Suspended user restored successfully');
+      } else if (activeTab === 'deleted') {
+        await adminService.updateUserStatus(userToRestore.id, { newStatus: 'active' });
+        toast.success('Deleted user restored successfully');
+      }
+      
+      // Reload the appropriate lists
+      if (activeTab === 'suspended') {
+        loadSuspendedUsers(suspendedPage, pageSize, suspendedSearchTerm);
+      } else if (activeTab === 'deleted') {
+        loadDeletedUsers(deletedPage, pageSize, deletedSearchTerm);
+      }
+      
+      // Also reload active users since a restored user will appear there
+      loadActiveUsers(activePage, pageSize, activeSearchTerm);
+    } catch (error) {
+      toast.error('Failed to restore user');
+    } finally {
+      setIsRestoring(false);
+      setShowRestoreConfirm(false);
+      setUserToRestore(null);
     }
   };
 
@@ -686,28 +727,64 @@ export function UserManagement() {
       sortable: false,
       render: (_, user) => (
         <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleSuspendUser(user)}
-            disabled={statusLoading === user.id}
-            className={`${
-              user.isArchived
-                ? 'text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
-                : 'text-yellow-600 border-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
-            }`}
-          >
-            {statusLoading === user.id ? 'Pending...' : user.isArchived ? 'Activate' : 'Suspend'}
-          </Button>
+          {activeTab === 'active' ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSuspendUser(user)}
+                disabled={statusLoading === user.id}
+                className={`${
+                  user.isArchived
+                    ? 'text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
+                    : 'text-yellow-600 border-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
+                }`}
+              >
+                {statusLoading === user.id ? 'Pending...' : user.isArchived ? 'Activate' : 'Suspend'}
+              </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleDeleteUser(user)}
-            className="text-red-600 hover:text-red-700 border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-          >
-            Delete
-          </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDeleteUser(user)}
+                className="text-red-600 hover:text-red-700 border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+              >
+                Delete
+              </Button>
+            </>
+          ) : activeTab === 'suspended' ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleRestoreUser(user)}
+                disabled={isRestoring && userToRestore?.id === user.id}
+                className="text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+              >
+                {isRestoring && userToRestore?.id === user.id ? 'Restoring...' : 'Restore'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDeleteUser(user)}
+                className="text-red-600 hover:text-red-700 border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+              >
+                Delete
+              </Button>
+            </>
+          ) : activeTab === 'deleted' ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleRestoreUser(user)}
+                disabled={isRestoring && userToRestore?.id === user.id}
+                className="text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+              >
+                {isRestoring && userToRestore?.id === user.id ? 'Restoring...' : 'Restore'}
+              </Button>
+            </>
+          ) : null}
         </div>
       ),
     },
@@ -1353,6 +1430,22 @@ export function UserManagement() {
         confirmText="Activate"
         cancelText="Cancel"
         confirmVariant="primary"
+      />
+
+      {/* Restore Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showRestoreConfirm}
+        onClose={() => {
+          setShowRestoreConfirm(false);
+          setUserToRestore(null);
+        }}
+        onConfirm={confirmRestoreUser}
+        title="Restore User"
+        message={`Are you sure you want to restore this ${activeTab === 'suspended' ? 'suspended' : 'deleted'} user? They will regain access to the platform.`}
+        confirmText={isRestoring ? "Restoring..." : "Restore"}
+        cancelText="Cancel"
+        confirmVariant="primary"
+        confirmDisabled={isRestoring}
       />
 
       {/* Bulk Archive Confirmation Dialog */}
