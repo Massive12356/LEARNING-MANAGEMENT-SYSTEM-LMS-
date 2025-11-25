@@ -215,7 +215,7 @@ export function DataTable<T extends { id: number | string }>({
             ) : paginatedData.length === 0 ? (
               <tr>
                 <td colSpan={columns.length + (selectable ? 1 : 0)}>
-                  <EmptyState message={emptyMessage} title="No Users Found Try Adjusting your search!!"  icon={UsersIcon}/>
+                  <EmptyState message={emptyMessage} title=''  icon={UsersIcon}/>
                 </td>
               </tr>
             ) : (

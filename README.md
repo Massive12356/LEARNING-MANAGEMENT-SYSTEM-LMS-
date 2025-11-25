@@ -123,34 +123,7 @@ npm run seed     # Seed database with sample data (planned)
 
 ## 🔧 Configuration
 
-### Environment Variables
 
-Key environment variables to configure:
-
-```env
-# App Configuration
-VITE_APP_NAME=LMS Platform
-VITE_APP_URL=http://localhost:5173
-VITE_API_BASE_URL=http://localhost:3001/api
-
-# Authentication
-VITE_JWT_SECRET=your-jwt-secret
-
-# File Storage (Future Integration)
-VITE_AWS_S3_BUCKET=your-s3-bucket
-VITE_CLOUDINARY_CLOUD_NAME=your-cloudinary-name
-
-# Email Service (Future Integration)
-VITE_SENDGRID_API_KEY=your-sendgrid-key
-VITE_MAILGUN_API_KEY=your-mailgun-key
-
-# Video Hosting (Future Integration)
-VITE_VIMEO_ACCESS_TOKEN=your-vimeo-token
-VITE_MUX_TOKEN_ID=your-mux-token
-
-# Payments (Future Integration)
-VITE_STRIPE_PUBLISHABLE_KEY=your-stripe-key
-```
 
 ## 🔌 API Integration
 
@@ -178,56 +151,6 @@ async login(credentials: LoginForm): Promise<{ user: User; token: string }> {
   if (!response.ok) throw new Error('Login failed');
   return response.json();
 }
-```
-
-### 2. API Endpoints
-
-The following endpoints need to be implemented:
-
-```
-Authentication:
-POST /auth/login
-POST /auth/register
-POST /auth/refresh
-POST /auth/logout
-POST /auth/forgot-password
-POST /auth/reset-password
-
-Users:
-GET /users
-GET /users/:id
-POST /users
-PUT /users/:id
-DELETE /users/:id
-POST /users/import
-
-Courses:
-GET /courses
-GET /courses/:id
-POST /courses
-PUT /courses/:id
-DELETE /courses/:id
-POST /courses/:id/duplicate
-
-Programs:
-GET /programs
-GET /programs/:id
-POST /programs
-PUT /programs/:id
-DELETE /programs/:id
-
-Organizations:
-GET /organizations
-GET /organizations/:id
-POST /organizations
-PUT /organizations/:id
-
-Files:
-POST /files/upload
-
-Analytics:
-GET /analytics/dashboard
-GET /analytics/reports
 ```
 
 ### 3. Recommended Backend Stack
