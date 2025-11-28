@@ -37,6 +37,12 @@ export const RegisterPage: React.FC = () => {
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email is invalid';
     }
+
+    if(!formData.organizationId){
+      newErrors.organizationId = "Organization Code required!"
+    } else if(formData.organizationId.length < 5){
+      newErrors.organizationId = 'Organization Code must exceed 5 characters';
+    }
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 8) {
@@ -190,6 +196,7 @@ export const RegisterPage: React.FC = () => {
                 label="Organization Code"
                 value={formData.organizationId}
                 onChange={handleChange}
+                error={errors.organizationId}
                 placeholder="Enter your organization code"
                 helpText="Enter the code provided by your organization"
               />

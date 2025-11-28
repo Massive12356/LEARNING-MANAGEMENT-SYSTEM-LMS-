@@ -3,9 +3,10 @@ import { useAuthStore, normalizeUser } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { Switch } from '../../components/ui/Switch';
 import { organizationService } from '../../services/organizationService';
 import { settingsService, NotificationPreferences } from '../../services/settingsService';
-import { User, Organization } from '../../types';
+import { User, Organization,NotificationPayload } from '../../types';
 import { UserIcon, BuildingOfficeIcon, KeyIcon, BellIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { ProfilePictureUpload } from '../../components/ui/ProfilePictureUpload';
@@ -18,6 +19,8 @@ export const AdminSettings: React.FC = () => {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
   const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [notifying, setNotifying] = useState({ email: false, sms: false, push: false });
+  const [updatingProfile, setUpdatingProfile] = useState(false);
 
   const [profileData, setProfileData] = useState({
     firstName: '',
@@ -44,13 +47,26 @@ export const AdminSettings: React.FC = () => {
     smsNotifications: false,
   });
 
-  const [profileImage, setProfileImage] = useState<File | string | null>(null);
+  // Only allow File or null for the image to send to backend
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+
+  // Keep a separate URL for preview
+  const [previewUrl, setPreviewUrl] = useState<string>(profileData.backendImageUrl || '');
 
   // Load user & organization data once
   useEffect(() => {
     if (!user) return;
 
     const normalizedUser = normalizeUser(user);
+
+    // Parse backend images safely
+    let imagesArray: string[] = [];
+    try {
+      imagesArray = normalizedUser.images ? JSON.parse(normalizedUser.images) : [];
+    } catch {
+      imagesArray = [];
+    }
+    const firstImage = imagesArray[0] || '';
 
     const genderEnumValue: 'Male' | 'Female' | 'Other' | 'Prefer not to say' | '' = (() => {
       switch (normalizedUser.gender?.toLowerCase()) {
@@ -76,10 +92,12 @@ export const AdminSettings: React.FC = () => {
       gender: genderEnumValue,
       levelOfEducation: normalizedUser.levelOfEducation || '',
       imageFile: null,
-      backendImageUrl: normalizedUser.images || '',
-      previewUrl: normalizedUser.images || '',
+      backendImageUrl: firstImage,
+      previewUrl: firstImage,
     });
-    setProfileImage(normalizedUser.images || null);
+
+    setProfileImage(null); // start with no new file selected
+    setPreviewUrl(firstImage);
 
     (async () => {
       try {
@@ -92,6 +110,7 @@ export const AdminSettings: React.FC = () => {
 
     loadOrganization();
   }, [user]);
+
 
   const loadOrganization = async () => {
     if (!user?.organizationDetails?.id) {
@@ -113,103 +132,87 @@ export const AdminSettings: React.FC = () => {
     }
   };
 
-  const handleProfileUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
+ const handleProfileUpdate = async (e: React.FormEvent) => {
+   e.preventDefault();
+   if (!user) return;
 
-    try {
-      const formData = new FormData();
-      formData.append('firstName', profileData.firstName);
-      formData.append('lastName', profileData.lastName);
-      formData.append('email', profileData.email);
-      formData.append('role', user.role); // keep current role
-      formData.append('status', 'active'); // or pull from user.status
-      formData.append('country', profileData.country);
-      if (profileData.gender.trim()) {
-        formData.append('gender', profileData.gender);
-      }
-      formData.append('levelOfEducation', profileData.levelOfEducation);
-      formData.append('birthday', profileData.birthday ? profileData.birthday : '');
+   setUpdatingProfile(true);
 
-      // Notification preferences
-      formData.append(
-        'emailNotificationEnabler',
-        notificationPreferences.emailNotifications ? 'true' : 'false'
-      );
-      formData.append(
-        'smsNotificationEnabler',
-        notificationPreferences.smsNotifications ? 'true' : 'false'
-      );
-      formData.append(
-        'pushNotificationEnabler',
-        notificationPreferences.pushNotifications ? 'true' : 'false'
-      );
+   try {
+     const formData = new FormData();
 
-      if (profileImage instanceof File) {
-        formData.append('images', profileImage); // new upload
-      } else if (typeof profileImage === 'string') {
-        formData.append('images', profileImage); // keep existing image
-      } else {
-        formData.append('images', ''); // user removed image
-      }
+     // Append text fields
+     formData.append('firstName', profileData.firstName);
+     formData.append('lastName', profileData.lastName);
+     formData.append('email', profileData.email);
+     formData.append('role', user.role);
+     formData.append('status', 'active');
+     formData.append('country', profileData.country);
+     if (profileData.gender.trim()) formData.append('gender', profileData.gender);
+     formData.append('levelOfEducation', profileData.levelOfEducation);
+     formData.append('birthday', profileData.birthday || '');
 
-      console.log('PAYLOAD TO SERVER:', formData);
-      // Send FormData to backend
-      await adminService.updateProfileDetails(user.id, formData);
-      const updatedUser = await adminService.getUserById(user.id);
-      console.log('DATA FROM BACKEND', updatedUser);
-      // Update store with normalized User object
-      updateUser(updatedUser);
+     // Append notification preferences
+     formData.append(
+       'emailNotificationEnabler',
+       notificationPreferences.emailNotifications ? 'true' : 'false'
+     );
+     formData.append(
+       'smsNotificationEnabler',
+       notificationPreferences.smsNotifications ? 'true' : 'false'
+     );
+     formData.append(
+       'pushNotificationEnabler',
+       notificationPreferences.pushNotifications ? 'true' : 'false'
+     );
 
-      // Sync local form state
-      const genderEnumValue: 'Male' | 'Female' | 'Other' | 'Prefer not to say' | '' = (() => {
-        switch (updatedUser.gender?.toLowerCase()) {
-          case 'male':
-            return 'Male';
-          case 'female':
-            return 'Female';
-          case 'other':
-            return 'Other';
-          case 'prefer not to say':
-            return 'Prefer not to say';
-          default:
-            return '';
-        }
-      })();
+     // Append image if selected
+     if (profileImage) {
+       formData.append('images', profileImage);
+     }
 
-      // Update local state
-      setProfileData(prev => ({
-        ...prev,
-        firstName: updatedUser.firstName || '',
-        lastName: updatedUser.lastName || '',
-        email: updatedUser.email || '',
-        birthday: formatDateForInput(updatedUser.birthday),
-        country: updatedUser.country || '',
-        gender: updatedUser.gender
-          ? updatedUser.gender.charAt(0).toUpperCase() + updatedUser.gender.slice(1)
-          : '',
-        levelOfEducation: updatedUser.levelOfEducation || '',
-        imageFile: null,
-        backendImageUrl: updatedUser.images || '',
-        previewUrl: updatedUser.images || '',
-      }));
+     await adminService.updateProfileDetails(user.id, formData);
 
-      // In handleProfileUpdate, after successful save:
-      if (profileImage instanceof File) {
-        formData.append('images', profileImage);
-      } else if (typeof profileImage === 'string' && profileImage.trim() !== '') {
-        formData.append('images', profileImage);
-      } else {
-        formData.append('images', '');
-      }
-      setProfileImage(updatedUser.images || null);
+     // Fetch updated user
+     const updatedUser = await adminService.getUserById(user.id);
+     updateUser(updatedUser);
 
-      toast.success('Profile updated successfully');
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message || 'Failed to update profile');
-    }
-  };
+     // Parse backend images for preview
+     let updatedImages: string[] = [];
+     try {
+       updatedImages = updatedUser.images ? JSON.parse(updatedUser.images) : [];
+     } catch {}
+     const firstImage = updatedImages[0] || '';
+
+     setProfileData(prev => ({
+       ...prev,
+       firstName: updatedUser.firstName || '',
+       lastName: updatedUser.lastName || '',
+       email: updatedUser.email || '',
+       birthday: formatDateForInput(updatedUser.birthday),
+       country: updatedUser.country || '',
+       gender: updatedUser.gender
+         ? updatedUser.gender.charAt(0).toUpperCase() + updatedUser.gender.slice(1)
+         : '',
+       levelOfEducation: updatedUser.levelOfEducation || '',
+       imageFile: null,
+       backendImageUrl: firstImage,
+       previewUrl: firstImage,
+     }));
+
+     setProfileImage(null);
+     setPreviewUrl(firstImage);
+
+     toast.success('Profile updated successfully');
+   } catch (err: any) {
+     console.error(err?.message);
+     toast.error(err?.message || 'Failed to update profile');
+   } finally {
+     setUpdatingProfile(false);
+   }
+ };
+
+
 
   const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -241,20 +244,58 @@ export const AdminSettings: React.FC = () => {
     }
   };
 
-  const handleNotificationPreferencesUpdate = (
-    preference: keyof NotificationPreferences,
-    value: boolean
-  ) => {
-    if (!user) return;
+  // const handleNotificationPreferencesUpdate = (
+  //   preference: keyof NotificationPreferences,
+  //   value: boolean
+  // ) => {
+  //   if (!user) return;
 
-    const updatedPreferences = {
-      ...notificationPreferences,
-      [preference]: value,
+  //   const updatedPreferences = {
+  //     ...notificationPreferences,
+  //     [preference]: value,
+  //   };
+
+  //   setNotificationPreferences(updatedPreferences);
+  //   // await adminService.notificationSettings(user.id, updatedPreferences);
+  //   toast.success('Notification preferences updated');
+  // };
+
+  //  handle notification preferences
+  const handleToggle = async (type: 'email' | 'sms' | 'push', value: boolean) => {
+    setNotifying((prev: any) => ({ ...prev, [type]: true }));
+
+    const payload: NotificationPayload = {
+      enable: value,
     };
 
-    setNotificationPreferences(updatedPreferences);
-    settingsService.saveNotificationPreferences(user.id, updatedPreferences);
-    toast.success('Notification preferences updated');
+    try {
+      if (type === 'email') {
+        await settingsService.emailNotificationSettings(payload);
+      }
+      if (type === 'sms') {
+        await settingsService.smsNotificationSettings(payload);
+      }
+      if (type === 'push') {
+        await settingsService.pushNotificationSettings(payload);
+      }
+
+      const map = {
+        email: 'emailNotifications',
+        sms: 'smsNotifications',
+        push: 'pushNotifications',
+      } as const;
+
+      setNotificationPreferences((prev: any) => ({
+        ...prev,
+        [map[type]]: value,
+      }));
+
+      toast.success(`${type.toUpperCase()} notifications ${value ? 'enabled' : 'disabled'}`);
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to update notification settings');
+    } finally {
+      setNotifying((prev: any) => ({ ...prev, [type]: false }));
+    }
   };
 
   const tabs = [
@@ -265,25 +306,11 @@ export const AdminSettings: React.FC = () => {
   ];
 
   const handleFileSelect = (file: File | null) => {
-    if (file) {
-      // preview locally before saving
-      const previewUrl = URL.createObjectURL(file);
-      setProfileData(prev => ({
-        ...prev,
-        previewUrl,
-        imageFile: file,
-      }));
-      setProfileImage(file); // keep in sync with backend upload
-    } else {
-      // user removed image
-      setProfileData(prev => ({
-        ...prev,
-        previewUrl: '',
-        imageFile: null,
-      }));
-      setProfileImage(null);
-    }
+    setProfileImage(file); // only File goes to backend
+    setPreviewUrl(file ? URL.createObjectURL(file) : profileData.backendImageUrl || '');
   };
+
+
 
   if (loading) {
     return (
@@ -342,11 +369,11 @@ export const AdminSettings: React.FC = () => {
               <CardContent>
                 <div className="flex flex-col items-center mb-6">
                   <ProfilePictureUpload
-                    currentImageUrl={profileData.previewUrl || profileData.backendImageUrl}
+                    currentImageUrl={previewUrl} // for preview only
                     onFileSelect={handleFileSelect}
                     onRemove={() => {
-                      setProfileData(prev => ({ ...prev, previewUrl: '', imageFile: null }));
-                      setProfileImage(null);
+                      setProfileImage(null); // nothing sent to backend
+                      setPreviewUrl(profileData.backendImageUrl || '');
                     }}
                   />
 
@@ -434,7 +461,9 @@ export const AdminSettings: React.FC = () => {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button type="submit">Save Changes</Button>
+                    <Button type="submit" disabled={updatingProfile}>
+                      {updatingProfile ? 'Updating...' : 'Save Changes'}
+                    </Button>
                   </div>
                 </form>
               </CardContent>
@@ -606,7 +635,6 @@ export const AdminSettings: React.FC = () => {
               </CardContent>
             </Card>
           )}
-
           {/* Notifications Tab */}
           {activeTab === 'notifications' && (
             <Card>
@@ -632,6 +660,14 @@ export const AdminSettings: React.FC = () => {
                         pushNotifications: 'Receive push notifications on your devices',
                         smsNotifications: 'Receive text messages for important updates',
                       };
+
+                      // Map the pref to the type used in handleToggle
+                      const typeMap = {
+                        emailNotifications: 'email',
+                        pushNotifications: 'push',
+                        smsNotifications: 'sms',
+                      } as const;
+
                       return (
                         <div key={pref} className="flex items-center justify-between">
                           <div>
@@ -642,18 +678,14 @@ export const AdminSettings: React.FC = () => {
                               {descriptions[pref]}
                             </p>
                           </div>
-                          <Button
-                            variant={notificationPreferences[pref] ? 'primary' : 'outline'}
-                            size="sm"
-                            onClick={() =>
-                              handleNotificationPreferencesUpdate(
-                                pref,
-                                !notificationPreferences[pref]
-                              )
-                            }
-                          >
-                            {notificationPreferences[pref] ? 'Enabled' : 'Disabled'}
-                          </Button>
+
+                          <Switch
+                            checked={notificationPreferences[pref]}
+                            onChange={value => handleToggle(typeMap[pref], value)}
+                            disabled={notifying[typeMap[pref]]}
+                            loading={notifying[typeMap[pref]]}
+                            size="md"
+                          />
                         </div>
                       );
                     }

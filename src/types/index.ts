@@ -1,5 +1,5 @@
 export type UserRole = 'student' | 'teacher' | 'admin' | 'superuser';
-export type UserStatus = "active" | 'pending'
+export type UserStatus = 'active' | 'pending';
 
 export type CourseStatus = 'draft' | 'live';
 export type ProgramStatus = 'draft' | 'live';
@@ -33,7 +33,6 @@ export interface User {
   isDeleted?: boolean;
 }
 
-
 export interface OrganizationDetails {
   id: number;
   code: string;
@@ -54,7 +53,7 @@ export interface Organization {
   updatedAt: Date;
   maxUsers: number;
   expiryDay: Date;
-  organizationDetails: OrganizationDetails
+  organizationDetails: OrganizationDetails;
 }
 
 export interface CreateOrganizationResponse {
@@ -311,7 +310,9 @@ export interface ProgramAnalytics {
 export type NotificationType = 'info' | 'success' | 'warning' | 'error' | 'announcement';
 export type NotificationPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type NotificationStatus = 'unread' | 'read' | 'archived';
-
+export interface NotificationPayload {
+  enable: boolean
+}
 
 
 export interface Notification {
@@ -544,17 +545,17 @@ export interface SystemMemory {
   totalSystemMemory: string; // e.g., "30.65 GB"
 }
 
-export interface ResourceUsage{
+export interface ResourceUsage {
   storageUsed: string;
-  totalStorage:string;
+  totalStorage: string;
   bandwidthUsed: string;
   totalBandwidth: string;
   databaseSize: string;
-  totalDatabaseCapacity:string;
+  totalDatabaseCapacity: string;
   backupStatus: string;
 }
 
-export interface UsagePatterns{
+export interface UsagePatterns {
   peakHours: string;
   mostActiveDay: string;
   avgSessionDuration: string;
@@ -573,7 +574,7 @@ export interface UserSearchQuery {
   role?: 'admin' | 'student' | 'teacher' | 'superuser';
 }
 
- export interface ActiveUsersResponse {
+export interface ActiveUsersResponse {
   message?: string;
   totalUsersInOrg: number;
   totalActiveUsers: number;
