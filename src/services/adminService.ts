@@ -12,6 +12,7 @@ import {
   DeletedUsersResponse,
   UserStatus,
   EmailTemplate,
+  adminSearchQuery,
 } from '../types';
 import apiClient from './apiClient';
 import { AxiosError } from 'axios';
@@ -394,12 +395,42 @@ class AdminService {
 
   async suspendUser(userIds: number[]): Promise<User> {
     try {
-      const response = await apiClient.patch(`/user/organization/suspended/bulk/users`, {userIds});
+      const response = await apiClient.patch(`/user/organization/suspended/bulk/users`, {
+        userIds,
+      });
       console.log(`[adminService] SUSPEND USER RESPONSE FROM BACKEND`, response.data);
       return response.data || response.data.users;
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
       console.log('[adminService] ERROR SUSPENDING USER', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || err.message);
+    }
+  }
+
+  async restoreSuspendedUser(userIds: number[]): Promise<User> {
+    try {
+      const response = await apiClient.put(`/user/organization/suspended/bulk/users/restore`, {
+        userIds,
+      });
+      console.log(`[adminService] RESTORE SUSPENDED USER RESPONSE FROM BACKEND`, response.data);
+      return response.data || response.data.users;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log('[adminService] ERROR SUSPENDING USER', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || err.message);
+    }
+  }
+
+  async restoreDeletedUser(userIds: number[]): Promise<User> {
+    try {
+      const response = await apiClient.put(`/user/organization/deleted/bulk/users/restore`, {
+        userIds,
+      });
+      console.log(`[adminService] RESTORE SUSPENDED USER RESPONSE FROM BACKEND`, response.data);
+      return response.data || response.data.users;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log('[adminService] ERROR DELETED USER', err.response?.data || err.message);
       throw new Error(err.response?.data?.message || err.message);
     }
   }
@@ -523,6 +554,47 @@ class AdminService {
       console.log('[adminService] RESPONSE FROM SERVER', err?.response?.data || err?.message);
       throw new Error(err?.response?.data?.message || err?.message);
     }
+  }
+
+  // admin search query service functions
+  private async adminSearchByStatus(
+    status: 'active-users' | 'pending-users' | 'suspended-users' | 'deleted-users',
+    query: adminSearchQuery,
+    organizationId: string
+  ): Promise<User[]> {
+    try {
+      const response = await apiClient.get(`user/filter/${status}/organization/${organizationId}`, {
+        params: query,
+      });
+
+      console.log(`[AdminService] ${status.toUpperCase()} SEARCH RESPONSE:`, response.data);
+
+      return response.data?.data || response.data?.users || [];
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.error(
+        `[AdminService] ${status.toUpperCase()} ERROR RESPONSE:`,
+        err.response?.data || err.message
+      );
+
+      throw new Error(err.response?.data?.message || `Failed to search ${status}`);
+    }
+  }
+
+  async adminSearchActiveUsers(query: adminSearchQuery, organizationId: string) {
+    return this.adminSearchByStatus('active-users', query, organizationId);
+  }
+
+  async adminSearchPendingUsers(query: adminSearchQuery, organizationId: string) {
+    return this.adminSearchByStatus('pending-users', query, organizationId);
+  }
+
+  async adminSearchSuspendedUsers(query: adminSearchQuery, organizationId: string) {
+    return this.adminSearchByStatus('suspended-users', query, organizationId);
+  }
+
+  async adminSearchDeletedUsers(query: adminSearchQuery, organizationId: string) {
+    return this.adminSearchByStatus('deleted-users', query, organizationId);
   }
 
   // Save or update an email template

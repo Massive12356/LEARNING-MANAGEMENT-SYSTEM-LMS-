@@ -5,8 +5,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Switch } from '../../components/ui/Switch';
 import { organizationService } from '../../services/organizationService';
-import { settingsService, NotificationPreferences } from '../../services/settingsService';
-import { User, Organization,NotificationPayload } from '../../types';
+import { settingsService } from '../../services/settingsService';
+import { User, Organization, NotificationPayload, NotificationPreferences } from '../../types';
 import { UserIcon, BuildingOfficeIcon, KeyIcon, BellIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { ProfilePictureUpload } from '../../components/ui/ProfilePictureUpload';
@@ -42,9 +42,9 @@ export const AdminSettings: React.FC = () => {
   });
 
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>({
-    emailNotifications: true,
-    pushNotifications: true,
-    smsNotifications: false,
+    emailNotificationEnabler: true,
+    pushNotificationEnabler: true,
+    smsNotificationEnabler: false,
   });
 
   // Only allow File or null for the image to send to backend
@@ -99,14 +99,11 @@ export const AdminSettings: React.FC = () => {
     setProfileImage(null); // start with no new file selected
     setPreviewUrl(firstImage);
 
-    (async () => {
-      try {
-        const prefs = await settingsService.getNotificationPreferences(normalizedUser.id);
-        setNotificationPreferences(prefs);
-      } catch (err) {
-        console.error('Failed to load notification preferences:', err);
-      }
-    })();
+    setNotificationPreferences({
+      emailNotificationEnabler: user.emailNotificationEnabler ?? false,
+      smsNotificationEnabler: user.smsNotificationEnabler ?? false,
+      pushNotificationEnabler: user.pushNotificationEnabler ?? false,
+    });
 
     loadOrganization();
   }, [user]);
@@ -155,21 +152,23 @@ export const AdminSettings: React.FC = () => {
      // Append notification preferences
      formData.append(
        'emailNotificationEnabler',
-       notificationPreferences.emailNotifications ? 'true' : 'false'
+       notificationPreferences.emailNotificationEnabler ? 'true' : 'false'
      );
      formData.append(
        'smsNotificationEnabler',
-       notificationPreferences.smsNotifications ? 'true' : 'false'
+       notificationPreferences.smsNotificationEnabler ? 'true' : 'false'
      );
      formData.append(
        'pushNotificationEnabler',
-       notificationPreferences.pushNotifications ? 'true' : 'false'
+       notificationPreferences.pushNotificationEnabler ? 'true' : 'false'
      );
 
      // Append image if selected
      if (profileImage) {
        formData.append('images', profileImage);
      }
+
+     console.log('images', profileImage);
 
      await adminService.updateProfileDetails(user.id, formData);
 
@@ -244,59 +243,43 @@ export const AdminSettings: React.FC = () => {
     }
   };
 
-  // const handleNotificationPreferencesUpdate = (
-  //   preference: keyof NotificationPreferences,
-  //   value: boolean
-  // ) => {
-  //   if (!user) return;
-
-  //   const updatedPreferences = {
-  //     ...notificationPreferences,
-  //     [preference]: value,
-  //   };
-
-  //   setNotificationPreferences(updatedPreferences);
-  //   // await adminService.notificationSettings(user.id, updatedPreferences);
-  //   toast.success('Notification preferences updated');
-  // };
-
   //  handle notification preferences
-  const handleToggle = async (type: 'email' | 'sms' | 'push', value: boolean) => {
-    setNotifying((prev: any) => ({ ...prev, [type]: true }));
+ const handleToggle = async (type: 'email' | 'sms' | 'push', value: boolean) => {
+   setNotifying(prev => ({ ...prev, [type]: true }));
 
-    const payload: NotificationPayload = {
-      enable: value,
-    };
+   const payload: NotificationPayload = { enable: value };
 
-    try {
-      if (type === 'email') {
-        await settingsService.emailNotificationSettings(payload);
-      }
-      if (type === 'sms') {
-        await settingsService.smsNotificationSettings(payload);
-      }
-      if (type === 'push') {
-        await settingsService.pushNotificationSettings(payload);
-      }
+   try {
+     // Call backend
+     if (type === 'email') await settingsService.emailNotificationSettings(payload);
+     if (type === 'sms') await settingsService.smsNotificationSettings(payload);
+     if (type === 'push') await settingsService.pushNotificationSettings(payload);
 
-      const map = {
-        email: 'emailNotifications',
-        sms: 'smsNotifications',
-        push: 'pushNotifications',
-      } as const;
+     // Fetch fresh user from backend
+     const updatedUser = await adminService.getUserById(user!.id);
+     updateUser(updatedUser);
 
-      setNotificationPreferences((prev: any) => ({
-        ...prev,
-        [map[type]]: value,
-      }));
+     // Update local state
+     const typeMap = {
+       email: 'emailNotificationEnabler',
+       sms: 'smsNotificationEnabler',
+       push: 'pushNotificationEnabler',
+     } as const;
 
-      toast.success(`${type.toUpperCase()} notifications ${value ? 'enabled' : 'disabled'}`);
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to update notification settings');
-    } finally {
-      setNotifying((prev: any) => ({ ...prev, [type]: false }));
-    }
-  };
+     setNotificationPreferences(prev => ({
+       ...prev,
+       [typeMap[type]]: value,
+     }));
+
+     toast.success(`${type.toUpperCase()} notifications ${value ? 'enabled' : 'disabled'}`);
+   } catch (error: any) {
+     toast.error(error?.message || 'Failed to update notification settings');
+   } finally {
+     setNotifying(prev => ({ ...prev, [type]: false }));
+   }
+ };
+
+
 
   const tabs = [
     { id: 'profile', name: 'Profile', icon: UserIcon },
@@ -648,48 +631,52 @@ export const AdminSettings: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {(['emailNotifications', 'pushNotifications', 'smsNotifications'] as const).map(
-                    pref => {
-                      const titles = {
-                        emailNotifications: 'Email Notifications',
-                        pushNotifications: 'Push Notifications',
-                        smsNotifications: 'SMS Notifications',
-                      };
-                      const descriptions = {
-                        emailNotifications: 'Receive notifications via email',
-                        pushNotifications: 'Receive push notifications on your devices',
-                        smsNotifications: 'Receive text messages for important updates',
-                      };
+                  {(
+                    [
+                      'emailNotificationEnabler',
+                      'pushNotificationEnabler',
+                      'smsNotificationEnabler',
+                    ] as const
+                  ).map(pref => {
+                    const titles = {
+                      emailNotificationEnabler: 'Email Notifications',
+                      pushNotificationEnabler: 'Push Notifications',
+                      smsNotificationEnabler: 'SMS Notifications',
+                    };
+                    const descriptions = {
+                      emailNotificationEnabler: 'Receive notifications via email',
+                      pushNotificationEnabler: 'Receive push notifications on your devices',
+                      smsNotificationEnabler: 'Receive text messages for important updates',
+                    };
 
-                      // Map the pref to the type used in handleToggle
-                      const typeMap = {
-                        emailNotifications: 'email',
-                        pushNotifications: 'push',
-                        smsNotifications: 'sms',
-                      } as const;
+                    // Map the pref to the type used in handleToggle
+                    const typeMap = {
+                      emailNotificationEnabler: 'email',
+                      pushNotificationEnabler: 'push',
+                      smsNotificationEnabler: 'sms',
+                    } as const;
 
-                      return (
-                        <div key={pref} className="flex items-center justify-between">
-                          <div>
-                            <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                              {titles[pref]}
-                            </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {descriptions[pref]}
-                            </p>
-                          </div>
-
-                          <Switch
-                            checked={notificationPreferences[pref]}
-                            onChange={value => handleToggle(typeMap[pref], value)}
-                            disabled={notifying[typeMap[pref]]}
-                            loading={notifying[typeMap[pref]]}
-                            size="md"
-                          />
+                    return (
+                      <div key={pref} className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                            {titles[pref]}
+                          </h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {descriptions[pref]}
+                          </p>
                         </div>
-                      );
-                    }
-                  )}
+
+                        <Switch
+                          checked={notificationPreferences[pref]}
+                          onChange={value => handleToggle(typeMap[pref], value)}
+                          disabled={notifying[typeMap[pref]]}
+                          loading={notifying[typeMap[pref]]}
+                          size="md"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

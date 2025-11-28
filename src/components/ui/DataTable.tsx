@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ChevronUpIcon,
   ChevronDownIcon,
@@ -6,7 +6,7 @@ import {
   MagnifyingGlassIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  UsersIcon
+  UsersIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -35,8 +35,9 @@ export interface DataTableProps<T> {
   className?: string;
   loading?: boolean;
   onSearch?: (query: string) => void;
-  currentPage?: number; // from backend
-  totalPages?: number; // from backend
+  searchTerm?: string; // controlled search
+  currentPage?: number; // backend-controlled
+  totalPages?: number; // backend-controlled
   onPageChange?: (page: number) => void; // backend pagination handler
 }
 
@@ -54,19 +55,24 @@ export function DataTable<T extends { id: number | string }>({
   className = '',
   loading = false,
   onSearch,
+  searchTerm,
   currentPage: currentPageProp,
   totalPages: totalPagesProp,
   onPageChange,
 }: DataTableProps<T>) {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(searchTerm ?? '');
   const [sortConfig, setSortConfig] = useState<{ key: keyof T; direction: 'asc' | 'desc' } | null>(
     null
   );
   const [selectedRows, setSelectedRows] = useState<T[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Determine which pagination mode to use
   const isBackendPaginated = !!onPageChange && !!totalPagesProp;
+
+  // Sync controlled search term if provided
+  useEffect(() => {
+    if (searchTerm !== undefined) setSearchQuery(searchTerm);
+  }, [searchTerm]);
 
   // Handle sorting
   const handleSort = (key: keyof T) => {
@@ -76,7 +82,7 @@ export function DataTable<T extends { id: number | string }>({
     setSortConfig({ key, direction });
   };
 
-  // Filter + sort + search (local mode only)
+  // Process data (search + sort) only for local mode
   const processedData = useMemo(() => {
     let result = [...data];
 
@@ -108,18 +114,15 @@ export function DataTable<T extends { id: number | string }>({
     return result;
   }, [data, searchQuery, sortConfig, isBackendPaginated]);
 
-  // Determine current page and total pages
   const effectiveCurrentPage = isBackendPaginated ? currentPageProp! : currentPage;
   const effectiveTotalPages = isBackendPaginated
     ? totalPagesProp!
     : Math.ceil(processedData.length / pageSize);
 
-  // Slice data (only for local pagination)
   const paginatedData = isBackendPaginated
     ? processedData
     : processedData.slice((effectiveCurrentPage - 1) * pageSize, effectiveCurrentPage * pageSize);
 
-  // Handle row selection
   const handleSelectRow = (row: T) => {
     const isSelected = selectedRows.includes(row);
     const newSelected = isSelected ? selectedRows.filter(r => r !== row) : [...selectedRows, row];
@@ -127,7 +130,6 @@ export function DataTable<T extends { id: number | string }>({
     onSelectionChange?.(newSelected);
   };
 
-  // Pagination navigation
   const handlePageChange = (page: number) => {
     if (isBackendPaginated) {
       onPageChange?.(page);
@@ -163,7 +165,12 @@ export function DataTable<T extends { id: number | string }>({
                 className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
               >
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             )}
@@ -215,7 +222,7 @@ export function DataTable<T extends { id: number | string }>({
             ) : paginatedData.length === 0 ? (
               <tr>
                 <td colSpan={columns.length + (selectable ? 1 : 0)}>
-                  <EmptyState message={emptyMessage} title=''  icon={UsersIcon}/>
+                  <EmptyState message={emptyMessage} title="" icon={UsersIcon} />
                 </td>
               </tr>
             ) : (
@@ -239,10 +246,7 @@ export function DataTable<T extends { id: number | string }>({
                       className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300"
                     >
                       {col.render
-                        ? col.render(
-                            col.key in row ? (row[col.key as keyof T] as any) : undefined,
-                            row
-                          )
+                        ? col.render(col.key in row ? row[col.key as keyof T] : undefined, row)
                         : String(col.key in row ? row[col.key as keyof T] ?? '' : '')}
                     </td>
                   ))}
@@ -265,32 +269,6 @@ export function DataTable<T extends { id: number | string }>({
             >
               <ChevronLeftIcon className="h-4 w-4" />
             </Button>
-
-            {/* <div className="flex items-center space-x-1">
-              {Array.from({ length: Math.min(5, effectiveTotalPages) }, (_, i) => {
-                let pageNum;
-                if (effectiveTotalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (effectiveCurrentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (effectiveCurrentPage >= effectiveTotalPages - 2) {
-                  pageNum = effectiveTotalPages - 4 + i;
-                } else {
-                  pageNum = effectiveCurrentPage - 2 + i;
-                }
-
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={effectiveCurrentPage === pageNum ? 'primary' : 'outline'}
-                    size="sm"
-                    onClick={() => handlePageChange(pageNum)}
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
-            </div> */}
             <div className="text-sm text-gray-700 dark:text-gray-300">
               Page {effectiveCurrentPage} of {effectiveTotalPages}
             </div>
