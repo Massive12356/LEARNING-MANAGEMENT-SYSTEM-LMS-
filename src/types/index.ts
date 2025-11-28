@@ -194,7 +194,7 @@ export interface CertificateTemplate {
 
 export interface EmailTemplate {
   id: string;
-  type: 'welcome' | 'password-reset' | 'course-completion';
+  type: 'welcome' | 'password-reset' | 'account-verification' | 'account-deactivation' | 'course-completion';
   subject: string;
   body: string;
   variables: string[];

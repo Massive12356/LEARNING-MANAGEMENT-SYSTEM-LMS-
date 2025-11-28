@@ -129,5 +129,7 @@ export default {
     require('@tailwindcss/aspect-ratio'),
     // Add forms plugin for better form styling
     require('@tailwindcss/forms'),
+    // Add typography plugin for rich text content
+    require('@tailwindcss/typography'),
   ],
 };
