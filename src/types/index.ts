@@ -24,6 +24,10 @@ export interface User {
   organizationDetails?: OrganizationDetails;
   newStatus: UserStatus;
 
+  emailNotificationEnabler?: boolean;
+  smsNotificationEnabler?: boolean;
+  pushNotificationEnabler?: boolean;
+
   // Optional backend-only fields
   password?: string;
   otp?: string;
@@ -340,6 +344,12 @@ export interface CreateNotificationResponse {
   error?: string;
 }
 
+export interface NotificationPreferences {
+  emailNotificationEnabler: boolean;
+  pushNotificationEnabler: boolean;
+  smsNotificationEnabler: boolean;
+}
+
 // Student Report Data Type
 export interface StudentReportData {
   overallStats: {
@@ -574,6 +584,14 @@ export interface UserSearchQuery {
   role?: 'admin' | 'student' | 'teacher' | 'superuser';
 }
 
+export  interface adminSearchQuery {
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  accountNumber?: string;
+}
+
 export interface ActiveUsersResponse {
   message?: string;
   totalUsersInOrg: number;
@@ -595,7 +613,7 @@ export interface PendingUsersResponse {
 export interface SuspendedUsersResponse {
   message: string;
   totalUsersInOrg: number;
-  totalSuspendedUsers: number;
+  totalPendingUsers: number;
   totalPages: number;
   currentPage: number;
   users: User[];
