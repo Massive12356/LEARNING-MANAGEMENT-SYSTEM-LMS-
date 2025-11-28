@@ -94,16 +94,19 @@ export function ProgramBuilder() {
       };
 
       if (isEditing && program) {
-        // TODO: Update program API call
-        console.log('Updating program:', programPayload);
+        // Update existing program
+        const updatedProgram = await mockApi.updateProgram(program.id, programPayload);
+        setProgram(updatedProgram);
         toast.success('Program updated successfully');
       } else {
-        // TODO: Create program API call
-        console.log('Creating program:', programPayload);
+        // Create new program
+        const newProgram = await mockApi.createProgram(programPayload);
+        setProgram(newProgram);
         toast.success('Program created successfully');
         navigate('/teacher/dashboard');
       }
     } catch (error) {
+      console.error('Failed to save program:', error);
       toast.error('Failed to save program');
     } finally {
       setLoading(false);

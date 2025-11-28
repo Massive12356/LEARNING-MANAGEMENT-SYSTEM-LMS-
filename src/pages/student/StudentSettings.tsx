@@ -93,7 +93,19 @@ export const StudentSettings: React.FC = () => {
     if (!user) return;
     
     try {
-      await updateUser(profileData);
+      // Merge profile data with existing user object
+      const updatedUser = {
+        ...user,
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        email: profileData.email,
+        birthday: profileData.birthday,
+        country: profileData.country,
+        gender: profileData.gender,
+        levelOfEducation: profileData.levelOfEducation
+      };
+      
+      await updateUser(updatedUser);
       toast.success('Profile updated successfully');
     } catch (error) {
       toast.error('Failed to update profile');
@@ -200,16 +212,36 @@ export const StudentSettings: React.FC = () => {
               <CardContent>
                 <div className="flex flex-col items-center mb-6">
                   <ProfilePictureUpload
-                    currentImageUrl={user?.profileImage}
-                    onImageUpdate={(imageUrl) => {
+                    currentImageUrl={user?.images || undefined}
+                    onFileSelect={(file) => {
+                      // The component handles the file selection internally
+                      // We just need to make sure the form submission handles it
+                    }}
+                    onRemove={() => {
                       if (user) {
-                        updateUser({ profileImage: imageUrl || undefined });
+                        updateUser({ ...user, images: undefined });
                       }
                     }}
                   />
                   <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                     Click on the profile picture to upload a new one
                   </p>
+                  {user?.images && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (user) {
+                          updateUser({ ...user, images: undefined });
+                        }
+                      }}
+                      className="mt-2 inline-flex items-center px-3 py-1 border border-red-300 text-sm font-medium rounded-md text-red-600 bg-white hover:bg-red-50 dark:bg-gray-800 dark:text-red-400 dark:border-red-600 dark:hover:bg-red-900/20"
+                    >
+                      <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Remove Picture
+                    </button>
+                  )}
                 </div>
                 
                 <form onSubmit={handleProfileUpdate} className="space-y-6">

@@ -21,6 +21,7 @@ export const mockUsers: User[] = [
     gender: 'male',
     levelOfEducation: 'bachelor',
     isArchived: false,
+    newStatus: 'active',
     lastLogin: new Date('2024-01-15'),
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-15'),
@@ -37,6 +38,7 @@ export const mockUsers: User[] = [
     gender: 'female',
     levelOfEducation: 'master',
     isArchived: false,
+    newStatus: 'active',
     lastLogin: new Date('2024-01-14'),
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-14'),
@@ -53,6 +55,7 @@ export const mockUsers: User[] = [
     gender: 'non-binary',
     levelOfEducation: 'master',
     isArchived: false,
+    newStatus: 'active',
     lastLogin: new Date('2024-01-16'),
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-16'),
@@ -68,6 +71,7 @@ export const mockUsers: User[] = [
     gender: 'male',
     levelOfEducation: 'phd',
     isArchived: false,
+    newStatus: 'active',
     lastLogin: new Date('2024-01-16'),
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-16'),
@@ -427,9 +431,190 @@ export const mockCourses: Course[] = [
     ],
     createdAt: new Date('2024-01-10'),
     updatedAt: new Date('2024-01-12'),
-  }
+  },
+  // Three new courses for the web development program
+  {
+    id: 'course-4',
+    title: 'HTML & CSS Fundamentals',
+    description: 'Learn the building blocks of web development with HTML and CSS. This course covers everything from basic tags to responsive design.',
+    coverImage: 'https://picsum.photos/800/400?random=6',
+    tags: ['html', 'css', 'frontend', 'web-design'],
+    status: 'live',
+    isTracked: true,
+    allowSelfPacing: true,
+    requiresCertificate: true,
+    isGraded: true,
+    organizationId: 'org-1',
+    teacherId: 'user-2',
+    modules: [
+      {
+        id: 'module-5',
+        title: 'HTML Basics',
+        description: 'Learn the fundamental structure of web pages',
+        order: 1,
+        courseId: 'course-4',
+        lessons: [
+          {
+            id: 'lesson-7',
+            title: 'HTML Document Structure',
+            description: 'Understanding the basic structure of HTML documents',
+            type: 'video',
+            content: {
+              type: 'embed',
+              embedUrl: 'https://www.youtube.com/embed/UB1O30fR-EE'
+            },
+            order: 1,
+            moduleId: 'module-5',
+            duration: 25,
+            isRequired: true,
+          },
+          {
+            id: 'lesson-8',
+            title: 'Common HTML Elements',
+            description: 'Working with text, links, images, and lists',
+            type: 'text',
+            content: {
+              textContent: '<h3>Common HTML Elements</h3><p>In this lesson, we\'ll explore the most commonly used HTML elements...</p>'
+            },
+            order: 2,
+            moduleId: 'module-5',
+            duration: 20,
+            isRequired: true,
+          }
+        ]
+      },
+      {
+        id: 'module-6',
+        title: 'CSS Styling',
+        description: 'Style your web pages with CSS',
+        order: 2,
+        courseId: 'course-4',
+        lessons: [
+          {
+            id: 'lesson-9',
+            title: 'CSS Selectors and Properties',
+            description: 'Learn how to target elements and apply styles',
+            type: 'video',
+            content: {
+              type: 'embed',
+              embedUrl: 'https://www.youtube.com/embed/yfoY53QXEnI'
+            },
+            order: 1,
+            moduleId: 'module-6',
+            duration: 30,
+            isRequired: true,
+          }
+        ]
+      }
+    ],
+    createdAt: new Date('2024-02-01'),
+    updatedAt: new Date('2024-02-01'),
+  },
+  {
+    id: 'course-5',
+    title: 'JavaScript Essentials',
+    description: 'Master the fundamentals of JavaScript programming for web development.',
+    coverImage: 'https://picsum.photos/800/400?random=7',
+    tags: ['javascript', 'programming', 'frontend', 'web-development'],
+    status: 'live',
+    isTracked: true,
+    allowSelfPacing: true,
+    requiresCertificate: true,
+    isGraded: true,
+    organizationId: 'org-1',
+    teacherId: 'user-2',
+    modules: [
+      {
+        id: 'module-7',
+        title: 'JavaScript Basics',
+        description: 'Learn the fundamental concepts of JavaScript',
+        order: 1,
+        courseId: 'course-5',
+        lessons: [
+          {
+            id: 'lesson-10',
+            title: 'Variables and Data Types',
+            description: 'Understanding variables, data types, and operators',
+            type: 'video',
+            content: {
+              type: 'embed',
+              embedUrl: 'https://www.youtube.com/embed/UpW-Yank-aA'
+            },
+            order: 1,
+            moduleId: 'module-7',
+            duration: 35,
+            isRequired: true,
+          }
+        ]
+      },
+      {
+        id: 'module-8',
+        title: 'Functions and Objects',
+        description: 'Work with functions and objects in JavaScript',
+        order: 2,
+        courseId: 'course-5',
+        lessons: [
+          {
+            id: 'lesson-11',
+            title: 'Function Declaration and Expressions',
+            description: 'Learn different ways to create and use functions',
+            type: 'text',
+            content: {
+              textContent: '<h3>Function Declaration and Expressions</h3><p>In this lesson, we\'ll explore the different ways to create functions...</p>'
+            },
+            order: 1,
+            moduleId: 'module-8',
+            duration: 25,
+            isRequired: true,
+          }
+        ]
+      }
+    ],
+    createdAt: new Date('2024-02-05'),
+    updatedAt: new Date('2024-02-05'),
+  },
+  {
+    id: 'course-6',
+    title: 'Frontend Frameworks: React',
+    description: 'Build modern web applications with React framework.',
+    coverImage: 'https://picsum.photos/800/400?random=8',
+    tags: ['react', 'javascript', 'frontend', 'framework'],
+    status: 'live',
+    isTracked: true,
+    allowSelfPacing: true,
+    requiresCertificate: true,
+    isGraded: true,
+    organizationId: 'org-1',
+    teacherId: 'user-2',
+    modules: [
+      {
+        id: 'module-9',
+        title: 'React Components',
+        description: 'Learn to build reusable components with React',
+        order: 1,
+        courseId: 'course-6',
+        lessons: [
+          {
+            id: 'lesson-12',
+            title: 'Component Basics',
+            description: 'Understanding React components and JSX',
+            type: 'video',
+            content: {
+              type: 'embed',
+              embedUrl: 'https://www.youtube.com/embed/DLX62G4lc44'
+            },
+            order: 1,
+            moduleId: 'module-9',
+            duration: 40,
+            isRequired: true,
+          }
+        ]
+      }
+    ],
+    createdAt: new Date('2024-02-10'),
+    updatedAt: new Date('2024-02-10'),
+  },
   // Single comprehensive demo course for teachers to edit
-  ,
   {
     id: 'demo-course',
     title: 'Web Development Fundamentals - Editable Template',
@@ -584,6 +769,20 @@ export const mockPrograms: Program[] = [
     requiredOrder: false,
     createdAt: new Date('2024-01-05'),
     updatedAt: new Date('2024-01-12'),
+  },
+  // New Web Development Fundamentals Program
+  {
+    id: 'program-3',
+    title: 'Web Development Fundamentals',
+    description: 'A comprehensive program covering the essential skills needed to become a web developer. Starting from the basics of HTML and CSS to advanced JavaScript concepts and modern frameworks.',
+    coverImage: 'https://picsum.photos/800/400?random=9',
+    status: 'live',
+    requiresCertificate: true,
+    organizationId: 'org-1',
+    courseIds: ['course-4', 'course-5', 'course-6'],
+    requiredOrder: true,
+    createdAt: new Date('2024-02-15'),
+    updatedAt: new Date('2024-02-15'),
   }
 ];
 

@@ -227,6 +227,7 @@ class MockApiService {
       lastName: userData.lastName,
       role: userData.role,
       isArchived: false,
+      newStatus: 'active',
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -463,6 +464,44 @@ class MockApiService {
       throw new Error('Program not found');
     }
     return program;
+  }
+
+  async createProgram(programData: Omit<Program, 'id' | 'createdAt' | 'updatedAt'>): Promise<Program> {
+    await delay();
+    const newProgram: Program = {
+      id: `program-${Date.now()}`,
+      ...programData,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    this.programs.push(newProgram);
+    return newProgram;
+  }
+
+  async updateProgram(id: string, programData: Partial<Program>): Promise<Program> {
+    await delay();
+    const programIndex = this.programs.findIndex(p => p.id === id);
+    if (programIndex === -1) {
+      throw new Error('Program not found');
+    }
+
+    this.programs[programIndex] = {
+      ...this.programs[programIndex],
+      ...programData,
+      updatedAt: new Date()
+    };
+
+    return this.programs[programIndex];
+  }
+
+  async deleteProgram(id: string): Promise<void> {
+    await delay();
+    const programIndex = this.programs.findIndex(p => p.id === id);
+    if (programIndex === -1) {
+      throw new Error('Program not found');
+    }
+    this.programs.splice(programIndex, 1);
   }
 
   // Organizations Management
@@ -758,6 +797,7 @@ class MockApiService {
       role: role as any,
       organizationId: orgId,
       isArchived: false,
+      newStatus: 'active',
       createdAt: new Date(),
       updatedAt: new Date()
     };

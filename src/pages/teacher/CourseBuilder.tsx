@@ -26,7 +26,8 @@ import {
   QuestionMarkCircleIcon,
   PencilSquareIcon,
   Bars3Icon,
-  UserGroupIcon
+  UserGroupIcon,
+  CheckCircleIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -36,6 +37,7 @@ export function CourseBuilder() {
   const { user } = useAuthStore();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(false);
+  const [finalSaving, setFinalSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('details');
   const [showModuleModal, setShowModuleModal] = useState(false);
   const [showLessonModal, setShowLessonModal] = useState(false);
@@ -285,6 +287,48 @@ export function CourseBuilder() {
   const handleSaveContent = async () => {
     // In a real implementation, this would save the modules and lessons to separate tables
     toast.success('Content saved successfully');
+  };
+
+  const handleFinalSave = async () => {
+    if (!courseData.title.trim()) {
+      toast.error('Course title is required');
+      return;
+    }
+
+    setFinalSaving(true);
+    try {
+      // For new courses, create the course first
+      let courseIdToUse = course?.id;
+      
+      if (!isEditing || !course) {
+        // Create new course
+        const newCourse = await mockApi.createCourse({
+          ...courseData,
+          teacherId: user!.id,
+          modules: course?.modules || []
+        });
+        courseIdToUse = newCourse.id;
+        setCourse(newCourse);
+        navigate(`/teacher/courses/${newCourse.id}/edit`);
+      } else {
+        // Update existing course with all data
+        const updatedCourse = await mockApi.updateCourse(course.id, {
+          ...courseData,
+          modules: course.modules
+        });
+        setCourse(updatedCourse);
+      }
+      
+      toast.success(isEditing ? 'Course updated successfully!' : 'Course created successfully!');
+      
+      // Optionally redirect to course list
+      // navigate('/teacher/courses');
+    } catch (error) {
+      console.error('Failed to save course:', error);
+      toast.error('Failed to save course. Please try again.');
+    } finally {
+      setFinalSaving(false);
+    }
   };
 
   const handleSaveSettings = async () => {
@@ -666,7 +710,7 @@ export function CourseBuilder() {
     { id: 'details', name: 'Course Details' },
     { id: 'content', name: 'Content & Modules' },
     { id: 'settings', name: 'Settings' },
-    { id: 'preview', name: 'Preview' }
+    { id: 'preview', name: 'Preview & Publish' }
   ];
 
   const renderTabContent = () => {
@@ -992,18 +1036,184 @@ export function CourseBuilder() {
       case 'preview':
         return (
           <div className="space-y-6">
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                Course Preview
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                This is how your course will appear to students. Preview functionality would show the course player interface.
-              </p>
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                  Course Preview
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Review all course details before publishing
+                </p>
+              </div>
+              
+              <div className="p-6 space-y-6">
+                {/* Course Details */}
+                <div>
+                  <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">Course Details</h4>
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Title</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{courseData.title || 'Untitled Course'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Status</p>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${courseData.status === 'live' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                          {courseData.status === 'live' ? 'Published' : 'Draft'}
+                        </span>
+                      </div>
+                      <div className="md:col-span-2">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Description</p>
+                        <div className="font-medium text-gray-900 dark:text-white prose max-w-none" dangerouslySetInnerHTML={{ __html: courseData.description || 'No description provided' }} />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Tags</p>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {courseData.tags.length > 0 ? (
+                            courseData.tags.map((tag, index) => (
+                              <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {tag}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-gray-500 text-sm">No tags</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Course Content */}
+                <div>
+                  <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">Course Content</h4>
+                  {course?.modules && course.modules.length > 0 ? (
+                    <div className="space-y-4">
+                      {course.modules.map((module, moduleIndex) => (
+                        <div key={module.id} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                          <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-700">
+                            <h5 className="font-medium text-gray-900 dark:text-white">
+                              Module {moduleIndex + 1}: {module.title}
+                            </h5>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                              {module.description || 'No description'}
+                            </p>
+                          </div>
+                          <div className="p-4">
+                            {module.lessons && module.lessons.length > 0 ? (
+                              <div className="space-y-3">
+                                {module.lessons.map((lesson, lessonIndex) => {
+                                  const Icon = getLessonIcon(lesson.type);
+                                  return (
+                                    <div key={lesson.id} className="flex items-start space-x-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
+                                      <Icon className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-medium text-gray-900 dark:text-white truncate">
+                                          {lessonIndex + 1}. {lesson.title}
+                                        </p>
+                                        <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                          <span className="capitalize">{lesson.type}</span>
+                                          {lesson.duration && (
+                                            <>
+                                              <span>•</span>
+                                              <span>{lesson.duration} min</span>
+                                            </>
+                                          )}
+                                          {lesson.isRequired && (
+                                            <>
+                                              <span>•</span>
+                                              <span className="text-red-600">Required</span>
+                                            </>
+                                          )}
+                                        </div>
+                                        {lesson.description && (
+                                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">
+                                            {lesson.description}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <p className="text-gray-500 text-sm italic">No lessons in this module</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 text-center">
+                      <p className="text-gray-500">No modules created yet</p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Course Settings */}
+                <div>
+                  <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">Course Settings</h4>
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">Track Progress</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Monitor student progress</p>
+                        </div>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${courseData.isTracked ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                          {courseData.isTracked ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">Self-Paced Learning</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Students progress at their own pace</p>
+                        </div>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${courseData.allowSelfPacing ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                          {courseData.allowSelfPacing ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">Certificate on Completion</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Award certificate upon completion</p>
+                        </div>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${courseData.requiresCertificate ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                          {courseData.requiresCertificate ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">Graded Course</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Include assessments and grades</p>
+                        </div>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${courseData.isGraded ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                          {courseData.isGraded ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-center">
-              <Button variant="outline">
-                <EyeIcon className="h-4 w-4 mr-2" />
-                Open Full Preview
+            
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setActiveTab('details')}
+              >
+                Back to Editing
+              </Button>
+              <Button 
+                onClick={handleFinalSave}
+                loading={finalSaving}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <CheckCircleIcon className="h-4 w-4 mr-2" />
+                {isEditing ? 'Update Course' : 'Create Course'}
               </Button>
             </div>
           </div>

@@ -32,7 +32,7 @@ export function OrganizationSettings() {
   const [orgData, setOrgData] = useState({
     name: '',
     description: '',
-    logo: null as File | null, // store a File instead of string
+    logo: null as File | string | null, // Can be File (during upload), string (URL), or null
     primaryColor: '#3b82f6',
     emailCopyBranding: '',
   });
@@ -63,7 +63,7 @@ export function OrganizationSettings() {
       setOrgData({
         name: orgDataResult.name,
         description: orgDataResult.description || '',
-        logo: null as File | null, // store a File instead of string
+        logo: orgDataResult.logo || null, // Use the actual logo from organization data
         primaryColor: orgDataResult.primaryColor || '#3b82f6',
         emailCopyBranding: orgDataResult.emailCopyBranding || '',
       });
@@ -94,8 +94,20 @@ export function OrganizationSettings() {
         const updatedOrg = await organizationService.updateOrganizationWithLogo(orgId, formData);
         setOrganization(updatedOrg);
         await refetchOrganization(orgId)
+      } else if (orgData.logo === null) {
+        // Explicitly remove logo by sending a special value
+        const formData = new FormData();
+        formData.append('name', orgData.name);
+        formData.append('description', orgData.description);
+        formData.append('primaryColor', orgData.primaryColor);
+        formData.append('emailCopyBranding', orgData.emailCopyBranding);
+        formData.append('logo', ''); // Empty string to indicate logo removal
+
+        const updatedOrg = await organizationService.updateOrganizationWithLogo(orgId, formData);
+        setOrganization(updatedOrg);
+        await refetchOrganization(orgId)
       } else {
-        // Remove logo before sending JSON data
+        // No logo change, send JSON data
         const { logo, ...jsonOrgData } = orgData;
 
         const updatedOrg = await organizationService.updateOrganizationData(orgId, jsonOrgData);
@@ -270,27 +282,45 @@ export function OrganizationSettings() {
                           alt="Preview Logo"
                           className="h-16 w-16 rounded-lg object-cover"
                         />
-                      ) : orgData.logo ? (
+                      ) : typeof orgData.logo === 'string' && orgData.logo ? (
                         <img
                           src={orgData.logo}
                           alt="Organization Logo"
                           className="h-16 w-16 rounded-lg object-cover"
                         />
                       ) : (
-                        <div className="h-16 w-16 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                          <PhotoIcon className="h-8 w-8 text-gray-400" />
+                        <div 
+                          className="h-16 w-16 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: orgData.primaryColor }}
+                        >
+                          <BuildingOfficeIcon className="h-8 w-8 text-white" />
                         </div>
                       )}
-
-                      {/* Upload Button */}
+                      
+                      {/* Logo Controls */}
                       <div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => document.getElementById('logoUpload')?.click()}
-                        >
-                          Upload Logo
-                        </Button>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => document.getElementById('logoUpload')?.click()}
+                          >
+                            Upload Logo
+                          </Button>
+                          
+                          {/* Show Remove Logo button only when there's a logo */}
+                          {(orgData.logo instanceof File || (typeof orgData.logo === 'string' && orgData.logo)) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setOrgData({ ...orgData, logo: null })}
+                              className="text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-600 dark:hover:bg-red-900/20"
+                            >
+                              Remove Logo
+                            </Button>
+                          )}
+                        </div>
+                        
                         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                           JPG, PNG, or GIF. Max 2MB.
                         </p>
