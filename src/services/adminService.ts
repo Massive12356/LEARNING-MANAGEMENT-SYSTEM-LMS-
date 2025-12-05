@@ -13,6 +13,9 @@ import {
   UserStatus,
   EmailTemplate,
   adminSearchQuery,
+  RecentActivitiesResponse,
+  RecentUserResponse,
+  OrganizationStatsResponse,
 } from '../types';
 import apiClient from './apiClient';
 import { AxiosError } from 'axios';
@@ -214,7 +217,7 @@ class AdminService {
         throw new Error('No valid fields or files provided for update.');
       }
 
-      const response = await apiClient.put<User>(
+      const response = await apiClient.patch<User>(
         `/user/Edit/User-profile/admin/${userId}`,
         formData,
         { headers: { 'Content-Type': 'multipart/form-data' } }
@@ -641,6 +644,47 @@ class AdminService {
       const err = error as AxiosError<{ message?: string }>;
       console.error('[adminService] ERROR', err.response?.data?.message || err.message);
       throw new Error(err.response?.data?.message || 'Failed to fetch template');
+    }
+  }
+
+  // recent Activities
+  async getRecentActivity(): Promise<RecentActivitiesResponse>{
+    try {
+      const response = await apiClient.get('/organization/recent-activities');
+      console.log("[AdminService] RECENT ACTIVITY RESPONSE:", response?.data?.activities)
+      return response?.data
+    } catch (error) {
+      const err = error as AxiosError<{message?:string}>
+      console.log("[AdminService] ERROR RESPONSE FROM RECENT ACTIVITY SERVER", err?.response?.data?.message || err?.message)
+      throw new Error(err?.response?.data?.message || err?.message || 'Failed to Fetch Recent activity')
+    }
+  }
+
+  // recent Users
+  async getRecentUsers(): Promise<RecentUserResponse>{
+    try {
+      const response = await apiClient.get('/organization/recent-users');
+      console.log('[adminService] RECENT USERS RESPONSE', response?.data?.users);
+      return response?.data
+    } catch (error) {
+      const err = error as AxiosError<{message?: string}>
+      console.log("[adminService] ERROR RESPONSE RECENT USERS SERVICE", err?.response?.data?.message);
+      throw new Error(err?.response?.data?.message || err?.message)
+
+    }
+  }
+
+  // organization statistics
+
+  async getOrganizationStats(): Promise<OrganizationStatsResponse>{
+    try {
+      const response = await apiClient.get('/organization/stats');
+      console.log("[adminService] ORGANIZATION STATS RESPONSE", response?.data?.stats)
+      return response?.data
+    } catch (error) {
+      const err = error as AxiosError<{message?: string}>
+      console.log('[adminService] ERROR RESPONSE FROM ORGANIZATION STATS SERVER ', err?.response?.data?.message || err?.message);
+      throw new Error(err?.response?.data?.message || err?.message)
     }
   }
 }

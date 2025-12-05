@@ -245,40 +245,71 @@ export function UserManagement() {
     }
   }, [currentUser?.id]);
 
-  const loadActiveUsers = async (page = 1, limit = 10, search?: string) => {
-    if (!currentUser?.organizationId) return;
-    setLoading(true);
+ const loadActiveUsers = async (page = 1, limit = 10, search?: string) => {
+   if (!currentUser?.organizationId) return;
+   setLoading(true);
 
-    try {
-      let response;
+   try {
+     let response;
+     const trimmed = search?.trim();
 
-      if (search && search.trim() !== '') {
-        // NEW SEARCH FUNCTION
-        response = await adminService.adminSearchActiveUsers(
-          { name: search },
-          currentUser.organizationId
-        );
+     if (trimmed) {
+       try {
+         const results = await adminService.adminSearchActiveUsers(
+           { name: trimmed },
+           currentUser.organizationId
+         );
 
-        // wrap in format similar to old response structure
-        response = { users: response, totalPages: 1, totalActiveUsers: response.length };
-      } else {
-        // OLD LISTING FUNCTION
-        response = await adminService.getActiveUsers(currentUser.organizationId, page, limit);
-      }
+         // Normal empty response
+         if (Array.isArray(results) && results.length === 0) {
+           setUsers([]);
+           setActiveTotalPages(1);
+           setTotalActiveUsers(0);
+           setTotalOrgUsers(0);
+           toast.error('No users match your search');
+           setLoading(false);
+           return;
+         }
 
-      if (response) {
-        const filtered = response.users?.filter(u => u.role !== 'admin') || [];
-        setUsers(filtered);
-        setActiveTotalPages(response.totalPages || 1);
-        setTotalActiveUsers(response?.totalActiveUsers ?? filtered.length);
-        setTotalOrgUsers(response?.totalUsersInOrg ?? 0);
-      }
-    } catch (err) {
-      toast.error('Failed to load users');
-    } finally {
-      setLoading(false);
-    }
-  };
+         response = {
+           users: results,
+           totalPages: 1,
+           totalActiveUsers: results.length,
+         };
+       } catch (error: any) {
+         // Backend “no result” error
+         if (error?.count === 0) {
+           setUsers([]);
+           setActiveTotalPages(1);
+           setTotalActiveUsers(0);
+           setTotalOrgUsers(0);
+           toast.error('No users match your search');
+           setLoading(false);
+           return;
+         }
+
+         throw error; // real error → global catch
+       }
+     } else {
+       // No search → regular list
+       response = await adminService.getActiveUsers(currentUser.organizationId, page, limit);
+     }
+
+     // PROCESS RESULTS
+     const filtered = response?.users?.filter(u => u.role !== 'admin') ?? [];
+
+     setUsers(filtered);
+     setActiveTotalPages(response?.totalPages || 1);
+     setTotalActiveUsers(response?.totalActiveUsers ?? filtered.length);
+     setTotalOrgUsers(response?.totalUsersInOrg ?? 0);
+   } catch (err) {
+     toast.error('Failed to load users');
+   } finally {
+     setLoading(false);
+   }
+ };
+
+
 
 
  const loadSuspendedUsers = async (page = 1, limit = 10, search?: string) => {
@@ -287,28 +318,44 @@ export function UserManagement() {
 
    try {
      let response;
+     const trimmed = search?.trim();
 
-     if (search?.trim() !== '') {
-       response = await adminService.adminSearchSuspendedUsers(
-         { name: search },
+     if (trimmed) {
+       const results = await adminService.adminSearchSuspendedUsers(
+         { name: trimmed },
          currentUser.organizationId
        );
 
-       response = { users: response, totalPages: 1, totalSuspendedUsers: response.length };
+       if (results.length === 0) {
+         setSuspendedUsers([]);
+         setSuspendedTotalPages(1);
+         setTotalSuspendedUsers(0);
+         toast.error('No users match your search');
+         setLoading(false);
+         return;
+       }
+
+       response = {
+         users: results,
+         totalPages: 1,
+         totalSuspendedUsers: results.length,
+       };
      } else {
        response = await adminService.getSuspendedUsers(currentUser.organizationId, page, limit);
      }
 
-     const filtered = response?.users?.filter(u => u.role !== 'admin') || [];
+     const filtered = response?.users?.filter(u => u.role !== 'admin') ?? [];
+
      setSuspendedUsers(filtered);
-     setSuspendedTotalPages(response?.totalPages ?? 1);
-     setTotalSuspendedUsers(response?.users?.length ?? filtered.length);
+     setSuspendedTotalPages(response?.totalPages || 1);
+     setTotalSuspendedUsers(response?.totalPendingUsers ?? filtered.length);
    } catch (err) {
      toast.error('Failed to load suspended users');
    } finally {
      setLoading(false);
    }
  };
+
 
  console.log("AUTH USER", currentUser)
 
@@ -319,21 +366,36 @@ export function UserManagement() {
 
     try {
       let response;
+      const trimmed = search?.trim();
 
-      if (search?.trim() !== '') {
-        response = await adminService.adminSearchDeletedUsers(
-          { name: search },
+      if (trimmed) {
+        const results = await adminService.adminSearchDeletedUsers(
+          { name: trimmed },
           currentUser.organizationId
         );
 
-        response = { users: response, totalPages: 1, totalDeletedUsers: response.length };
+        if (results.length === 0) {
+          setDeletedUsers([]);
+          setDeletedTotalPages(1);
+          setTotalDeletedUsers(0);
+          toast.error('No users match your search');
+          setLoading(false);
+          return;
+        }
+
+        response = {
+          users: results,
+          totalPages: 1,
+          totalDeletedUsers: results.length,
+        };
       } else {
         response = await adminService.getDeletedUsers(currentUser.organizationId, page, limit);
       }
 
-      const filtered = response?.users?.filter(u => u.role !== 'admin') || [];
+      const filtered = response?.users?.filter(u => u.role !== 'admin') ?? [];
+
       setDeletedUsers(filtered);
-      setDeletedTotalPages(response?.totalPages ?? 1);
+      setDeletedTotalPages(response?.totalPages || 1);
       setTotalDeletedUsers(response?.totalDeletedUsers ?? filtered.length);
     } catch (err) {
       toast.error('Failed to load deleted users');
@@ -343,34 +405,52 @@ export function UserManagement() {
   };
 
 
+
  const loadPendingUsers = async (page = 1, limit = 10, search?: string) => {
    if (!currentUser?.organizationId) return;
    setLoading(true);
 
    try {
      let response;
+     const trimmed = search?.trim();
 
-     if (search?.trim() !== '') {
-       response = await adminService.adminSearchPendingUsers(
-         { name: search },
+     if (trimmed) {
+       const results = await adminService.adminSearchPendingUsers(
+         { name: trimmed },
          currentUser.organizationId
        );
 
-       response = { users: response, totalPages: 1, totalPendingUsers: response.length };
+       if (results.length === 0) {
+         setPendingUsers([]);
+         setPendingTotalPages(1);
+         setTotalPendingUsers(0);
+         toast.error('No users match your search');
+         setLoading(false);
+         return;
+       }
+
+       response = {
+         users: results,
+         totalPages: 1,
+         totalPendingUsers: results.length,
+       };
      } else {
        response = await adminService.getPendingUsers(currentUser.organizationId, page, limit);
      }
 
-     const filtered = response?.users?.filter(u => u.role !== 'admin') || [];
+     const filtered = response?.users?.filter(u => u.role !== 'admin') ?? [];
+
      setPendingUsers(filtered);
      setPendingTotalPages(response?.totalPages || 1);
-     setTotalPendingUsers(response?.totalPendingUsers || filtered.length);
+     setTotalPendingUsers(response?.totalPendingUsers ?? filtered.length);
+
    } catch (err) {
      toast.error('Failed to load pending users');
    } finally {
      setLoading(false);
    }
  };
+
 
 
   const handleInviteUser = async (e: React.FormEvent) => {
@@ -488,6 +568,8 @@ export function UserManagement() {
         await adminService.restoreDeletedUser([Number(userIds.id)]);
         toast.success(`Deleted user ${userIds.firstName} restored successfully`);
       }
+
+      setDeletedSearchTerm('');
 
       // Reload the appropriate lists
       if (activeTab === 'suspended') {
@@ -864,16 +946,16 @@ export function UserManagement() {
   ];
 
 
-  useEffect(() => {
-    if (!currentUser?.organizationId) return;
+   useEffect(() => {
+   if (!currentUser?.organizationId) return;
 
-    // Load datasets once on mount
-    loadActiveUsers(1, pageSize, activeSearchTerm);
-    loadPendingUsers(1, pageSize, pendingSearchTerm);
-    loadSuspendedUsers(1, pageSize, suspendedSearchTerm);
-    loadDeletedUsers(1, pageSize, deletedSearchTerm);
-    loadOrganization();
-  }, [currentUser?.organizationId]);
+  //   // Load datasets once on mount
+   loadActiveUsers(1, pageSize, activeSearchTerm);
+  loadPendingUsers(1, pageSize, pendingSearchTerm);
+  loadSuspendedUsers(1, pageSize, suspendedSearchTerm);
+  loadDeletedUsers(1, pageSize, deletedSearchTerm);
+  loadOrganization();
+   }, [currentUser?.organizationId]);
 
   useEffect(() => {
     if (activeTab === 'active') {
@@ -901,23 +983,20 @@ export function UserManagement() {
     (searchTerm: string) => {
       if (activeTab === 'active') {
         setActiveSearchTerm(searchTerm);
-        setActivePage(1); // Reset to first page when searching
+        setActivePage(1);
       } else if (activeTab === 'pending') {
         setPendingSearchTerm(searchTerm);
-        setPendingPage(1); // Reset to first page when searching
+        setPendingPage(1);
       } else if (activeTab === 'suspended') {
         setSuspendedSearchTerm(searchTerm);
-        setSuspendedPage(1); // Reset to first page when searching
+        setSuspendedPage(1);
       } else if (activeTab === 'deleted') {
         setDeletedSearchTerm(searchTerm);
-        setDeletedPage(1); // Reset to first page when searching
+        setDeletedPage(1);
       }
     },
     [activeTab]
   );
-
-  // Debounced search effect
-
 
   const clearSearch = () => {
     if (activeTab === 'active') {

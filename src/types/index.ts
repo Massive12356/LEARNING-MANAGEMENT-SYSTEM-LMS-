@@ -627,3 +627,52 @@ export interface DeletedUsersResponse {
   currentPage: number;
   users: User[];
 }
+
+export type ActivityType = "user_registration" | "user_login" | "user_profileUpdate"
+
+export interface UserRegistrationData {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role:string;
+  createdAt: string
+}
+
+export interface Activity<T = any>{
+  type: ActivityType;
+  data: T;
+  createdAt: string
+}
+
+export interface RecentActivitiesResponse{
+  message: string;
+  activities: Activity<UserRegistrationData>[];
+}
+
+export interface RecentUser{
+  id:number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role:UserRole;
+  status: UserStatus;
+  createdAt: string;
+}
+
+export interface RecentUserResponse{
+  message: string;
+  users:RecentUser[];
+}
+
+export interface OrganizationStats {
+  totalUsers: number;
+  totalCourses: number;
+  totalPrograms: number;
+  activeEnrollments: number;
+}
+
+export interface OrganizationStatsResponse{
+  message: string;
+  stats: OrganizationStats;
+}
