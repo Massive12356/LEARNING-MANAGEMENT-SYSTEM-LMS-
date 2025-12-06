@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { mockApi } from '../../services/mockApi';
@@ -21,7 +21,7 @@ import { Modal } from '../../components/ui/Modal';
 import toast from 'react-hot-toast';
 
 export function ProgramList() {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [filteredPrograms, setFilteredPrograms] = useState<Program[]>([]);

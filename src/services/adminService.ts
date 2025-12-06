@@ -12,6 +12,10 @@ import {
   DeletedUsersResponse,
   UserStatus,
   EmailTemplate,
+  adminSearchQuery,
+  RecentActivitiesResponse,
+  RecentUserResponse,
+  OrganizationStatsResponse,
 } from '../types';
 import apiClient from './apiClient';
 import { AxiosError } from 'axios';
@@ -213,7 +217,7 @@ class AdminService {
         throw new Error('No valid fields or files provided for update.');
       }
 
-      const response = await apiClient.put<User>(
+      const response = await apiClient.patch<User>(
         `/user/Edit/User-profile/admin/${userId}`,
         formData,
         { headers: { 'Content-Type': 'multipart/form-data' } }
@@ -394,12 +398,42 @@ class AdminService {
 
   async suspendUser(userIds: number[]): Promise<User> {
     try {
-      const response = await apiClient.patch(`/user/organization/suspended/bulk/users`, {userIds});
+      const response = await apiClient.patch(`/user/organization/suspended/bulk/users`, {
+        userIds,
+      });
       console.log(`[adminService] SUSPEND USER RESPONSE FROM BACKEND`, response.data);
       return response.data || response.data.users;
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
       console.log('[adminService] ERROR SUSPENDING USER', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || err.message);
+    }
+  }
+
+  async restoreSuspendedUser(userIds: number[]): Promise<User> {
+    try {
+      const response = await apiClient.put(`/user/organization/suspended/bulk/users/restore`, {
+        userIds,
+      });
+      console.log(`[adminService] RESTORE SUSPENDED USER RESPONSE FROM BACKEND`, response.data);
+      return response.data || response.data.users;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log('[adminService] ERROR SUSPENDING USER', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || err.message);
+    }
+  }
+
+  async restoreDeletedUser(userIds: number[]): Promise<User> {
+    try {
+      const response = await apiClient.put(`/user/organization/deleted/bulk/users/restore`, {
+        userIds,
+      });
+      console.log(`[adminService] RESTORE SUSPENDED USER RESPONSE FROM BACKEND`, response.data);
+      return response.data || response.data.users;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log('[adminService] ERROR DELETED USER', err.response?.data || err.message);
       throw new Error(err.response?.data?.message || err.message);
     }
   }
@@ -525,6 +559,47 @@ class AdminService {
     }
   }
 
+  // admin search query service functions
+  private async adminSearchByStatus(
+    status: 'active-users' | 'pending-users' | 'suspended-users' | 'deleted-users',
+    query: adminSearchQuery,
+    organizationId: string
+  ): Promise<User[]> {
+    try {
+      const response = await apiClient.get(`user/filter/${status}/organization/${organizationId}`, {
+        params: query,
+      });
+
+      console.log(`[AdminService] ${status.toUpperCase()} SEARCH RESPONSE:`, response.data);
+
+      return response.data?.data || response.data?.users || [];
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.error(
+        `[AdminService] ${status.toUpperCase()} ERROR RESPONSE:`,
+        err.response?.data || err.message
+      );
+
+      throw new Error(err.response?.data?.message || `Failed to search ${status}`);
+    }
+  }
+
+  async adminSearchActiveUsers(query: adminSearchQuery, organizationId: string) {
+    return this.adminSearchByStatus('active-users', query, organizationId);
+  }
+
+  async adminSearchPendingUsers(query: adminSearchQuery, organizationId: string) {
+    return this.adminSearchByStatus('pending-users', query, organizationId);
+  }
+
+  async adminSearchSuspendedUsers(query: adminSearchQuery, organizationId: string) {
+    return this.adminSearchByStatus('suspended-users', query, organizationId);
+  }
+
+  async adminSearchDeletedUsers(query: adminSearchQuery, organizationId: string) {
+    return this.adminSearchByStatus('deleted-users', query, organizationId);
+  }
+
   // Save or update an email template
 
   // ✅ Create or update a template
@@ -569,6 +644,47 @@ class AdminService {
       const err = error as AxiosError<{ message?: string }>;
       console.error('[adminService] ERROR', err.response?.data?.message || err.message);
       throw new Error(err.response?.data?.message || 'Failed to fetch template');
+    }
+  }
+
+  // recent Activities
+  async getRecentActivity(): Promise<RecentActivitiesResponse>{
+    try {
+      const response = await apiClient.get('/organization/recent-activities');
+      console.log("[AdminService] RECENT ACTIVITY RESPONSE:", response?.data?.activities)
+      return response?.data
+    } catch (error) {
+      const err = error as AxiosError<{message?:string}>
+      console.log("[AdminService] ERROR RESPONSE FROM RECENT ACTIVITY SERVER", err?.response?.data?.message || err?.message)
+      throw new Error(err?.response?.data?.message || err?.message || 'Failed to Fetch Recent activity')
+    }
+  }
+
+  // recent Users
+  async getRecentUsers(): Promise<RecentUserResponse>{
+    try {
+      const response = await apiClient.get('/organization/recent-users');
+      console.log('[adminService] RECENT USERS RESPONSE', response?.data?.users);
+      return response?.data
+    } catch (error) {
+      const err = error as AxiosError<{message?: string}>
+      console.log("[adminService] ERROR RESPONSE RECENT USERS SERVICE", err?.response?.data?.message);
+      throw new Error(err?.response?.data?.message || err?.message)
+
+    }
+  }
+
+  // organization statistics
+
+  async getOrganizationStats(): Promise<OrganizationStatsResponse>{
+    try {
+      const response = await apiClient.get('/organization/stats');
+      console.log("[adminService] ORGANIZATION STATS RESPONSE", response?.data?.stats)
+      return response?.data
+    } catch (error) {
+      const err = error as AxiosError<{message?: string}>
+      console.log('[adminService] ERROR RESPONSE FROM ORGANIZATION STATS SERVER ', err?.response?.data?.message || err?.message);
+      throw new Error(err?.response?.data?.message || err?.message)
     }
   }
 }

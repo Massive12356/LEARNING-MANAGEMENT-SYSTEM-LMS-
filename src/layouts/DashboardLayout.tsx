@@ -242,6 +242,18 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     return null;
   }
 
+  const profileImage = (() => {
+  if (!user?.images) return null; 
+
+  try {
+    const parsed = JSON.parse(user.images);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : null;
+  } catch {
+    return null;
+  }
+})();
+
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
       {/* Sidebar */}
@@ -292,9 +304,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
               <div className="flex items-center space-x-3">
                 {organization.logo ? (
                   <img
-                    src={organization.logo}
+                    src={organization?.logo}
                     alt={organization.name}
-                    className="w-7 h-7 object-cover center mr-1 rounded-full"
+                    className="w-8 h-8 object-cover center mr-1 rounded-full"
                   />
                 ) : (
                   <div className="h-8 w-8 rounded bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
@@ -452,9 +464,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                   className="flex items-center space-x-2 focus:outline-none"
                   aria-label="User profile"
                 >
-                  {user.images ? (
+                  {profileImage ? (
                     <img
-                      src={user.images}
+                      src={profileImage}
                       alt="Profile"
                       className="h-9 w-9 rounded-full object-cover border-2 border-white dark:border-gray-800 shadow"
                     />

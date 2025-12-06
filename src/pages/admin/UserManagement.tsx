@@ -8,7 +8,6 @@ import { Modal } from '../../components/ui/Modal';
 import { DataTable, Column } from '../../components/ui/DataTable';
 import { FileUploader } from '../../components/ui/FileUploader';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
-import { mockApi } from '../../services/mockApi';
 import { organizationService } from '../../services/organizationService';
 import { adminService } from '../../services/adminService';
 import {
@@ -30,6 +29,7 @@ import {
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import Papa from 'papaparse';
+import { useDebounce } from '../../hooks/useDebounce';
 
 interface CSVUserRecord {
   email: string;
@@ -155,20 +155,22 @@ const PendingUsersTable: React.FC<{
 };
 
 export function UserManagement() {
-  const { user: currentUser, viewAsUser, fetchUserById } = useAuthStore();
+  const { user: currentUser } = useAuthStore();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [organization, setOrganization] = useState<Organization | null>(null);
-  const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'suspended' | 'deleted'>('active');
+  const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'suspended' | 'deleted'>(
+    'active'
+  );
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
   const [totalPendingUsers, setTotalPendingUsers] = useState<number>(0);
   const [totalSuspendedUsers, setTotalSuspendedUsers] = useState<number>(0);
   const [totalDeletedUsers, setTotalDeletedUsers] = useState<number>(0);
   const [invitingUsers, setInvitingUsers] = useState(false);
-  const [totalActiveUsers, setTotalActiveUsers] = useState<ActiveUsersResponse | null>(null);
+  const [totalActiveUsers, setTotalActiveUsers] = useState<number>(0);
   const [suspendedUsers, setSuspendedUsers] = useState<User[]>([]);
   const [deletedUsers, setDeletedUsers] = useState<User[]>([]);
   const [activePage, setActivePage] = useState(1);
@@ -179,10 +181,18 @@ export function UserManagement() {
   const [pendingTotalPages, setPendingTotalPages] = useState(1);
   const [suspendedTotalPages, setSuspendedTotalPages] = useState(1);
   const [deletedTotalPages, setDeletedTotalPages] = useState(1);
+
+  // search States in the Tabs
   const [activeSearchTerm, setActiveSearchTerm] = useState('');
   const [pendingSearchTerm, setPendingSearchTerm] = useState('');
   const [suspendedSearchTerm, setSuspendedSearchTerm] = useState('');
   const [deletedSearchTerm, setDeletedSearchTerm] = useState('');
+
+  // debounce
+  const debouncedActive = useDebounce(activeSearchTerm,500);
+  const debouncedPending = useDebounce(pendingSearchTerm, 500);
+  const debouncedSuspended = useDebounce(suspendedSearchTerm,500)
+  const debouncedDeleted = useDebounce(deletedSearchTerm, 500)
 
   const [pageSize] = useState(10);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -202,6 +212,7 @@ export function UserManagement() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [statusLoading, setStatusLoading] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isSuspending, setIsSuspending] = useState(false);
 
   const [inviteData, setInviteData] = useState({
     email: '',
@@ -234,88 +245,213 @@ export function UserManagement() {
     }
   }, [currentUser?.id]);
 
-  const loadActiveUsers = async (page = 1, limit = 10, search = '') => {
-    if (!currentUser?.organizationId) return;
-    try {
-      // Pass search term to the API
-      const response = await adminService.getActiveUsers(currentUser.organizationId, page, limit, search);
-      if (response) {
-        const filteredUsers = response.users?.filter(user => user.role !== 'admin') || [];
-        setUsers(filteredUsers);
-        setActiveTotalPages(response.totalPages || 1);
-        
-        // 🔹 Keep a separate total count that doesn't change on pagination
-        setTotalActiveUsers({
-          ...response,
-          totalActiveUsers: response.totalActiveUsers ?? filteredUsers.length,
-        });
+ const loadActiveUsers = async (page = 1, limit = 10, search?: string) => {
+   if (!currentUser?.organizationId) return;
+   setLoading(true);
 
-        setTotalOrgUsers(response?.totalUsersInOrg);
-      }
-    } catch (error) {
-      toast.error('Failed to load users');
-    } finally {
-      setLoading(false);
-    }
-  };
+   try {
+     let response;
+     const trimmed = search?.trim();
 
-  const loadSuspendedUsers = async (page = 1, limit = 10, search = '') => {
+     if (trimmed) {
+       try {
+         const results = await adminService.adminSearchActiveUsers(
+           { name: trimmed },
+           currentUser.organizationId
+         );
+
+         // Normal empty response
+         if (Array.isArray(results) && results.length === 0) {
+           setUsers([]);
+           setActiveTotalPages(1);
+           setTotalActiveUsers(0);
+           setTotalOrgUsers(0);
+           toast.error('No users match your search');
+           setLoading(false);
+           return;
+         }
+
+         response = {
+           users: results,
+           totalPages: 1,
+           totalActiveUsers: results.length,
+         };
+       } catch (error: any) {
+         // Backend “no result” error
+         if (error?.count === 0) {
+           setUsers([]);
+           setActiveTotalPages(1);
+           setTotalActiveUsers(0);
+           setTotalOrgUsers(0);
+           toast.error('No users match your search');
+           setLoading(false);
+           return;
+         }
+
+         throw error; // real error → global catch
+       }
+     } else {
+       // No search → regular list
+       response = await adminService.getActiveUsers(currentUser.organizationId, page, limit);
+     }
+
+     // PROCESS RESULTS
+     const filtered = response?.users?.filter(u => u.role !== 'admin') ?? [];
+
+     setUsers(filtered);
+     setActiveTotalPages(response?.totalPages || 1);
+     setTotalActiveUsers(response?.totalActiveUsers ?? filtered.length);
+     setTotalOrgUsers(response?.totalUsersInOrg ?? 0);
+   } catch (err) {
+     toast.error('Failed to load users');
+   } finally {
+     setLoading(false);
+   }
+ };
+
+
+
+
+ const loadSuspendedUsers = async (page = 1, limit = 10, search?: string) => {
+   if (!currentUser?.organizationId) return;
+   setLoading(true);
+
+   try {
+     let response;
+     const trimmed = search?.trim();
+
+     if (trimmed) {
+       const results = await adminService.adminSearchSuspendedUsers(
+         { name: trimmed },
+         currentUser.organizationId
+       );
+
+       if (results.length === 0) {
+         setSuspendedUsers([]);
+         setSuspendedTotalPages(1);
+         setTotalSuspendedUsers(0);
+         toast.error('No users match your search');
+         setLoading(false);
+         return;
+       }
+
+       response = {
+         users: results,
+         totalPages: 1,
+         totalSuspendedUsers: results.length,
+       };
+     } else {
+       response = await adminService.getSuspendedUsers(currentUser.organizationId, page, limit);
+     }
+
+     const filtered = response?.users?.filter(u => u.role !== 'admin') ?? [];
+
+     setSuspendedUsers(filtered);
+     setSuspendedTotalPages(response?.totalPages || 1);
+     setTotalSuspendedUsers(response?.totalPendingUsers ?? filtered.length);
+   } catch (err) {
+     toast.error('Failed to load suspended users');
+   } finally {
+     setLoading(false);
+   }
+ };
+
+
+ console.log("AUTH USER", currentUser)
+
+
+  const loadDeletedUsers = async (page = 1, limit = 10, search?: string) => {
     if (!currentUser?.organizationId) return;
     setLoading(true);
-    try {
-      // Pass search term to the API
-      const response = await adminService.getSuspendedUsers(currentUser.organizationId, page, limit, search);
-      if (response) {
-        const filteredSuspended = response.users?.filter(user => user.role !== 'admin') || [];
-        setSuspendedUsers(filteredSuspended);
-        setSuspendedTotalPages(response.totalPages || 1);
-        setTotalSuspendedUsers(response.totalSuspendedUsers ?? filteredSuspended.length);
-      }
-    } catch (error) {
-      toast.error('Failed to load suspended users');
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const loadDeletedUsers = async (page = 1, limit = 10, search = '') => {
-    if (!currentUser?.organizationId) return;
-    setLoading(true);
     try {
-      // Pass search term to the API
-      const response = await adminService.getDeletedUsers(currentUser.organizationId, page, limit, search);
-      if (response) {
-        const filteredDeleted = response.users?.filter(user => user.role !== 'admin') || [];
-        setDeletedUsers(filteredDeleted);
-        setDeletedTotalPages(response.totalPages || 1);
-        setTotalDeletedUsers(response.totalDeletedUsers ?? filteredDeleted.length);
+      let response;
+      const trimmed = search?.trim();
+
+      if (trimmed) {
+        const results = await adminService.adminSearchDeletedUsers(
+          { name: trimmed },
+          currentUser.organizationId
+        );
+
+        if (results.length === 0) {
+          setDeletedUsers([]);
+          setDeletedTotalPages(1);
+          setTotalDeletedUsers(0);
+          toast.error('No users match your search');
+          setLoading(false);
+          return;
+        }
+
+        response = {
+          users: results,
+          totalPages: 1,
+          totalDeletedUsers: results.length,
+        };
+      } else {
+        response = await adminService.getDeletedUsers(currentUser.organizationId, page, limit);
       }
-    } catch (error) {
+
+      const filtered = response?.users?.filter(u => u.role !== 'admin') ?? [];
+
+      setDeletedUsers(filtered);
+      setDeletedTotalPages(response?.totalPages || 1);
+      setTotalDeletedUsers(response?.totalDeletedUsers ?? filtered.length);
+    } catch (err) {
       toast.error('Failed to load deleted users');
     } finally {
       setLoading(false);
     }
   };
 
-  const loadPendingUsers = async (page = 1, limit = 10, search = '') => {
-    if (!currentUser?.organizationId) return;
-    setLoading(true);
-    try {
-      // Pass search term to the API
-      const response = await adminService.getPendingUsers(currentUser.organizationId, page, limit, search);
-      if (response) {
-        const filteredPending = response.users?.filter(user => user.role !== 'admin') || [];
-        setPendingUsers(filteredPending);
-        setPendingTotalPages(response.totalPages || 1);
-        // 🔹 Keep overall pending count fixed
-        setTotalPendingUsers(response?.totalPendingUsers);
-      }
-    } catch (error) {
-      toast.error('Failed to load pending users');
-    } finally {
-      setLoading(false);
-    }
-  };
+
+
+ const loadPendingUsers = async (page = 1, limit = 10, search?: string) => {
+   if (!currentUser?.organizationId) return;
+   setLoading(true);
+
+   try {
+     let response;
+     const trimmed = search?.trim();
+
+     if (trimmed) {
+       const results = await adminService.adminSearchPendingUsers(
+         { name: trimmed },
+         currentUser.organizationId
+       );
+
+       if (results.length === 0) {
+         setPendingUsers([]);
+         setPendingTotalPages(1);
+         setTotalPendingUsers(0);
+         toast.error('No users match your search');
+         setLoading(false);
+         return;
+       }
+
+       response = {
+         users: results,
+         totalPages: 1,
+         totalPendingUsers: results.length,
+       };
+     } else {
+       response = await adminService.getPendingUsers(currentUser.organizationId, page, limit);
+     }
+
+     const filtered = response?.users?.filter(u => u.role !== 'admin') ?? [];
+
+     setPendingUsers(filtered);
+     setPendingTotalPages(response?.totalPages || 1);
+     setTotalPendingUsers(response?.totalPendingUsers ?? filtered.length);
+
+   } catch (err) {
+     toast.error('Failed to load pending users');
+   } finally {
+     setLoading(false);
+   }
+ };
+
+
 
   const handleInviteUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -376,11 +512,9 @@ export function UserManagement() {
 
     try {
       await adminService.suspendUser([Number(userToSuspend.id)]);
-      toast.success(
-        `suspended successfully`
-      );
+      toast.success(`suspended successfully`);
       setShowSuspendConfirm(false);
-      setUserToSuspend(null); 
+      setUserToSuspend(null);
 
       // Reload both lists
       await Promise.all([loadActiveUsers(), loadSuspendedUsers()]);
@@ -420,26 +554,30 @@ export function UserManagement() {
 
   const confirmRestoreUser = async () => {
     if (!userToRestore) return;
-    
+
     setIsRestoring(true);
     try {
       // For suspended users, we activate them
       // For deleted users, we update their status to active
       if (activeTab === 'suspended') {
-        await adminService.activateUser(userToRestore.id);
-        toast.success('Suspended user restored successfully');
+        const userIds = userToRestore;
+        await adminService.restoreSuspendedUser([Number(userIds.id)]);
+        toast.success(`Suspended user ${userIds.firstName} restored successfully`);
       } else if (activeTab === 'deleted') {
-        await adminService.updateUserStatus(userToRestore.id, { newStatus: 'active' });
-        toast.success('Deleted user restored successfully');
+        const userIds = userToRestore;
+        await adminService.restoreDeletedUser([Number(userIds.id)]);
+        toast.success(`Deleted user ${userIds.firstName} restored successfully`);
       }
-      
+
+      setDeletedSearchTerm('');
+
       // Reload the appropriate lists
       if (activeTab === 'suspended') {
         loadSuspendedUsers(suspendedPage, pageSize, suspendedSearchTerm);
       } else if (activeTab === 'deleted') {
         loadDeletedUsers(deletedPage, pageSize, deletedSearchTerm);
       }
-      
+
       // Also reload active users since a restored user will appear there
       loadActiveUsers(activePage, pageSize, activeSearchTerm);
     } catch (error) {
@@ -464,7 +602,7 @@ export function UserManagement() {
       console.log('PAYLOAD ID:', [userToDelete.id]);
       await adminService.deleteUser([userToDelete.id]);
       toast.success('User deleted successfully');
-      await Promise.all([loadDeletedUsers(),loadActiveUsers()])
+      await Promise.all([loadDeletedUsers(), loadActiveUsers()]);
     } catch (error) {
       toast.error('Failed to delete user');
     } finally {
@@ -482,24 +620,24 @@ export function UserManagement() {
       await adminService.approveProvisionalUsers(userId);
       toast.success('User approved successfully');
       // Reload both active and pending users
-      await Promise.all([loadActiveUsers(),loadPendingUsers()])
+      await Promise.all([loadActiveUsers(), loadPendingUsers()]);
     } catch (error) {
       toast.error('Failed to approve user');
     }
   };
 
-  const handleRejectUser = async (userId:[]) => {
+  const handleRejectUser = async (userId: []) => {
     try {
       await adminService.deleteUser(userId);
       toast.success('User rejected successfully');
       // Reload both active and pending users
-      await Promise.all([loadPendingUsers(),loadDeletedUsers()])
+      await Promise.all([loadPendingUsers(), loadDeletedUsers()]);
     } catch (error) {
       toast.error('Failed to reject user');
     }
   };
 
-  const handleBulkAction = (action: 'archive' | 'delete' | 'export') => {
+  const handleBulkAction = (action: 'suspend' | 'delete' | 'export') => {
     if (selectedUsers.length === 0) {
       toast.error('Please select users first');
       return;
@@ -510,7 +648,7 @@ export function UserManagement() {
         // TODO: Implement bulk export
         toast.success(`Exporting ${selectedUsers.length} users`);
         break;
-      case 'archive':
+      case 'suspend':
         setShowBulkArchiveConfirm(true);
         break;
       case 'delete':
@@ -519,10 +657,26 @@ export function UserManagement() {
     }
   };
 
-  const confirmBulkArchive = () => {
-    toast.success(`Archived ${selectedUsers.length} users`);
-    setSelectedUsers([]);
-    setShowBulkArchiveConfirm(false);
+  const confirmBulkSuspend = async () => {
+    if (selectedUsers.length === 0) return;
+
+    setIsSuspending(true);
+
+    try {
+      const userIds = selectedUsers.map(u => Number(u.id));
+
+      await adminService.suspendUser(userIds);
+
+      toast.success(`Suspended ${selectedUsers.length} users`);
+      setSelectedUsers([]);
+      setShowBulkArchiveConfirm(false);
+
+      await Promise.all([loadActiveUsers(), loadSuspendedUsers()]);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to suspend users');
+    } finally {
+      setIsSuspending(false);
+    }
   };
 
   const confirmBulkDelete = async () => {
@@ -535,7 +689,7 @@ export function UserManagement() {
       await adminService.deleteUser(userIds);
       toast.success(`Deleted ${selectedUsers.length} user${selectedUsers.length > 1 ? 's' : ''}`);
       setSelectedUsers([]);
-      loadActiveUsers();
+      await Promise.all([loadActiveUsers(), loadDeletedUsers(), loadSuspendedUsers()]);
     } catch (error) {
       console.error('Bulk delete error:', error);
       toast.error('Failed to delete selected users');
@@ -627,7 +781,6 @@ export function UserManagement() {
       setIsProcessing(false);
     }
   };
-
 
   // open Approve Modal
   const openApproveModal = (user: any) => {
@@ -738,7 +891,11 @@ export function UserManagement() {
                     : 'text-yellow-600 border-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
                 }`}
               >
-                {statusLoading === user.id ? 'Pending...' : user.isArchived ? 'Activate' : 'Suspend'}
+                {statusLoading === user.id
+                  ? 'Pending...'
+                  : user.isArchived
+                  ? 'Activate'
+                  : 'Suspend'}
               </Button>
 
               <Button
@@ -788,62 +945,58 @@ export function UserManagement() {
     },
   ];
 
-  useEffect(() => {
-    if (!currentUser?.organizationId) return;
 
-    // Load datasets once on mount
-    loadActiveUsers(1, pageSize, activeSearchTerm);
-    loadPendingUsers(1, pageSize, pendingSearchTerm);
-    loadSuspendedUsers(1,pageSize, suspendedSearchTerm)
-    loadDeletedUsers(1,pageSize, deletedSearchTerm)
-    loadOrganization();
-  }, [currentUser?.organizationId]);
+   useEffect(() => {
+   if (!currentUser?.organizationId) return;
+
+  //   // Load datasets once on mount
+   loadActiveUsers(1, pageSize, activeSearchTerm);
+  loadPendingUsers(1, pageSize, pendingSearchTerm);
+  loadSuspendedUsers(1, pageSize, suspendedSearchTerm);
+  loadDeletedUsers(1, pageSize, deletedSearchTerm);
+  loadOrganization();
+   }, [currentUser?.organizationId]);
 
   useEffect(() => {
     if (activeTab === 'active') {
-      loadActiveUsers(activePage, pageSize, activeSearchTerm);
+      loadActiveUsers(activePage, pageSize, debouncedActive);
     } else if (activeTab === 'pending') {
-      loadPendingUsers(pendingPage, pageSize, pendingSearchTerm);
+      loadPendingUsers(pendingPage, pageSize, debouncedPending);
     } else if (activeTab === 'suspended') {
-      loadSuspendedUsers(suspendedPage, pageSize, suspendedSearchTerm);
+      loadSuspendedUsers(suspendedPage, pageSize, debouncedSuspended);
     } else if (activeTab === 'deleted') {
-      loadDeletedUsers(deletedPage, pageSize, deletedSearchTerm);
+      loadDeletedUsers(deletedPage, pageSize, debouncedDeleted);
     }
-    loadOrganization();
-  }, [currentUser, loadOrganization, activePage, pendingPage, suspendedPage, deletedPage, activeTab]);
+  }, [
+    activeTab,
+    activePage,
+    pendingPage,
+    suspendedPage,
+    deletedPage,
+    debouncedActive,
+    debouncedPending,
+    debouncedSuspended,
+    debouncedDeleted,
+  ]);
 
-  const handleSearch = useCallback((searchTerm: string) => {
-    if (activeTab === 'active') {
-      setActiveSearchTerm(searchTerm);
-      setActivePage(1); // Reset to first page when searching
-    } else if (activeTab === 'pending') {
-      setPendingSearchTerm(searchTerm);
-      setPendingPage(1); // Reset to first page when searching
-    } else if (activeTab === 'suspended') {
-      setSuspendedSearchTerm(searchTerm);
-      setSuspendedPage(1); // Reset to first page when searching
-    } else if (activeTab === 'deleted') {
-      setDeletedSearchTerm(searchTerm);
-      setDeletedPage(1); // Reset to first page when searching
-    }
-  }, [activeTab]);
-
-  // Debounced search effect
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
+  const handleSearch = useCallback(
+    (searchTerm: string) => {
       if (activeTab === 'active') {
-        loadActiveUsers(activePage, pageSize, activeSearchTerm);
+        setActiveSearchTerm(searchTerm);
+        setActivePage(1);
       } else if (activeTab === 'pending') {
-        loadPendingUsers(pendingPage, pageSize, pendingSearchTerm);
+        setPendingSearchTerm(searchTerm);
+        setPendingPage(1);
       } else if (activeTab === 'suspended') {
-        loadSuspendedUsers(suspendedPage, pageSize, suspendedSearchTerm);
+        setSuspendedSearchTerm(searchTerm);
+        setSuspendedPage(1);
       } else if (activeTab === 'deleted') {
-        loadDeletedUsers(deletedPage, pageSize, deletedSearchTerm);
+        setDeletedSearchTerm(searchTerm);
+        setDeletedPage(1);
       }
-    }, 500); // 500ms delay
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [activeSearchTerm, pendingSearchTerm, suspendedSearchTerm, deletedSearchTerm]);
+    },
+    [activeTab]
+  );
 
   const clearSearch = () => {
     if (activeTab === 'active') {
@@ -926,7 +1079,7 @@ export function UserManagement() {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
             }`}
           >
-            Active Users ({totalActiveUsers?.totalActiveUsers ?? 0})
+            Active Users ({totalActiveUsers ?? 0})
           </button>
           <button
             onClick={() => setActiveTab('pending')}
@@ -979,8 +1132,8 @@ export function UserManagement() {
                   <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
                   Export
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => handleBulkAction('archive')}>
-                  Archive
+                <Button size="sm" variant="outline" onClick={() => handleBulkAction('suspend')}>
+                  Suspend
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => handleBulkAction('delete')}>
                   Delete
@@ -1005,6 +1158,8 @@ export function UserManagement() {
           totalPages={activeTotalPages}
           onPageChange={setActivePage}
           selectable
+          onSearch={handleSearch}
+          searchTerm={activeSearchTerm}
           onSelectionChange={setSelectedUsers}
           emptyMessage="No users found. Get started by inviting your first user."
           loading={loading}
@@ -1018,7 +1173,7 @@ export function UserManagement() {
                 type="text"
                 placeholder="Search pending users..."
                 value={pendingSearchTerm}
-                onChange={(e) => handleSearch(e.target.value)}
+                onChange={e => handleSearch(e.target.value)}
                 className="pl-10"
               />
               {pendingSearchTerm && (
@@ -1027,18 +1182,33 @@ export function UserManagement() {
                   className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                 >
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               )}
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                <svg
+                  className="h-5 w-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
                 </svg>
               </div>
             </div>
           </div>
-          
+
           <PendingUsersTable
             pendingUsers={pendingUsers}
             onApprove={user => openApproveModal(user)}
@@ -1057,6 +1227,8 @@ export function UserManagement() {
           currentPage={suspendedPage}
           totalPages={suspendedTotalPages}
           onPageChange={setSuspendedPage}
+          onSearch={handleSearch}
+          searchTerm={suspendedSearchTerm}
           selectable
           onSelectionChange={setSelectedUsers}
           emptyMessage="No suspended users found."
@@ -1074,6 +1246,8 @@ export function UserManagement() {
           currentPage={deletedPage}
           totalPages={deletedTotalPages}
           onPageChange={setDeletedPage}
+          onSearch={handleSearch}
+          searchTerm={deletedSearchTerm}
           selectable
           onSelectionChange={setSelectedUsers}
           emptyMessage="No deleted users found."
@@ -1411,7 +1585,7 @@ export function UserManagement() {
         }}
         onConfirm={confirmSuspendUser}
         title="Suspend User"
-        message="Are you sure you want to suspend this user? They will lose access to the platform."
+        message={`Are you sure you want to suspend ${selectedUsers.length}? They will lose access to the platform.`}
         confirmText={statusLoading ? ' Suspending...' : 'Suspend'}
         cancelText="Cancel"
         confirmVariant="danger"
@@ -1441,21 +1615,23 @@ export function UserManagement() {
         }}
         onConfirm={confirmRestoreUser}
         title="Restore User"
-        message={`Are you sure you want to restore this ${activeTab === 'suspended' ? 'suspended' : 'deleted'} user? They will regain access to the platform.`}
-        confirmText={isRestoring ? "Restoring..." : "Restore"}
+        message={`Are you sure you want to restore this ${
+          activeTab === 'suspended' ? 'suspended' : 'deleted'
+        } ${userToRestore?.firstName}? They will regain access to the platform.`}
+        confirmText={isRestoring ? 'Restoring...' : 'Restore'}
         cancelText="Cancel"
         confirmVariant="primary"
         confirmDisabled={isRestoring}
       />
 
-      {/* Bulk Archive Confirmation Dialog */}
+      {/* Bulk Suspend Confirmation Dialog */}
       <ConfirmDialog
         isOpen={showBulkArchiveConfirm}
         onClose={() => setShowBulkArchiveConfirm(false)}
-        onConfirm={confirmBulkArchive}
-        title="Archive Users"
+        onConfirm={confirmBulkSuspend}
+        title="Suspend Users"
         message={`Are you sure you want to archive ${selectedUsers.length} selected users?`}
-        confirmText="Archive"
+        confirmText={isSuspending ? 'Suspending' : ' Suspend'}
         cancelText="Cancel"
         confirmVariant="primary"
       />

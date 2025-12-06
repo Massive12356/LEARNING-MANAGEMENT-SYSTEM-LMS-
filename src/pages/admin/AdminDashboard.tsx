@@ -20,9 +20,10 @@ import {
   ClipboardDocumentIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { adminService } from '../../services/adminService';
 
 export function AdminDashboard() {
-  const { user,fetchUserById } = useAuthStore();
+  const { user } = useAuthStore();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [dashboardData, setDashboardData] = useState({
     totalUsers: 0,
@@ -33,111 +34,71 @@ export function AdminDashboard() {
     recentActivity: [] as any[],
     systemAlerts: [] as any[],
   });
-  const [loading, setLoading] = useState(true);
   const [orgLoading, setOrgLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [recentUsersLoading, setRecentUsersLoading] = useState(false);
+  const [recentActivityLoading, setRecentActivityLoading] = useState(true);
 
-const loadOrganization = async () => {
-  if (!user?.organizationDetails?.id) return;
+  const loadOrganization = async () => {
+    if (!user?.organizationDetails?.id) return;
 
-  console.log('User from authStore:', user);
+    console.log('User from authStore:', user);
 
-  try {
-    setOrgLoading(true);
-    const orgData = await organizationService.getOrganizationById(
-      user.organizationDetails.id.toString()
-    );
-    setOrganization(orgData);
-  } catch (error) {
-    console.error('Failed to load organization:', error);
-  } finally {
-    setOrgLoading(false);
-  }
-};
-
-
-  const loadDashboardData = async () => {
     try {
-      const [usersData, coursesData, programsData] = await Promise.all([
-        mockApi.getUsers({ organizationId: user?.organizationId }),
-        mockApi.getCourses({ organizationId: user?.organizationId }),
-        mockApi.getPrograms({ organizationId: user?.organizationId }),
-      ]);
-
-      // //test function
-      // const testUserDetails = async () => {
-      //   try {
-      //     if (!user?.id) {
-      //       console.warn('No user ID found');
-      //       return;
-      //     }
-
-      //     const res = await fetchUserById(user.id);
-      //     console.log('[ComponentFunction] RESPONSE FROM SERVER', res);
-      //   } catch (error: any) {
-      //     console.error(error.message);
-      //   }
-      // };
-
-      // // test user details
-      // useEffect(() => {
-      //   testUserDetails();
-      // }, [user]);
-
-      // Mock recent activity and alerts
-      const mockRecentUsers = usersData.data.slice(0, 5);
-      const mockRecentActivity = [
-        { type: 'enrollment', user: 'John Doe', course: 'React Basics', time: '2 hours ago' },
-        {
-          type: 'completion',
-          user: 'Jane Smith',
-          course: 'TypeScript Advanced',
-          time: '4 hours ago',
-        },
-        { type: 'registration', user: 'Mike Johnson', time: '6 hours ago' },
-        {
-          type: 'course_created',
-          user: 'Sarah Wilson',
-          course: 'JavaScript Fundamentals',
-          time: '1 day ago',
-        },
-      ];
-      const mockSystemAlerts = [
-        {
-          type: 'warning',
-          message: 'Server maintenance scheduled for this weekend',
-          time: '1 hour ago',
-        },
-        { type: 'info', message: '5 new user registrations pending approval', time: '3 hours ago' },
-      ];
-
-      setDashboardData({
-        totalUsers: usersData.data.length,
-        totalCourses: coursesData.length,
-        totalPrograms: programsData.length,
-        activeEnrollments: 89, // Mock data
-        recentUsers: mockRecentUsers,
-        recentActivity: mockRecentActivity,
-        systemAlerts: mockSystemAlerts,
-      });
+      setOrgLoading(true);
+      const orgData = await organizationService.getOrganizationById(
+        user.organizationDetails.id.toString()
+      );
+      setOrganization(orgData);
     } catch (error) {
-      console.error('Failed to load dashboard data:', error);
+      console.error('Failed to load organization:', error);
     } finally {
-      setLoading(false);
+      setOrgLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadDashboardData();
-    loadOrganization();
-  }, [user]);
+  const loadDashboardData = async () => {
+    try {
+      // loading states
+      setStatsLoading(true);
+      setRecentUsersLoading(true);
+      setRecentActivityLoading(true);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+      const [statsResponse, recentUsersResponse, recentActivityResponse] = await Promise.all([
+        adminService.getOrganizationStats(),
+        adminService.getRecentUsers(),
+        adminService.getRecentActivity(),
+      ]);
+
+      setDashboardData(prev => ({
+        ...prev,
+        totalUsers: statsResponse.stats.totalUsers,
+        totalCourses: statsResponse.stats.totalCourses,
+        totalPrograms: statsResponse.stats.totalPrograms,
+        activeEnrollments: statsResponse.stats.activeEnrollments,
+        recentUsers: recentUsersResponse.users ?? [],
+        recentActivity: recentActivityResponse.activities ?? [],
+        systemAlerts: [
+          {
+            type: 'warning',
+            message: 'Server maintenance scheduled for this weekend',
+            time: '1 hour ago',
+          },
+          {
+            type: 'info',
+            message: '5 new user registrations pending approval',
+            time: '3 hours ago',
+          },
+        ],
+      }));
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
+    } finally {
+      setStatsLoading(false);
+      setRecentUsersLoading(false);
+      setRecentActivityLoading(false);
+    }
+  };
 
   const handleCopy = async (text: string) => {
     try {
@@ -150,10 +111,27 @@ const loadOrganization = async () => {
     }
   };
 
+  // function to determine the activity and display a message
+  const formatActivityMessage = (activity: any) => {
+    switch (activity.type) {
+      case 'user_registration':
+        return `${activity?.data?.firstName} ${activity?.data?.lastName} registered`;
+
+      case 'course_published':
+        return `${activity?.data?.title} course was published`;
+
+      case 'user_enrollment':
+        return `${activity.data?.firstName} enrolled in ${activity.data?.courseTitle}.`;
+
+      default:
+        return `New Platform Activity`;
+    }
+  };
+
   const stats = [
     {
       name: 'Total Users',
-      value: dashboardData.totalUsers.toString(),
+      value: statsLoading ? ' Loading Users' : dashboardData.totalUsers.toString(),
       icon: UserGroupIcon,
       color: 'text-blue-600',
       bgColor: 'bg-blue-100 dark:bg-blue-900',
@@ -161,7 +139,7 @@ const loadOrganization = async () => {
     },
     {
       name: 'Total Courses',
-      value: dashboardData.totalCourses.toString(),
+      value: statsLoading ? 'Loading Courses' : dashboardData.totalCourses.toString(),
       icon: BookOpenIcon,
       color: 'text-green-600',
       bgColor: 'bg-green-100 dark:bg-green-900',
@@ -169,7 +147,7 @@ const loadOrganization = async () => {
     },
     {
       name: 'Programs',
-      value: dashboardData.totalPrograms.toString(),
+      value: statsLoading ? 'loading Programs' : dashboardData.totalPrograms.toString(),
       icon: AcademicCapIcon,
       color: 'text-purple-600',
       bgColor: 'bg-purple-100 dark:bg-purple-900',
@@ -177,13 +155,18 @@ const loadOrganization = async () => {
     },
     {
       name: 'Active Enrollments',
-      value: dashboardData.activeEnrollments.toString(),
+      value: statsLoading ? ' Loading Enrollments' : dashboardData.activeEnrollments.toString(),
       icon: ChartBarIcon,
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-100 dark:bg-yellow-900',
       href: '/admin/reports',
     },
   ];
+
+  useEffect(() => {
+    loadDashboardData();
+    loadOrganization();
+  }, [user]);
 
   return (
     <div className="space-y-8">
@@ -295,7 +278,13 @@ const loadOrganization = async () => {
                     <Icon className={`h-6 w-6 ${stat.color}`} />
                   </div>
                   <div className="ml-4">
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+                    <p
+                      className={`${
+                        statsLoading ? ' text-sm' : 'text-2xl'
+                      } font-bold text-gray-900 dark:text-white`}
+                    >
+                      {stat.value}
+                    </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">{stat.name}</p>
                   </div>
                 </CardContent>
@@ -313,32 +302,41 @@ const loadOrganization = async () => {
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Recent Activity</h2>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {dashboardData.recentActivity.map((activity, index) => (
-                <div
-                  key={index}
-                  className="flex items-start p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg"
-                >
-                  <div className="flex-shrink-0 p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                    <ClockIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            {recentActivityLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <div
+                    key={i}
+                    className="h-14 w-full bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg"
+                  ></div>
+                ))}
+              </div>
+            ) : dashboardData.recentActivity.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">No recent activity.</p>
+            ) : (
+              <div className="space-y-4">
+                {dashboardData.recentActivity.map((activity, index) => (
+                  <div
+                    key={index}
+                    className="flex items-start p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg"
+                  >
+                    <div className="flex-shrink-0 p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                      <ClockIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {formatActivityMessage(activity)}
+                      </p>
+
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {new Date(activity.createdAt).toLocaleString()}
+                      </p>
+                    </div>
                   </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      {activity.user}{' '}
-                      {activity.type === 'enrollment'
-                        ? 'enrolled in'
-                        : activity.type === 'completion'
-                        ? 'completed'
-                        : activity.type === 'registration'
-                        ? 'registered'
-                        : 'created'}{' '}
-                      {activity.course || ''}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{activity.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -349,46 +347,61 @@ const loadOrganization = async () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {dashboardData.recentUsers.map(user => (
-                <div
-                  key={user.id}
-                  className="flex items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg"
-                >
-                  <div className="flex-shrink-0 h-10 w-10">
-                    {user.profileImage ? (
-                      <img
-                        src={user.profileImage}
-                        alt="Profile"
-                        className="h-10 w-10 rounded-full object-cover border-2 border-white dark:border-gray-800 shadow"
-                      />
-                    ) : (
-                      <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                        <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                          {user.firstName.charAt(0)}
-                          {user.lastName.charAt(0)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="ml-4 flex-1">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      {user.firstName} {user.lastName}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
-                  </div>
-                  <span
-                    className={`px-2 py-1 text-xs rounded-full capitalize ${
-                      user.role === 'admin'
-                        ? 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200'
-                        : user.role === 'teacher'
-                        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
-                    }`}
-                  >
-                    {user.role}
-                  </span>
+              {recentUsersLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div
+                      key={i}
+                      className="h-14 w-full bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg"
+                    ></div>
+                  ))}
                 </div>
-              ))}
+              ) : dashboardData.recentUsers.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No recent Users activity.
+                </p>
+              ) : (
+                dashboardData.recentUsers.map(user => (
+                  <div
+                    key={user.id}
+                    className="flex items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg"
+                  >
+                    <div className="flex-shrink-0 h-10 w-10">
+                      {user.profileImage ? (
+                        <img
+                          src={user.profileImage}
+                          alt="Profile"
+                          className="h-10 w-10 rounded-full object-cover border-2 border-white dark:border-gray-800 shadow"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                          <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                            {user.firstName.charAt(0)}
+                            {user.lastName.charAt(0)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="ml-4 flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {user.firstName} {user.lastName}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
+                    </div>
+                    <span
+                      className={`px-2 py-1 text-xs rounded-full capitalize ${
+                        user.role === 'admin'
+                          ? 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200'
+                          : user.role === 'teacher'
+                          ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                      }`}
+                    >
+                      {user.role}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

@@ -20,7 +20,7 @@ interface AuthState {
 }
 
 /** Normalizes any backend user object to match frontend User type safely */
- export function normalizeUser(user: any): User {
+export function normalizeUser(user: any): User {
   return {
     id: String(user.id),
     email: user.email ?? '',
@@ -39,12 +39,17 @@ interface AuthState {
     updatedAt: user.updatedAt ? new Date(user.updatedAt) : new Date(),
     organizationDetails: user.organizationDetails ?? undefined,
     newStatus: user.newStatus ?? 'pending',
-    // Optional fields from backend
     status: user.status ?? 'pending',
     isVerified: user.isVerified ?? false,
     isDeleted: user.isDeleted ?? false,
+
+    // ✅ ADD THESE
+    emailNotificationEnabler: user.emailNotificationEnabler ?? false,
+    smsNotificationEnabler: user.smsNotificationEnabler ?? false,
+    pushNotificationEnabler: user.pushNotificationEnabler ?? false,
   };
 }
+
 
 export const useAuthStore = create<AuthState>()(
   persist(
