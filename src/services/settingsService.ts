@@ -2,6 +2,13 @@ import { AxiosError } from 'axios';
 import apiClient from './apiClient';
 import { NotificationPayload } from '../types';
 
+// Define the NotificationPreferences type
+export interface NotificationPreferences {
+  emailNotifications: boolean;
+  pushNotifications: boolean;
+  smsNotifications: boolean;
+}
+
 class SettingsService {
   // EMAIL
   async emailNotificationSettings(payload: NotificationPayload) {
@@ -42,6 +49,34 @@ class SettingsService {
       const message = err.response?.data?.message || err.message;
       console.error('[settingsService] PUSH ERROR:', message);
       throw new Error(message);
+    }
+  }
+
+  // Get notification preferences from localStorage (mock implementation)
+  getNotificationPreferences(userId: string): NotificationPreferences {
+    try {
+      const stored = localStorage.getItem(`notification_preferences_${userId}`);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (error) {
+      console.error('Error loading notification preferences:', error);
+    }
+    
+    // Return default preferences
+    return {
+      emailNotifications: true,
+      pushNotifications: true,
+      smsNotifications: false
+    };
+  }
+
+  // Save notification preferences to localStorage (mock implementation)
+  saveNotificationPreferences(userId: string, preferences: NotificationPreferences): void {
+    try {
+      localStorage.setItem(`notification_preferences_${userId}`, JSON.stringify(preferences));
+    } catch (error) {
+      console.error('Error saving notification preferences:', error);
     }
   }
 }

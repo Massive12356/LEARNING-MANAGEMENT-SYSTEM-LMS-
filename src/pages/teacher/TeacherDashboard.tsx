@@ -223,6 +223,18 @@ export function TeacherDashboard() {
                     </div>
                   </Link>
 
+                  <Link to="/teacher/programs">
+                    <div className="p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer">
+                      <div className="text-center">
+                        <AcademicCapIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                        <h3 className="font-medium text-gray-900 dark:text-white">My Programs</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          View and manage your programs
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+
                   <Link to="/teacher/courses">
                     <div className="p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer">
                       <div className="text-center">

@@ -33,6 +33,7 @@ import { CourseBuilder } from '../pages/teacher/CourseBuilder';
 import { CourseList as TeacherCourseList } from '../pages/teacher/CourseList';
 import CertificateManagement from '../pages/teacher/CertificateManagement';
 import { ProgramBuilder } from '../pages/teacher/ProgramBuilder';
+import { ProgramList } from '../pages/teacher/ProgramList';
 import { TeacherReports } from '../pages/teacher/TeacherReports';
 import { NotificationManagement } from '../pages/notifications/NotificationManagement';
 import { TeacherSettings } from '../pages/teacher/TeacherSettings';
@@ -157,6 +158,7 @@ export const AppRoutes: React.FC = () => {
               <Route path="certificates" element={<CertificateManagement />} />
               <Route path="notifications" element={<NotificationManagement />} />
               <Route path="notifications/list" element={<NotificationList />} />
+              <Route path="programs" element={<ProgramList />} />
               <Route path="programs/new" element={<ProgramBuilder />} />
               <Route path="programs/:programId/edit" element={<ProgramBuilder />} />
               <Route path="reports" element={<TeacherReports />} />

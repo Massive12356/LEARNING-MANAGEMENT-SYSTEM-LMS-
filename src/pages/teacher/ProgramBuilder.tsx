@@ -150,7 +150,7 @@ export function ProgramBuilder() {
           </p>
         </div>
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={() => navigate('/teacher/dashboard')}>
+          <Button variant="outline" onClick={() => navigate('/teacher/programs')}>
             Cancel
           </Button>
           <Button onClick={handleSaveProgram} loading={loading}>

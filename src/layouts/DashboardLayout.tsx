@@ -202,6 +202,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           { name: 'Dashboard', href: '/teacher/dashboard', icon: HomeIcon },
           { name: 'Todo', href: '/teacher/todo', icon: QueueListIcon },
           { name: 'Courses', href: '/teacher/courses', icon: BookOpenIcon },
+          { name: 'Programs', href: '/teacher/programs', icon: AcademicCapIcon },
           { name: 'Certificates', href: '/teacher/certificates', icon: DocumentTextIcon },
           { name: 'Notifications', href: '/teacher/notifications', icon: BellIcon },
           { name: 'Reports', href: '/teacher/reports', icon: ChartBarIcon },
