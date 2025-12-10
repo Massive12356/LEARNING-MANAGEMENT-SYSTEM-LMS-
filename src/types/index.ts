@@ -246,7 +246,7 @@ export interface ReflectionSubmission {
 }
 
 // Todo Types
-export type TodoPriority = 'low' | 'medium' | 'high';
+export type TodoPriority = 'Low Priority' | 'Medium Priority' | 'High Priority';
 export type TodoStatus = 'pending' | 'in-progress' | 'completed' | 'cancelled';
 
 export interface TodoItem {

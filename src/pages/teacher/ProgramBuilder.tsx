@@ -78,8 +78,10 @@ export function ProgramBuilder() {
     if (!programData.title.trim()) {
       toast.error('Program title is required');
       return;
-    }
+    } 
 
+
+// check if no course is selected
     if (selectedCourses.length === 0) {
       toast.error('Please select at least one course');
       return;

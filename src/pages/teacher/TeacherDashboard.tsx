@@ -60,13 +60,7 @@ export function TeacherDashboard() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+ 
 
   const liveCourses = courses.filter(course => course.status === 'live');
   const totalStudents = 156; // Mock data
@@ -116,10 +110,25 @@ export function TeacherDashboard() {
             <p className="mt-2 text-gray-600 dark:text-gray-400">
               Manage your courses and track student progress
             </p>
-            {organization ? (
+            {loading ? (
+              <div className="mt-2 h-4 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded"></div>
+            ) : organization ? (
               <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
-                <BuildingOfficeIcon className="h-4 w-4 mr-1" />
-                <span>Teaching at {organization.name}</span>
+                {organization.logo ? (
+                  <img
+                    src={organization.logo}
+                    alt={organization.name}
+                    className="w-7 h-7 object-cover mr-1 rounded-full"
+                  />
+                ) : (
+                  <BuildingOfficeIcon className="h-4 w-4 mr-1" />
+                )}
+                <p>
+                  Teaching at{' '}
+                  <span className="font-medium text-blue-600 dark:text-yellow-400">
+                    {organization.name}
+                  </span>
+                </p>
               </div>
             ) : (
               <div className="mt-2 flex items-center text-sm text-yellow-600 dark:text-yellow-400">
@@ -168,7 +177,7 @@ export function TeacherDashboard() {
           <>
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {stats.map((stat) => {
+              {stats.map(stat => {
                 const Icon = stat.icon;
                 return (
                   <Card key={stat.name}>
@@ -180,9 +189,7 @@ export function TeacherDashboard() {
                         <p className="text-2xl font-bold text-gray-900 dark:text-white">
                           {stat.value}
                         </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {stat.name}
-                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{stat.name}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -203,7 +210,9 @@ export function TeacherDashboard() {
                     <div className="p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer">
                       <div className="text-center">
                         <PlusIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                        <h3 className="font-medium text-gray-900 dark:text-white">Create New Course</h3>
+                        <h3 className="font-medium text-gray-900 dark:text-white">
+                          Create New Course
+                        </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                           Start building your next course
                         </p>
@@ -215,7 +224,9 @@ export function TeacherDashboard() {
                     <div className="p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer">
                       <div className="text-center">
                         <AcademicCapIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                        <h3 className="font-medium text-gray-900 dark:text-white">Create Program</h3>
+                        <h3 className="font-medium text-gray-900 dark:text-white">
+                          Create Program
+                        </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                           Group courses into a program
                         </p>
@@ -239,7 +250,9 @@ export function TeacherDashboard() {
                     <div className="p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer">
                       <div className="text-center">
                         <BookOpenIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                        <h3 className="font-medium text-gray-900 dark:text-white">Manage Courses</h3>
+                        <h3 className="font-medium text-gray-900 dark:text-white">
+                          Manage Courses
+                        </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                           Edit or publish your courses
                         </p>
@@ -260,9 +273,9 @@ export function TeacherDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {courses.slice(0, 3).map((course) => (
-                      <div 
-                        key={course.id} 
+                    {courses.slice(0, 3).map(course => (
+                      <div
+                        key={course.id}
                         className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
                       >
                         <div className="aspect-w-16 aspect-h-9">
@@ -280,11 +293,13 @@ export function TeacherDashboard() {
                             <RichTextDisplay content={course.description} />
                           </div>
                           <div className="mt-4 flex items-center justify-between">
-                            <span className={`px-2 py-1 text-xs rounded-full ${
-                              course.status === 'live' 
-                                ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                                : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
-                            }`}>
+                            <span
+                              className={`px-2 py-1 text-xs rounded-full ${
+                                course.status === 'live'
+                                  ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                                  : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
+                              }`}
+                            >
                               {course.status}
                             </span>
                             <div className="flex space-x-2">
