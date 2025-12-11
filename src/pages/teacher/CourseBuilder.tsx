@@ -12,7 +12,7 @@ import { StudentManagement } from '../../components/teacher/StudentManagement';
 import { AnnouncementForm } from '../../components/teacher/AnnouncementForm';
 import { mockApi } from '../../services/mockApi';
 import { UploadResult } from '../../services/fileUploadService';
-import { Course, Module, Lesson } from '../../types';
+import { Course, Module, Lesson, QuizQuestion } from '../../types';
 import { 
   PlusIcon,
   PencilIcon,
@@ -54,8 +54,11 @@ export function CourseBuilder() {
     isTracked: true,
     allowSelfPacing: true,
     requiresCertificate: false,
-    isGraded: false
+    isGraded: false,
+    coverImage: '' // Add this line to store the cover image URL
   });
+
+  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null); // State for cover image preview
 
   const [moduleData, setModuleData] = useState({
     title: '',
@@ -71,7 +74,14 @@ export function CourseBuilder() {
       textContent: '',
       pdfUrl: '',
       attachmentUrl: '',
-      quizData: null,
+      quizData: {
+        id: '',
+        title: '',
+        description: '',
+        questions: [] as QuizQuestion[],
+        isGraded: true,
+        passingScore: 70
+      },
       reflectionPrompt: ''
     } as any,
     duration: 0,
@@ -103,6 +113,10 @@ export function CourseBuilder() {
         requiresCertificate: courseData.requiresCertificate,
         isGraded: courseData.isGraded
       });
+      // Set cover image preview if there's a cover image
+      if (courseData.coverImage) {
+        setCoverImagePreview(courseData.coverImage);
+      }
     } catch (error) {
       console.error('Failed to load course:', error);
       toast.error('Failed to load course');
@@ -125,6 +139,8 @@ export function CourseBuilder() {
         requiresCertificate: true,
         isGraded: true
       });
+      // Set cover image preview for demo course
+      setCoverImagePreview('https://picsum.photos/800/450?random=4');
       
       // Set demo modules and lessons if it's a new course
       const demoCourse: Course = {
@@ -431,6 +447,55 @@ export function CourseBuilder() {
     toast.success('Module deleted successfully');
   };
 
+  const validateQuizData = (quizData: any) => {
+    if (!quizData.title.trim()) {
+      toast.error('Quiz title is required');
+      return false;
+    }
+
+    if (quizData.questions.length === 0) {
+      toast.error('At least one question is required');
+      return false;
+    }
+
+    for (let i = 0; i < quizData.questions.length; i++) {
+      const question = quizData.questions[i];
+      if (!question.question.trim()) {
+        toast.error(`Question ${i + 1} text is required`);
+        return false;
+      }
+
+      if (question.type === 'multiple-choice') {
+        if (!question.options || question.options.length < 2) {
+          toast.error(`Question ${i + 1} must have at least 2 options`);
+          return false;
+        }
+
+        if (!question.options.some(option => option.trim() !== '')) {
+          toast.error(`Question ${i + 1} must have at least one non-empty option`);
+          return false;
+        }
+
+        if (!question.correctAnswer || typeof question.correctAnswer !== 'string' || !question.correctAnswer.trim()) {
+          toast.error(`Question ${i + 1} must have a correct answer selected`);
+          return false;
+        }
+
+        if (!question.options.includes(question.correctAnswer)) {
+          toast.error(`Question ${i + 1} correct answer must match one of the options`);
+          return false;
+        }
+      } else if (question.type === 'short-text') {
+        if (!question.correctAnswer || (Array.isArray(question.correctAnswer) && question.correctAnswer.length === 0)) {
+          toast.error(`Question ${i + 1} must have at least one correct answer`);
+          return false;
+        }
+      }
+    }
+
+    return true;
+  };
+
   const handleAddLesson = async () => {
     if (!lessonData.title.trim()) {
       toast.error('Lesson title is required');
@@ -440,6 +505,13 @@ export function CourseBuilder() {
     if (!selectedModuleId) {
       toast.error('Please select a module');
       return;
+    }
+
+    // Validate quiz data if it's a quiz lesson
+    if (lessonData.type === 'quiz') {
+      if (!validateQuizData(lessonData.content.quizData)) {
+        return;
+      }
     }
 
     // Create lesson based on type
@@ -517,7 +589,14 @@ export function CourseBuilder() {
         textContent: '',
         pdfUrl: '',
         attachmentUrl: '',
-        quizData: null,
+        quizData: {
+          id: '',
+          title: '',
+          description: '',
+          questions: [] as QuizQuestion[],
+          isGraded: true,
+          passingScore: 70
+        },
         reflectionPrompt: ''
       },
       duration: 0,
@@ -536,7 +615,14 @@ export function CourseBuilder() {
       textContent: '',
       pdfUrl: '',
       attachmentUrl: '',
-      quizData: null,
+      quizData: {
+        id: '',
+        title: '',
+        description: '',
+        questions: [] as QuizQuestion[],
+        isGraded: true,
+        passingScore: 70
+      },
       reflectionPrompt: ''
     };
     
@@ -554,7 +640,14 @@ export function CourseBuilder() {
         content.attachmentUrl = lesson.content?.attachmentUrl || '';
         break;
       case 'quiz':
-        content.quizData = lesson.content?.quizData || null;
+        content.quizData = lesson.content?.quizData || {
+          id: '',
+          title: '',
+          description: '',
+          questions: [],
+          isGraded: true,
+          passingScore: 70
+        };
         break;
       case 'reflection':
         content.reflectionPrompt = lesson.content?.reflectionPrompt || '';
@@ -580,6 +673,13 @@ export function CourseBuilder() {
     }
 
     if (!editingLesson) return;
+
+    // Validate quiz data if it's a quiz lesson
+    if (lessonData.type === 'quiz') {
+      if (!validateQuizData(lessonData.content.quizData)) {
+        return;
+      }
+    }
 
     // Create lesson based on type
     let lessonContent = {};
@@ -658,7 +758,14 @@ export function CourseBuilder() {
         textContent: '',
         pdfUrl: '',
         attachmentUrl: '',
-        quizData: null,
+        quizData: {
+          id: '',
+          title: '',
+          description: '',
+          questions: [] as QuizQuestion[],
+          isGraded: true,
+          passingScore: 70
+        },
         reflectionPrompt: ''
       },
       duration: 0,
@@ -758,17 +865,28 @@ export function CourseBuilder() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Course Cover Image
               </label>
+              {coverImagePreview && (
+                <div className="mb-4">
+                  <img 
+                    src={coverImagePreview} 
+                    alt="Cover preview" 
+                    className="w-full h-48 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+                  />
+                </div>
+              )}
               <FileUploader
                 accept="image/*"
                 maxSize={5 * 1024 * 1024} // 5MB
                 maxFiles={1}
-                legacyMode={false} // Use new UploadResult[] mode
+                legacyMode={false}
                 onUpload={async (uploadResults) => {
                   // Handle image upload
                   console.log('Cover image uploaded:', uploadResults[0]);
-                  // TODO: Update course data with uploaded image URL
-                  // The uploadResult contains the processed file information
-                  // uploadResults[0].url contains the uploaded file URL
+                  // Update course data with uploaded image URL
+                  if (uploadResults[0]) {
+                    setCourseData(prev => ({ ...prev, coverImage: uploadResults[0].url }));
+                    setCoverImagePreview(uploadResults[0].url); // Set preview
+                  }
                 }}
                 dropzoneText="Upload a cover image for your course"
               />
@@ -1262,7 +1380,14 @@ export function CourseBuilder() {
                 textContent: '',
                 pdfUrl: '',
                 attachmentUrl: '',
-                quizData: null,
+                quizData: {
+                  id: '',
+                  title: '',
+                  description: '',
+                  questions: [] as QuizQuestion[],
+                  isGraded: true,
+                  passingScore: 70
+                },
                 reflectionPrompt: ''
               }
             }))}
@@ -1456,14 +1581,538 @@ export function CourseBuilder() {
         )}
 
         {lessonData.type === 'quiz' && (
-          <div className="space-y-4">
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-              <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">
-                Quiz Builder
-              </h4>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
-                Quiz functionality would be implemented here with question types, answers, and scoring.
-              </p>
+          <div className="space-y-6">
+            {/* Quiz Settings */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Quiz Title"
+                value={lessonData.content.quizData.title}
+                onChange={(e) => setLessonData(prev => ({
+                  ...prev,
+                  content: {
+                    ...prev.content,
+                    quizData: {
+                      ...prev.content.quizData,
+                      title: e.target.value
+                    }
+                  }
+                }))}
+                placeholder="Enter quiz title"
+              />
+              
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Passing Score (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={lessonData.content.quizData.passingScore}
+                  onChange={(e) => setLessonData(prev => ({
+                    ...prev,
+                    content: {
+                      ...prev.content,
+                      quizData: {
+                        ...prev.content.quizData,
+                        passingScore: parseInt(e.target.value) || 70
+                      }
+                    }
+                  }))}
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Quiz Description
+              </label>
+              <textarea
+                value={lessonData.content.quizData.description}
+                onChange={(e) => setLessonData(prev => ({
+                  ...prev,
+                  content: {
+                    ...prev.content,
+                    quizData: {
+                      ...prev.content.quizData,
+                      description: e.target.value
+                    }
+                  }
+                }))}
+                rows={3}
+                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Describe what this quiz covers..."
+              />
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={lessonData.content.quizData.isGraded}
+                  onChange={(e) => setLessonData(prev => ({
+                    ...prev,
+                    content: {
+                      ...prev.content,
+                      quizData: {
+                        ...prev.content.quizData,
+                        isGraded: e.target.checked
+                      }
+                    }
+                  }))}
+                  className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                />
+                <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+                  This quiz is graded
+                </span>
+              </label>
+            </div>
+            
+            {/* Questions Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                  Questions
+                </h3>
+                <Button 
+                  onClick={() => {
+                    const newQuestion: QuizQuestion = {
+                      id: `question-${Date.now()}`,
+                      question: '',
+                      type: 'multiple-choice',
+                      options: ['', ''],
+                      correctAnswer: '',
+                      explanation: ''
+                    };
+                    setLessonData(prev => ({
+                      ...prev,
+                      content: {
+                        ...prev.content,
+                        quizData: {
+                          ...prev.content.quizData,
+                          questions: [...prev.content.quizData.questions, newQuestion]
+                        }
+                      }
+                    }));
+                  }}
+                >
+                  <PlusIcon className="h-4 w-4 mr-2" />
+                  Add Question
+                </Button>
+              </div>
+              
+              {lessonData.content.quizData.questions.length === 0 ? (
+                <div className="text-center py-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                  <QuestionMarkCircleIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    No questions yet
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    Add your first question to get started.
+                  </p>
+                  <Button 
+                    onClick={() => {
+                      const newQuestion: QuizQuestion = {
+                        id: `question-${Date.now()}`,
+                        question: '',
+                        type: 'multiple-choice',
+                        options: ['', ''],
+                        correctAnswer: '',
+                        explanation: ''
+                      };
+                      setLessonData(prev => ({
+                        ...prev,
+                        content: {
+                          ...prev.content,
+                          quizData: {
+                            ...prev.content.quizData,
+                            questions: [...prev.content.quizData.questions, newQuestion]
+                          }
+                        }
+                      }));
+                    }}
+                  >
+                    Add First Question
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {lessonData.content.quizData.questions.map((question, index) => (
+                    <Card key={question.id}>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium text-gray-900 dark:text-white">
+                            Question {index + 1}
+                          </h4>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => {
+                                if (index > 0) {
+                                  const newQuestions = [...lessonData.content.quizData.questions];
+                                  [newQuestions[index - 1], newQuestions[index]] = [newQuestions[index], newQuestions[index - 1]];
+                                  setLessonData(prev => ({
+                                    ...prev,
+                                    content: {
+                                      ...prev.content,
+                                      quizData: {
+                                        ...prev.content.quizData,
+                                        questions: newQuestions
+                                      }
+                                    }
+                                  }));
+                                }
+                              }}
+                              disabled={index === 0}
+                              className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (index < lessonData.content.quizData.questions.length - 1) {
+                                  const newQuestions = [...lessonData.content.quizData.questions];
+                                  [newQuestions[index], newQuestions[index + 1]] = [newQuestions[index + 1], newQuestions[index]];
+                                  setLessonData(prev => ({
+                                    ...prev,
+                                    content: {
+                                      ...prev.content,
+                                      quizData: {
+                                        ...prev.content.quizData,
+                                        questions: newQuestions
+                                      }
+                                    }
+                                  }));
+                                }
+                              }}
+                              disabled={index === lessonData.content.quizData.questions.length - 1}
+                              className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => {
+                                const newQuestions = lessonData.content.quizData.questions.filter(q => q.id !== question.id);
+                                setLessonData(prev => ({
+                                  ...prev,
+                                  content: {
+                                    ...prev.content,
+                                    quizData: {
+                                      ...prev.content.quizData,
+                                      questions: newQuestions
+                                    }
+                                  }
+                                }));
+                              }}
+                              className="p-1 text-red-500 hover:text-red-700"
+                            >
+                              <TrashIcon className="h-5 w-5" />
+                            </button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {/* Question Text */}
+                          <Input
+                            label="Question"
+                            value={question.question}
+                            onChange={(e) => {
+                              const newQuestions = [...lessonData.content.quizData.questions];
+                              newQuestions[index] = {
+                                ...newQuestions[index],
+                                question: e.target.value
+                              };
+                              setLessonData(prev => ({
+                                ...prev,
+                                content: {
+                                  ...prev.content,
+                                  quizData: {
+                                    ...prev.content.quizData,
+                                    questions: newQuestions
+                                  }
+                                }
+                              }));
+                            }}
+                            placeholder="Enter your question"
+                          />
+                          
+                          {/* Question Type */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Question Type
+                              </label>
+                              <select
+                                value={question.type}
+                                onChange={(e) => {
+                                  const newQuestions = [...lessonData.content.quizData.questions];
+                                  const updatedQuestion = {
+                                    ...newQuestions[index],
+                                    type: e.target.value as 'multiple-choice' | 'short-text',
+                                    correctAnswer: e.target.value === 'multiple-choice' ? '' : []
+                                  };
+                                  
+                                  // Reset options if switching to short-text
+                                  if (e.target.value === 'short-text') {
+                                    delete updatedQuestion.options;
+                                  } else {
+                                    updatedQuestion.options = ['', ''];
+                                  }
+                                  
+                                  newQuestions[index] = updatedQuestion;
+                                  setLessonData(prev => ({
+                                    ...prev,
+                                    content: {
+                                      ...prev.content,
+                                      quizData: {
+                                        ...prev.content.quizData,
+                                        questions: newQuestions
+                                      }
+                                    }
+                                  }));
+                                }}
+                                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              >
+                                <option value="multiple-choice">Multiple Choice</option>
+                                <option value="short-text">Short Text Answer</option>
+                              </select>
+                            </div>
+                            
+                            <div className="space-y-1">
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Points
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={question.points || 1}
+                                onChange={(e) => {
+                                  const newQuestions = [...lessonData.content.quizData.questions];
+                                  newQuestions[index] = {
+                                    ...newQuestions[index],
+                                    points: parseInt(e.target.value) || 1
+                                  };
+                                  setLessonData(prev => ({
+                                    ...prev,
+                                    content: {
+                                      ...prev.content,
+                                      quizData: {
+                                        ...prev.content.quizData,
+                                        questions: newQuestions
+                                      }
+                                    }
+                                  }));
+                                }}
+                                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              />
+                            </div>
+                          </div>
+                          
+                          {/* Options for Multiple Choice */}
+                          {question.type === 'multiple-choice' && (
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  Options
+                                </label>
+                                <button
+                                  onClick={() => {
+                                    const newQuestions = [...lessonData.content.quizData.questions];
+                                    newQuestions[index] = {
+                                      ...newQuestions[index],
+                                      options: [...(newQuestions[index].options || []), '']
+                                    };
+                                    setLessonData(prev => ({
+                                      ...prev,
+                                      content: {
+                                        ...prev.content,
+                                        quizData: {
+                                          ...prev.content.quizData,
+                                          questions: newQuestions
+                                        }
+                                      }
+                                    }));
+                                  }}
+                                  className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                                >
+                                  <PlusIcon className="h-4 w-4 mr-1" />
+                                  Add Option
+                                </button>
+                              </div>
+                              
+                              {(question.options || []).map((option, optionIndex) => (
+                                <div key={optionIndex} className="flex items-center space-x-2">
+                                  <input
+                                    type="radio"
+                                    name={`correct-answer-${question.id}`}
+                                    checked={question.correctAnswer === option}
+                                    onChange={() => {
+                                      const newQuestions = [...lessonData.content.quizData.questions];
+                                      newQuestions[index] = {
+                                        ...newQuestions[index],
+                                        correctAnswer: option
+                                      };
+                                      setLessonData(prev => ({
+                                        ...prev,
+                                        content: {
+                                          ...prev.content,
+                                          quizData: {
+                                            ...prev.content.quizData,
+                                            questions: newQuestions
+                                          }
+                                        }
+                                      }));
+                                    }}
+                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={option}
+                                    onChange={(e) => {
+                                      const newOptions = [...(question.options || [])];
+                                      newOptions[optionIndex] = e.target.value;
+                                      
+                                      const newQuestions = [...lessonData.content.quizData.questions];
+                                      newQuestions[index] = {
+                                        ...newQuestions[index],
+                                        options: newOptions
+                                      };
+                                      
+                                      // Update correct answer if it was this option
+                                      if (question.correctAnswer === option) {
+                                        newQuestions[index] = {
+                                          ...newQuestions[index],
+                                          correctAnswer: e.target.value
+                                        };
+                                      }
+                                      
+                                      setLessonData(prev => ({
+                                        ...prev,
+                                        content: {
+                                          ...prev.content,
+                                          quizData: {
+                                            ...prev.content.quizData,
+                                            questions: newQuestions
+                                          }
+                                        }
+                                      }));
+                                    }}
+                                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder={`Option ${optionIndex + 1}`}
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      if ((question.options?.length || 0) > 2) {
+                                        const newOptions = (question.options || []).filter((_, i) => i !== optionIndex);
+                                        const newQuestions = [...lessonData.content.quizData.questions];
+                                        newQuestions[index] = {
+                                          ...newQuestions[index],
+                                          options: newOptions
+                                        };
+                                        
+                                        // Update correct answer if it was this option
+                                        if (question.correctAnswer === option) {
+                                          newQuestions[index] = {
+                                            ...newQuestions[index],
+                                            correctAnswer: newOptions[0] || ''
+                                          };
+                                        }
+                                        
+                                        setLessonData(prev => ({
+                                          ...prev,
+                                          content: {
+                                            ...prev.content,
+                                            quizData: {
+                                              ...prev.content.quizData,
+                                              questions: newQuestions
+                                            }
+                                          }
+                                        }));
+                                      }
+                                    }}
+                                    disabled={(question.options?.length || 0) <= 2}
+                                    className="p-1 text-red-500 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    <TrashIcon className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          
+                          {/* Correct Answers for Short Text */}
+                          {question.type === 'short-text' && (
+                            <div className="space-y-1">
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Correct Answers (one per line)
+                              </label>
+                              <textarea
+                                value={Array.isArray(question.correctAnswer) ? question.correctAnswer.join('\n') : ''}
+                                onChange={(e) => {
+                                  const answers = e.target.value.split('\n').filter(a => a.trim() !== '');
+                                  const newQuestions = [...lessonData.content.quizData.questions];
+                                  newQuestions[index] = {
+                                    ...newQuestions[index],
+                                    correctAnswer: answers
+                                  };
+                                  setLessonData(prev => ({
+                                    ...prev,
+                                    content: {
+                                      ...prev.content,
+                                      quizData: {
+                                        ...prev.content.quizData,
+                                        questions: newQuestions
+                                      }
+                                    }
+                                  }));
+                                }}
+                                rows={3}
+                                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Enter correct answers, one per line"
+                              />
+                            </div>
+                          )}
+                          
+                          {/* Explanation */}
+                          <div className="space-y-1">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Explanation (optional)
+                            </label>
+                            <textarea
+                              value={question.explanation || ''}
+                              onChange={(e) => {
+                                const newQuestions = [...lessonData.content.quizData.questions];
+                                newQuestions[index] = {
+                                  ...newQuestions[index],
+                                  explanation: e.target.value
+                                };
+                                setLessonData(prev => ({
+                                  ...prev,
+                                  content: {
+                                    ...prev.content,
+                                    quizData: {
+                                      ...prev.content.quizData,
+                                      questions: newQuestions
+                                    }
+                                  }
+                                }));
+                              }}
+                              rows={2}
+                              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="Explain why this is the correct answer..."
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1517,7 +2166,14 @@ export function CourseBuilder() {
                     textContent: '',
                     pdfUrl: '',
                     attachmentUrl: '',
-                    quizData: null,
+                    quizData: {
+                      id: '',
+                      title: '',
+                      description: '',
+                      questions: [] as QuizQuestion[],
+                      isGraded: true,
+                      passingScore: 70
+                    },
                     reflectionPrompt: ''
                   },
                   duration: 0,
@@ -1646,7 +2302,14 @@ export function CourseBuilder() {
                 textContent: '',
                 pdfUrl: '',
                 attachmentUrl: '',
-                quizData: null,
+                quizData: {
+                  id: '',
+                  title: '',
+                  description: '',
+                  questions: [] as QuizQuestion[],
+                  isGraded: true,
+                  passingScore: 70
+                },
                 reflectionPrompt: ''
               },
               duration: 0,

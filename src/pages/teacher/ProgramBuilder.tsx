@@ -4,6 +4,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { FileUploader } from '../../components/ui/FileUploader';
 import { mockApi } from '../../services/mockApi';
 import { Program, Course } from '../../types';
 import { 
@@ -31,8 +32,11 @@ export function ProgramBuilder() {
     description: '',
     status: 'draft' as 'draft' | 'live',
     requiresCertificate: false,
-    requiredOrder: false
+    requiredOrder: false,
+    coverImage: ''
   });
+
+  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
 
   const isEditing = !!programId;
 
@@ -57,7 +61,8 @@ export function ProgramBuilder() {
           description: programData.description,
           status: programData.status,
           requiresCertificate: programData.requiresCertificate,
-          requiredOrder: programData.requiredOrder
+          requiredOrder: programData.requiredOrder,
+          coverImage: programData.coverImage || ''
         });
 
         // Set selected courses
@@ -193,15 +198,31 @@ export function ProgramBuilder() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Program Cover Image
               </label>
-              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
-                <PhotoIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-600 dark:text-gray-400 mb-2">
-                  Upload a cover image for your program
-                </p>
-                <Button variant="outline" size="sm">
-                  Choose File
-                </Button>
-              </div>
+              {coverImagePreview && (
+                <div className="mb-4">
+                  <img 
+                    src={coverImagePreview} 
+                    alt="Cover preview" 
+                    className="w-full h-48 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+                  />
+                </div>
+              )}
+              <FileUploader
+                accept="image/*"
+                maxSize={5 * 1024 * 1024} // 5MB
+                maxFiles={1}
+                legacyMode={false}
+                onUpload={async (uploadResults) => {
+                  // Handle image upload
+                  console.log('Cover image uploaded:', uploadResults[0]);
+                  // Update program data with uploaded image URL
+                  if (uploadResults[0]) {
+                    setProgramData(prev => ({ ...prev, coverImage: uploadResults[0].url }));
+                    setCoverImagePreview(uploadResults[0].url); // Set preview
+                  }
+                }}
+                dropzoneText="Upload a cover image for your program"
+              />
             </div>
           </CardContent>
         </Card>
