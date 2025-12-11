@@ -85,7 +85,6 @@ export const useTodos = (userId: string, initialPage = 1, pageSize = 10) => {
      const success = await todoService.deleteTodo(todoId);
      if (success) {
        await loadTodos(pagination.page, pagination.limit); // 🔄 refresh
-       toast.success('Todo deleted');
        return true;
      }
      return false;

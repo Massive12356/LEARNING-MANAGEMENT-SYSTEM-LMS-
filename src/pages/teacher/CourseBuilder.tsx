@@ -47,6 +47,7 @@ export function CourseBuilder() {
   const [selectedModuleId, setSelectedModuleId] = useState<string>('');
   const [studentCount, setStudentCount] = useState(0);
   const [selectCourseId, setCourseId] = useState<string>("");
+  const [coverImagePreview, setCoverImagePreview] = useState< File | null>(null)
 
   const [courseData, setCourseData] = useState({
     title: '',

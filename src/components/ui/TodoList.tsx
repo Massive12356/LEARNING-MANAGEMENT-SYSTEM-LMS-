@@ -96,6 +96,8 @@ export const TodoList: React.FC<TodoListProps> = ({
   const [todoToDelete, setTodoToDelete] = useState<TodoItem | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [completingId, setCompletingId] = useState<string | null>(null);
+
 
   const [formData, setFormData] = useState<TodoFormData>({
     title: '',
@@ -193,6 +195,7 @@ export const TodoList: React.FC<TodoListProps> = ({
     try {
       setIsDeleting(true); // start loading
       await onDelete(todoToDelete.id); // assume onDelete can be async
+      toast.success("Todo Deleted")
       setShowDeleteModal(false);
       setTodoToDelete(null);
     } catch (err) {
@@ -204,31 +207,44 @@ export const TodoList: React.FC<TodoListProps> = ({
 
   const handleToggleStatus = (item: TodoItem) => {
     if (item.status === 'completed') {
-      // If already completed, mark as pending
       onUpdate(item.id, { status: 'pending' });
     } else {
-      // If marking as completed, delete the item as per user request
-      handleDelete(item.id);
+      // open delete modal for completed status
+      setTodoToDelete(item);
+      setShowDeleteModal(true);
     }
   };
 
-  const handleStatusChange = (item: TodoItem, newStatus: TodoStatus) => {
-    if (newStatus === 'completed') {
-      // If marking as completed, delete the item as per user request
-      handleDelete(item.id);
-    } else {
-      onUpdate(item.id, { status: newStatus });
-    }
-  };
 
-  const handleDelete = (itemId: string) => {
-    onDelete(itemId);
-  };
+ const handleStatusChange = (item: TodoItem, newStatus: TodoStatus) => {
+   if (newStatus === 'completed') {
+     setTodoToDelete(item);
+     setShowDeleteModal(true);
+   } else {
+     onUpdate(item.id, { status: newStatus });
+   }
+ };
 
-  const handleMarkAsCompleted = (item: TodoItem) => {
-    // Delete the item when marking as completed
-    handleDelete(item.id);
-  };
+
+  // const handleDelete = (itemId: string) => {
+  //   onDelete(itemId);
+  // };
+
+const handleCompleteTask = async (item: TodoItem) => {
+  if (!item) return;
+
+  try {
+    setCompletingId(item.id); // show spinner
+    await onDelete(item.id); // call the same delete function
+    toast.success('Task completed ✅'); // custom toast for completion
+  } catch (err) {
+    toast.error('Failed to complete task');
+  } finally {
+    setCompletingId(null); // stop spinner
+  }
+};
+
+
 
   const isOverdue = (item: TodoItem) => {
     return item.dueDate && new Date(item.dueDate) < new Date() && item.status !== 'completed';
@@ -273,7 +289,7 @@ export const TodoList: React.FC<TodoListProps> = ({
               </span>
               Todo List
               <span className="ml-2 bg-blue-500 text-white text-sm font-normal px-2 py-1 rounded-full">
-                {filteredItems.length}
+                {pagination?.total}
               </span>
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -431,15 +447,43 @@ export const TodoList: React.FC<TodoListProps> = ({
                           <div className="flex items-center space-x-1">
                             {item.status !== 'completed' && (
                               <button
-                                onClick={() => handleMarkAsCompleted(item)}
-                                className="px-2 py-1 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded hover:bg-green-200 dark:hover:bg-green-800 transition-colors"
+                                onClick={() => handleCompleteTask(item)}
+                                disabled={completingId === item.id}
+                                className="px-2 py-1 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded hover:bg-green-200 dark:hover:bg-green-800 transition-colors flex items-center gap-1"
                                 title="Mark as Completed"
                               >
-                                Complete
+                                {completingId === item.id ? (
+                                  <svg
+                                    className="animate-spin h-3 w-3"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <circle
+                                      className="opacity-25"
+                                      cx="12"
+                                      cy="12"
+                                      r="10"
+                                      stroke="currentColor"
+                                      strokeWidth="4"
+                                    ></circle>
+                                    <path
+                                      className="opacity-75"
+                                      fill="currentColor"
+                                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                                    ></path>
+                                  </svg>
+                                ) : (
+                                  'Complete'
+                                )}
                               </button>
                             )}
+
                             <button
-                              onClick={() => handleDelete(item.id)}
+                              onClick={() => {
+                                setTodoToDelete(item);
+                                setShowDeleteModal(true);
+                              }}
                               className="px-2 py-1 text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
                               title="Delete"
                             >
@@ -612,9 +656,72 @@ export const TodoList: React.FC<TodoListProps> = ({
             </Button>
             <Button
               onClick={handleSubmit}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={formLoading}
+              className={`w-50 flex items-center justify-center space-x-2 ${
+                formLoading ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
             >
-              {editingItem ? 'Update Task' : 'Create Task'}
+              {formLoading && (
+                <svg
+                  className="animate-spin h-4 w-4 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4l3.5-3.5L12 0v4a8 8 0 11-8 8z"
+                  ></path>
+                </svg>
+              )}
+
+              <span>
+                {formLoading
+                  ? editingItem
+                    ? 'Updating Task...'
+                    : 'Saving Task...'
+                  : editingItem
+                  ? 'Update Task'
+                  : 'Save Task'}
+              </span>
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
+        <div className="p-6">
+          <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Delete Task</h3>
+
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
+            Are you sure you want to delete:
+            <br />
+            <span className="font-semibold">{todoToDelete?.title}</span>?
+          </p>
+
+          <div className="flex justify-end space-x-3">
+            <Button
+              onClick={() => setShowDeleteModal(false)}
+              className="bg-gray-200  hover:bg-gray-300 text-zinc-950 dark:text-black"
+            >
+              Cancel
+            </Button>
+
+            <Button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
             </Button>
           </div>
         </div>
