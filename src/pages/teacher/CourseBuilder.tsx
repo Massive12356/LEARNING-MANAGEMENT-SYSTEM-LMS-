@@ -30,6 +30,7 @@ import {
   CheckCircleIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { courseService } from '../../services/courseService';
 
 export function CourseBuilder() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -45,6 +46,7 @@ export function CourseBuilder() {
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [selectedModuleId, setSelectedModuleId] = useState<string>('');
   const [studentCount, setStudentCount] = useState(0);
+  const [selectCourseId, setCourseId] = useState<string>("");
 
   const [courseData, setCourseData] = useState({
     title: '',
@@ -55,6 +57,14 @@ export function CourseBuilder() {
     allowSelfPacing: true,
     requiresCertificate: false,
     isGraded: false
+  });
+
+  // states for course Details
+  const [courseDetails, setCourseDetails] = useState({
+    courseTitle: '',
+    description: "",
+    images: null as File | null,
+    tags: [] as string[]
   });
 
   const [moduleData, setModuleData] = useState({
@@ -112,173 +122,187 @@ export function CourseBuilder() {
   };
 
   // Load demo data for new courses
-  useEffect(() => {
-    if (!isEditing) {
-      // Set demo course data
-      setCourseData({
-        title: 'Web Development Fundamentals - Editable Template',
-        description: '<p>This is a pre-created course template that you can customize for your students. It includes modules on HTML, CSS, and JavaScript fundamentals.</p><p><strong>How to use this template:</strong></p><ul><li>Edit the course title and description to match your needs</li><li>Modify the content of existing lessons</li><li>Add new lessons or modules</li><li>Change the order of modules and lessons</li><li>Upload your own videos and resources</li></ul>',
-        tags: ['html', 'css', 'javascript', 'web development', 'beginner'],
-        status: 'draft',
-        isTracked: true,
-        allowSelfPacing: true,
-        requiresCertificate: true,
-        isGraded: true
-      });
+  // useEffect(() => {
+  //   if (!isEditing) {
+  //     // Set demo course data
+  //     setCourseData({
+  //       title: 'Web Development Fundamentals - Editable Template',
+  //       description: '<p>This is a pre-created course template that you can customize for your students. It includes modules on HTML, CSS, and JavaScript fundamentals.</p><p><strong>How to use this template:</strong></p><ul><li>Edit the course title and description to match your needs</li><li>Modify the content of existing lessons</li><li>Add new lessons or modules</li><li>Change the order of modules and lessons</li><li>Upload your own videos and resources</li></ul>',
+  //       tags: ['html', 'css', 'javascript', 'web development', 'beginner'],
+  //       status: 'draft',
+  //       isTracked: true,
+  //       allowSelfPacing: true,
+  //       requiresCertificate: true,
+  //       isGraded: true
+  //     });
       
-      // Set demo modules and lessons if it's a new course
-      const demoCourse: Course = {
-        id: 'demo-course',
-        title: 'Web Development Fundamentals - Editable Template',
-        description: '<p>This is a pre-created course template that you can customize for your students. It includes modules on HTML, CSS, and JavaScript fundamentals.</p>',
-        coverImage: 'https://picsum.photos/800/450?random=4',
-        tags: ['html', 'css', 'javascript', 'web development', 'beginner'],
-        status: 'draft',
-        isTracked: true,
-        allowSelfPacing: true,
-        requiresCertificate: true,
-        isGraded: true,
-        organizationId: '',
-        teacherId: '',
-        modules: [
-          {
-            id: 'module-1-template',
-            title: 'HTML Basics',
-            description: 'Learn the fundamentals of HTML markup',
-            order: 0,
-            courseId: 'demo-course',
-            lessons: [
-              {
-                id: 'lesson-1-template',
-                title: 'Introduction to HTML',
-                description: 'Understanding the structure of web pages',
-                type: 'video',
-                content: {
-                  videoUrl: 'https://www.youtube.com/watch?v=Ihy0QziLDf0',
-                  duration: 15
-                },
-                order: 0,
-                moduleId: 'module-1-template',
-                duration: 15,
-                isRequired: true
-              },
-              {
-                id: 'lesson-2-template',
-                title: 'HTML Text Elements',
-                description: 'Working with headings, paragraphs, and text formatting',
-                type: 'text',
-                content: {
-                  textContent: '<h3>HTML Text Elements</h3><p>In this lesson, we\'ll explore the various text elements available in HTML.</p><h4>Headings</h4><p>HTML provides six levels of headings, from <code>&lt;h1&gt;</code> to <code>&lt;h6&gt;</code>.</p><h4>Paragraphs</h4><p>Paragraphs are defined with the <code>&lt;p&gt;</code> tag.</p>'
-                },
-                order: 1,
-                moduleId: 'module-1-template',
-                duration: 10,
-                isRequired: true
-              }
-            ]
-          },
-          {
-            id: 'module-2-template',
-            title: 'CSS Styling',
-            description: 'Style your web pages with CSS',
-            order: 1,
-            courseId: 'demo-course',
-            lessons: [
-              {
-                id: 'lesson-3-template',
-                title: 'CSS Basics',
-                description: 'Introduction to Cascading Style Sheets',
-                type: 'video',
-                content: {
-                  videoUrl: 'https://www.youtube.com/watch?v=1PnVor36_40',
-                  duration: 20
-                },
-                order: 0,
-                moduleId: 'module-2-template',
-                duration: 20,
-                isRequired: true
-              },
-              {
-                id: 'lesson-4-template',
-                title: 'Layout Techniques',
-                description: 'Modern CSS layout with Flexbox and Grid',
-                type: 'pdf',
-                content: {
-                  pdfUrl: 'https://css-tricks.com/wp-content/uploads/2018/03/CSS-Tricks-CSS-Layout-Landscapes.pdf'
-                },
-                order: 1,
-                moduleId: 'module-2-template',
-                duration: 25,
-                isRequired: true
-              }
-            ]
-          },
-          {
-            id: 'module-3-template',
-            title: 'JavaScript Fundamentals',
-            description: 'Add interactivity to your websites',
-            order: 2,
-            courseId: 'demo-course',
-            lessons: [
-              {
-                id: 'lesson-5-template',
-                title: 'JavaScript Variables and Data Types',
-                description: 'Learn about variables and data types in JavaScript',
-                type: 'video',
-                content: {
-                  videoUrl: 'https://www.youtube.com/watch?v=hdI2bqOjy3c',
-                  duration: 18
-                },
-                order: 0,
-                moduleId: 'module-3-template',
-                duration: 18,
-                isRequired: true
-              },
-              {
-                id: 'lesson-6-template',
-                title: 'DOM Manipulation',
-                description: 'Interacting with HTML elements using JavaScript',
-                type: 'text',
-                content: {
-                  textContent: '<h3>DOM Manipulation</h3><p>The Document Object Model (DOM) is a programming interface for web documents.</p><p>It represents the page so that programs can change the document structure, style, and content.</p>'
-                },
-                order: 1,
-                moduleId: 'module-3-template',
-                duration: 15,
-                isRequired: true
-              }
-            ]
-          }
-        ],
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
+  //     // Set demo modules and lessons if it's a new course
+  //     const demoCourse: Course = {
+  //       id: 'demo-course',
+  //       title: 'Web Development Fundamentals - Editable Template',
+  //       description: '<p>This is a pre-created course template that you can customize for your students. It includes modules on HTML, CSS, and JavaScript fundamentals.</p>',
+  //       coverImage: 'https://picsum.photos/800/450?random=4',
+  //       tags: ['html', 'css', 'javascript', 'web development', 'beginner'],
+  //       status: 'draft',
+  //       isTracked: true,
+  //       allowSelfPacing: true,
+  //       requiresCertificate: true,
+  //       isGraded: true,
+  //       organizationId: '',
+  //       teacherId: '',
+  //       modules: [
+  //         {
+  //           id: 'module-1-template',
+  //           title: 'HTML Basics',
+  //           description: 'Learn the fundamentals of HTML markup',
+  //           order: 0,
+  //           courseId: 'demo-course',
+  //           lessons: [
+  //             {
+  //               id: 'lesson-1-template',
+  //               title: 'Introduction to HTML',
+  //               description: 'Understanding the structure of web pages',
+  //               type: 'video',
+  //               content: {
+  //                 videoUrl: 'https://www.youtube.com/watch?v=Ihy0QziLDf0',
+  //                 duration: 15
+  //               },
+  //               order: 0,
+  //               moduleId: 'module-1-template',
+  //               duration: 15,
+  //               isRequired: true
+  //             },
+  //             {
+  //               id: 'lesson-2-template',
+  //               title: 'HTML Text Elements',
+  //               description: 'Working with headings, paragraphs, and text formatting',
+  //               type: 'text',
+  //               content: {
+  //                 textContent: '<h3>HTML Text Elements</h3><p>In this lesson, we\'ll explore the various text elements available in HTML.</p><h4>Headings</h4><p>HTML provides six levels of headings, from <code>&lt;h1&gt;</code> to <code>&lt;h6&gt;</code>.</p><h4>Paragraphs</h4><p>Paragraphs are defined with the <code>&lt;p&gt;</code> tag.</p>'
+  //               },
+  //               order: 1,
+  //               moduleId: 'module-1-template',
+  //               duration: 10,
+  //               isRequired: true
+  //             }
+  //           ]
+  //         },
+  //         {
+  //           id: 'module-2-template',
+  //           title: 'CSS Styling',
+  //           description: 'Style your web pages with CSS',
+  //           order: 1,
+  //           courseId: 'demo-course',
+  //           lessons: [
+  //             {
+  //               id: 'lesson-3-template',
+  //               title: 'CSS Basics',
+  //               description: 'Introduction to Cascading Style Sheets',
+  //               type: 'video',
+  //               content: {
+  //                 videoUrl: 'https://www.youtube.com/watch?v=1PnVor36_40',
+  //                 duration: 20
+  //               },
+  //               order: 0,
+  //               moduleId: 'module-2-template',
+  //               duration: 20,
+  //               isRequired: true
+  //             },
+  //             {
+  //               id: 'lesson-4-template',
+  //               title: 'Layout Techniques',
+  //               description: 'Modern CSS layout with Flexbox and Grid',
+  //               type: 'pdf',
+  //               content: {
+  //                 pdfUrl: 'https://css-tricks.com/wp-content/uploads/2018/03/CSS-Tricks-CSS-Layout-Landscapes.pdf'
+  //               },
+  //               order: 1,
+  //               moduleId: 'module-2-template',
+  //               duration: 25,
+  //               isRequired: true
+  //             }
+  //           ]
+  //         },
+  //         {
+  //           id: 'module-3-template',
+  //           title: 'JavaScript Fundamentals',
+  //           description: 'Add interactivity to your websites',
+  //           order: 2,
+  //           courseId: 'demo-course',
+  //           lessons: [
+  //             {
+  //               id: 'lesson-5-template',
+  //               title: 'JavaScript Variables and Data Types',
+  //               description: 'Learn about variables and data types in JavaScript',
+  //               type: 'video',
+  //               content: {
+  //                 videoUrl: 'https://www.youtube.com/watch?v=hdI2bqOjy3c',
+  //                 duration: 18
+  //               },
+  //               order: 0,
+  //               moduleId: 'module-3-template',
+  //               duration: 18,
+  //               isRequired: true
+  //             },
+  //             {
+  //               id: 'lesson-6-template',
+  //               title: 'DOM Manipulation',
+  //               description: 'Interacting with HTML elements using JavaScript',
+  //               type: 'text',
+  //               content: {
+  //                 textContent: '<h3>DOM Manipulation</h3><p>The Document Object Model (DOM) is a programming interface for web documents.</p><p>It represents the page so that programs can change the document structure, style, and content.</p>'
+  //               },
+  //               order: 1,
+  //               moduleId: 'module-3-template',
+  //               duration: 15,
+  //               isRequired: true
+  //             }
+  //           ]
+  //         }
+  //       ],
+  //       createdAt: new Date(),
+  //       updatedAt: new Date()
+  //     };
       
-      setCourse(demoCourse);
-    }
-  }, [isEditing]);
+  //     setCourse(demoCourse);
+  //   }
+  // }, [isEditing]);
 
   const handleSaveCourseDetails = async () => {
-    if (!courseData.title.trim()) {
+    if (!courseDetails.courseTitle.trim()) {
       toast.error('Course title is required');
       return;
     }
 
-    setLoading(true);
+    if(!courseDetails.images){
+      toast.error("Course image is required")
+      return;
+    }
+    // prepare course data to send backend
+    const payload = new FormData();
+    payload.append('courseTitle', courseDetails.courseTitle);
+    payload.append('description', courseDetails.description);
+    payload.append("images", courseDetails.images);
+
+    courseDetails.tags.forEach(tag =>{
+      payload.append('tags', tag)
+    })
+
     try {
-      if (isEditing && course) {
-        await mockApi.updateCourse(course.id, courseData);
-        toast.success('Course details saved successfully');
-      } else {
-        const newCourse = await mockApi.createCourse({
-          ...courseData,
-          teacherId: user!.id
-        });
-        navigate(`/teacher/courses/${newCourse.id}/edit`);
-        toast.success('Course created successfully');
-      }
-    } catch (error) {
-      toast.error('Failed to save course details');
+      setLoading(true);
+       const response = await courseService.createCourseDetials(payload);
+       toast.success("Course Detail created");
+       console.log('CREATE COURSE RAW RESPONSE:', response);
+       setCourseId(response.courseDescription.id);
+       setCourseDetails({
+         courseTitle: '',
+         description: '',
+         images: null,
+         tags:[],
+       });
+    } catch (error:any) {
+      console.log(error?.message || "Failed to post details")
+      toast.error()
     } finally {
       setLoading(false);
     }
@@ -713,6 +737,9 @@ export function CourseBuilder() {
     { id: 'preview', name: 'Preview & Publish' }
   ];
 
+  console.log("Show ID:", selectCourseId)
+
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'details':
@@ -720,8 +747,8 @@ export function CourseBuilder() {
           <div className="space-y-6">
             <Input
               label="Course Title"
-              value={courseData.title}
-              onChange={(e) => setCourseData(prev => ({ ...prev, title: e.target.value }))}
+              value={courseDetails.courseTitle}
+              onChange={e => setCourseDetails(prev => ({ ...prev, courseTitle: e.target.value }))}
               placeholder="Enter course title"
               required
             />
@@ -731,8 +758,8 @@ export function CourseBuilder() {
                 Course Description
               </label>
               <RichTextEditor
-                value={courseData.description}
-                onChange={(value) => setCourseData(prev => ({ ...prev, description: value }))}
+                value={courseDetails.description}
+                onChange={value => setCourseDetails(prev => ({ ...prev, description: value }))}
                 placeholder="Describe what students will learn in this course"
                 minHeight="150px"
               />
@@ -744,11 +771,16 @@ export function CourseBuilder() {
               </label>
               <input
                 type="text"
-                value={courseData.tags.join(', ')}
-                onChange={(e) => setCourseData(prev => ({ 
-                  ...prev, 
-                  tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean)
-                }))}
+                value={courseDetails.tags.join(', ')}
+                onChange={e =>
+                  setCourseDetails(prev => ({
+                    ...prev,
+                    tags: e.target.value
+                      .split(',')
+                      .map(tag => tag.trim())
+                      .filter(Boolean),
+                  }))
+                }
                 className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="react, javascript, frontend"
               />
@@ -760,17 +792,25 @@ export function CourseBuilder() {
               </label>
               <FileUploader
                 accept="image/*"
-                maxSize={5 * 1024 * 1024} // 5MB
+                maxSize={5 * 1024 * 1024}
                 maxFiles={1}
-                legacyMode={false} // Use new UploadResult[] mode
-                onUpload={async (uploadResults) => {
-                  // Handle image upload
-                  console.log('Cover image uploaded:', uploadResults[0]);
-                  // TODO: Update course data with uploaded image URL
-                  // The uploadResult contains the processed file information
-                  // uploadResults[0].url contains the uploaded file URL
+                autoUpload={false}
+                onUpload={files => {
+                  // files is UploadResult[]
+                  if (files && files.length > 0) {
+                    const file = files[0];
+
+                    // extract actual file from uploadedFiles list (FileUploader's internal state)
+                    const originalFile = file?.originalFile || file?.file || null;
+
+                    if (originalFile) {
+                      setCourseDetails(prev => ({
+                        ...prev,
+                        images: originalFile,
+                      }));
+                    }
+                  }
                 }}
-                dropzoneText="Upload a cover image for your course"
               />
             </div>
 

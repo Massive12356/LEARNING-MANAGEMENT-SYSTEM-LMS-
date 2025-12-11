@@ -3,9 +3,10 @@ import { Course } from '../types';
 import apiClient from './apiClient';
 
 class CourseService {
-  async createCourseDetials(formData: FormData, id: string) {
+  //service functions for handling posting courses
+  async createCourseDetials(formData: FormData) {
     try {
-      const response = await apiClient.post(`/create/course/${id}/Description`, formData, {
+      const response = await apiClient.post(`/create/program/description`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -18,6 +19,139 @@ class CourseService {
       console.log('[CourseService] ERROR FROM SERVER:', err.response?.data?.message || err.message);
 
       throw new Error(err.response?.data?.message || err.message);
+    }
+  }
+
+  async createModules(formData: FormData, courseId: string) {
+    try {
+      const response = await apiClient.post(`/create/course/${courseId}/module`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log('[courseService] RESPONSE FROM SERVER', response?.data);
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService] ERROR RESPONSE FROM SERVER',
+        err?.response?.data?.message || err?.message
+      );
+      throw new Error(err?.response?.data?.message || err?.message);
+    }
+  }
+
+  async createLessonVideo(formData: FormData, id: string) {
+    try {
+      const response = await apiClient.post(`/create/course/${id}/content`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log('[courseService] SUCCESS RESPONSE FROM SERVER', response?.data);
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService] ERROR RESPONSE FROM SERVER',
+        err?.response?.data?.message || err?.message
+      );
+      throw new Error(err?.response?.data?.message || err?.message);
+    }
+  }
+
+  async createLessonPdf(formData: FormData, id: string) {
+    try {
+      const response = await apiClient.post(`/create/course/${id}/content`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log('[courseService] SUCCESS RESPONSE FROM SERVER', response?.data);
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService] ERROR RESPONSE FROM SERVER',
+        err?.response?.data?.message || err?.message
+      );
+      throw new Error(err?.response?.data?.message || err?.message);
+    }
+  }
+
+  async createLessonAttachments(formData: FormData, id: string) {
+    try {
+      const response = await apiClient.post(`/create/course/${id}/content`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log('[courseService] SUCCESS RESPONSE FROM SERVER', response?.data);
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService] ERROR RESPONSE FROM SERVER',
+        err?.response?.data?.message || err?.message
+      );
+      throw new Error(err?.response?.data?.message || err?.message);
+    }
+  }
+
+  async createLessonTextContent(formData: FormData, id: string) {
+    try {
+      const response = await apiClient.post(`/create/course/${id}/content`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log('[courseService] SUCCESS RESPONSE FROM SERVER', response?.data);
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService] ERROR RESPONSE FROM SERVER',
+        err?.response?.data?.message || err?.message
+      );
+      throw new Error(err?.response?.data?.message || err?.message);
+    }
+  }
+
+  async createLessonQuiz(formData: FormData, id: string) {
+    try {
+      const response = await apiClient.post(`/create/course/${id}/content`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log('[courseService] SUCCESS RESPONSE FROM SERVER', response?.data);
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService] ERROR RESPONSE FROM SERVER',
+        err?.response?.data?.message || err?.message
+      );
+      throw new Error(err?.response?.data?.message || err?.message);
+    }
+  }
+
+  async createLessonReflection(formData: FormData, id: string) {
+    try {
+      const response = await apiClient.post(`/create/course/${id}/content`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log('[courseService] SUCCESS RESPONSE FROM SERVER', response?.data);
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService] ERROR RESPONSE FROM SERVER',
+        err?.response?.data?.message || err?.message
+      );
+      throw new Error(err?.response?.data?.message || err?.message);
     }
   }
 }
