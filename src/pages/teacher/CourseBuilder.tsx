@@ -13,7 +13,7 @@ import { AnnouncementForm } from '../../components/teacher/AnnouncementForm';
 import { mockApi } from '../../services/mockApi';
 import { UploadResult } from '../../services/fileUploadService';
 import { Course, Module, Lesson, QuizQuestion } from '../../types';
-import { 
+import {
   PlusIcon,
   PencilIcon,
   TrashIcon,
@@ -27,11 +27,48 @@ import {
   PencilSquareIcon,
   Bars3Icon,
   UserGroupIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { courseService } from '../../services/courseService';
 
+// Helper function to manage localStorage for course builder state
+const COURSE_BUILDER_STORAGE_KEY = 'courseBuilderState';
+
+const saveCourseBuilderState = (state) => {
+  try {
+    // Don't save file objects as they can't be serialized
+    const stateToSave = {
+      ...state,
+      courseDetails: {
+        ...state.courseDetails,
+        images: null // File objects cannot be serialized
+      },
+    };
+    localStorage.setItem(COURSE_BUILDER_STORAGE_KEY, JSON.stringify(stateToSave));
+  } catch (error) {
+    console.error('Failed to save course builder state:', error);
+  }
+};
+
+const loadCourseBuilderState = () => {
+  try {
+    const savedState = localStorage.getItem(COURSE_BUILDER_STORAGE_KEY);
+    console.log('Loaded course builder state:', JSON.parse(savedState));
+    return savedState ? JSON.parse(savedState) : null;
+  } catch (error) {
+    console.error('Failed to load course builder state:', error);
+    return null;
+  }
+};
+
+const clearCourseBuilderState = () => {
+  try {
+    localStorage.removeItem(COURSE_BUILDER_STORAGE_KEY);
+  } catch (error) {
+    console.error('Failed to clear course builder state:', error);
+  }
+};
 export function CourseBuilder() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
@@ -46,58 +83,135 @@ export function CourseBuilder() {
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [selectedModuleId, setSelectedModuleId] = useState<string>('');
   const [studentCount, setStudentCount] = useState(0);
-  const [selectCourseId, setCourseId] = useState<string>("");
-  const [coverImagePreview, setCoverImagePreview] = useState< File | null>(null)
+  const [selectCourseId, setSelectCourseId] = useState<string>(''); // holds course id after creation
+  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
+  const [isSavingModule,setIsSavingModule] = useState(false)
+  const [isGettingModule, setIsGettingModule] = useState(false);
+  const [selectModule, setSelectModule] = useState<any[]>([]);
 
-  const [courseData, setCourseData] = useState({
-    title: '',
-    description: '',
-    tags: [] as string[],
-    status: 'draft' as 'draft' | 'live',
-    isTracked: true,
-    allowSelfPacing: true,
-    requiresCertificate: false,
-    isGraded: false,
-    coverImage: '' // Add this line to store the cover image URL
-  });
 
-  // states for course Details
-  const [courseDetails, setCourseDetails] = useState({
-    courseTitle: '',
-    description: "",
-    images: null as File | null,
-    tags: [] as string[]
-  });
-
-  const [moduleData, setModuleData] = useState({
-    title: '',
-    description: ''
-  });
-
-  const [lessonData, setLessonData] = useState({
-    title: '',
-    description: '',
-    type: 'video' as 'video' | 'text' | 'pdf' | 'attachment' | 'quiz' | 'reflection',
-    content: {
-      videoUrl: '',
-      textContent: '',
-      pdfUrl: '',
-      attachmentUrl: '',
-      quizData: {
-        id: '',
+  // Load initial state from localStorage or use defaults
+  const getInitialState = () => {
+    const savedState = loadCourseBuilderState();
+    if (savedState && !courseId) {
+      // Restore state only for new courses, not when editing existing ones
+      return {
+        courseData: savedState.courseData || {
+          title: '',
+          description: '',
+          tags: [],
+          status: 'draft',
+          isTracked: true,
+          allowSelfPacing: true,
+          requiresCertificate: false,
+          isGraded: false,
+          coverImage: '',
+        },
+        courseDetails: savedState.courseDetails || {
+          courseTitle: '',
+          description: '',
+          images: null,
+          tags: [],
+        },
+        moduleData: savedState.moduleData || {
+          title: '',
+          description: '',
+          moduleNumber: "",
+        },
+        lessonData: savedState.lessonData || {
+          title: '',
+          description: '',
+          type: 'video',
+          content: {
+            videoUrl: '',
+            textContent: '',
+            pdfUrl: '',
+            attachmentUrl: '',
+            quizData: {
+              id: '',
+              title: '',
+              description: '',
+              questions: [],
+              isGraded: true,
+              passingScore: 70,
+            },
+            reflectionPrompt: '',
+          },
+          duration: 0,
+          isRequired: true,
+        }
+      };
+    }
+    
+    // Default state for new courses or when no saved state
+    return {
+      courseData: {
         title: '',
         description: '',
-        questions: [] as QuizQuestion[],
-        isGraded: true,
-        passingScore: 70
+        tags: [] as string[],
+        status: 'draft' as 'draft' | 'live',
+        isTracked: true,
+        allowSelfPacing: true,
+        requiresCertificate: false,
+        isGraded: false,
+        coverImage: '', // Add this line to store the cover image URL
       },
-      reflectionPrompt: ''
-    } as any,
-    duration: 0,
-    isRequired: true
-  });
+      courseDetails: {
+        courseTitle: '',
+        description: '',
+        images: null as File | null,
+        tags: [] as string[],
+      },
+      moduleData: {
+        title: '',
+        description: '',
+        moduleNumber: "",
 
+      },
+      lessonData: {
+        title: '',
+        description: '',
+        type: 'video' as 'video' | 'text' | 'pdf' | 'attachment' | 'quiz' | 'reflection',
+        content: {
+          videoUrl: '',
+          textContent: '',
+          pdfUrl: '',
+          attachmentUrl: '',
+          quizData: {
+            id: '',
+            title: '',
+            description: '',
+            questions: [] as QuizQuestion[],
+            isGraded: true,
+            passingScore: 70,
+          },
+          reflectionPrompt: '',
+        } as any,
+        duration: 0,
+        isRequired: true,
+      }
+    };
+  };
+
+  const initialState = getInitialState();
+  const [courseData, setCourseData] = useState(initialState.courseData);
+  const [courseDetails, setCourseDetails] = useState(initialState.courseDetails);
+  const [moduleData, setModuleData] = useState(initialState.moduleData);
+  const [lessonData, setLessonData] = useState(initialState.lessonData);
   const isEditing = !!courseId;
+
+  // Save state to localStorage whenever it changes (but not for editing existing courses)
+  useEffect(() => {
+    if (!isEditing) {
+      const stateToSave = {
+        courseData,
+        courseDetails,
+        moduleData,
+        lessonData
+      };
+      saveCourseBuilderState(stateToSave);
+    }
+  }, [courseData, courseDetails, moduleData, lessonData, isEditing]);
 
   useEffect(() => {
     if (isEditing) {
@@ -107,7 +221,7 @@ export function CourseBuilder() {
 
   const loadCourse = async () => {
     if (!courseId) return;
-    
+
     setLoading(true);
     try {
       const courseData = await mockApi.getCourseById(courseId);
@@ -120,7 +234,7 @@ export function CourseBuilder() {
         isTracked: courseData.isTracked,
         allowSelfPacing: courseData.allowSelfPacing,
         requiresCertificate: courseData.requiresCertificate,
-        isGraded: courseData.isGraded
+        isGraded: courseData.isGraded,
       });
       // Set cover image preview if there's a cover image
       if (courseData.coverImage) {
@@ -133,6 +247,8 @@ export function CourseBuilder() {
       setLoading(false);
     }
   };
+
+  
 
   // Load demo data for new courses
   // useEffect(() => {
@@ -148,7 +264,7 @@ export function CourseBuilder() {
   //       requiresCertificate: true,
   //       isGraded: true
   //     });
-      
+
   //     // Set demo modules and lessons if it's a new course
   //     const demoCourse: Course = {
   //       id: 'demo-course',
@@ -276,7 +392,7 @@ export function CourseBuilder() {
   //       createdAt: new Date(),
   //       updatedAt: new Date()
   //     };
-      
+
   //     setCourse(demoCourse);
   //   }
   // }, [isEditing]);
@@ -287,35 +403,48 @@ export function CourseBuilder() {
       return;
     }
 
-    if(!courseDetails.images){
-      toast.error("Course image is required")
+    if (!courseDetails.images) {
+      toast.error('Course image is required');
       return;
     }
     // prepare course data to send backend
     const payload = new FormData();
     payload.append('courseTitle', courseDetails.courseTitle);
     payload.append('description', courseDetails.description);
-    payload.append("images", courseDetails.images);
+    payload.append('images', courseDetails.images);
 
-    courseDetails.tags.forEach(tag =>{
-      payload.append('tags', tag)
-    })
+    courseDetails.tags.forEach(tag => {
+      payload.append('tags', tag);
+    });
 
     try {
       setLoading(true);
-       const response = await courseService.createCourseDetials(payload);
-       toast.success("Course Detail created");
-       console.log('CREATE COURSE RAW RESPONSE:', response);
-       setCourseId(response.courseDescription.id);
-       setCourseDetails({
-         courseTitle: '',
-         description: '',
-         images: null,
-         tags:[],
-       });
-    } catch (error:any) {
-      console.log(error?.message || "Failed to post details")
-      toast.error()
+      const response = await courseService.createCourseDetials(payload);
+      toast.success('Course Details created');
+      console.log('CREATE COURSE RAW RESPONSE:', response);
+
+      // value that holds the course id
+      const courseId = response.courseDescription.id;
+      // sets the id onto the local  state
+      setSelectCourseId(courseId);
+
+      // save Id in localstorage
+      localStorage.setItem("currentCourseId", courseId.toString());
+      
+      // Update courseData with details from courseDetails
+      setCourseData(prev => ({
+        ...prev,
+        title: courseDetails.courseTitle,
+        description: courseDetails.description,
+        tags: [...courseDetails.tags]
+      }));
+      
+      // Don't clear courseDetails here, keep it for persistence
+      // setCourseDetails will be cleared only after final course creation
+      setCoverImagePreview(null)
+    } catch (error: any) {
+      console.log(error?.message || 'Failed to post details');
+      toast.error(error?.message || 'Failed to create course details');
     } finally {
       setLoading(false);
     }
@@ -336,13 +465,13 @@ export function CourseBuilder() {
     try {
       // For new courses, create the course first
       let courseIdToUse = course?.id;
-      
+
       if (!isEditing || !course) {
         // Create new course
         const newCourse = await mockApi.createCourse({
           ...courseData,
           teacherId: user!.id,
-          modules: course?.modules || []
+          modules: course?.modules || [],
         });
         courseIdToUse = newCourse.id;
         setCourse(newCourse);
@@ -351,12 +480,24 @@ export function CourseBuilder() {
         // Update existing course with all data
         const updatedCourse = await mockApi.updateCourse(course.id, {
           ...courseData,
-          modules: course.modules
+          modules: course.modules,
         });
         setCourse(updatedCourse);
       }
-      
+
       toast.success(isEditing ? 'Course updated successfully!' : 'Course created successfully!');
+      
+      // Clear persisted state only after successful creation
+      if (!isEditing) {
+        clearCourseBuilderState();
+        // Reset form states after successful creation
+        setCourseDetails({
+          courseTitle: '',
+          description: '',
+          images: null,
+          tags: [],
+        });
+      }
       
       // Optionally redirect to course list
       // navigate('/teacher/courses');
@@ -387,33 +528,34 @@ export function CourseBuilder() {
       return;
     }
 
-    // Mock module creation
-    const newModule: Module = {
-      id: `module-${Date.now()}`,
-      title: moduleData.title,
-      description: moduleData.description,
-      order: course?.modules.length || 0,
-      courseId: course?.id || '',
-      lessons: []
-    };
-
-    if (course) {
-      setCourse({
-        ...course,
-        modules: [...course.modules, newModule]
-      });
+    if(!selectCourseId){
+      toast.error("Please course details first")
     }
-
-    setModuleData({ title: '', description: '' });
+     
+    const payload = {
+    title: moduleData.title,
+    description: moduleData.description,
+    moduleNumber: moduleData.moduleNumber,
+  };
+    try {
+      setIsSavingModule(true);
+      const response = await courseService.createModules(payload,selectCourseId)
     setShowModuleModal(false);
     toast.success('Module added successfully');
+    await fetchModulesByCourseId();
+    } catch (error: any) {
+      toast.error(error?.message | "Failed to Add Module")
+    }finally{
+      setIsSavingModule(false)
+    }
   };
 
   const handleEditModule = (module: Module) => {
     setEditingModule(module);
     setModuleData({
       title: module.title,
-      description: module.description
+      description: module.description,
+      moduleNumber: module.moduleNumber,
     });
     setShowModuleModal(true);
   };
@@ -427,15 +569,15 @@ export function CourseBuilder() {
     if (!editingModule) return;
 
     if (course) {
-      const updatedModules = course.modules.map(module => 
-        module.id === editingModule.id 
+      const updatedModules = course.modules.map(module =>
+        module.id === editingModule.id
           ? { ...module, title: moduleData.title, description: moduleData.description }
           : module
       );
 
       setCourse({
         ...course,
-        modules: updatedModules
+        modules: updatedModules,
       });
     }
 
@@ -446,22 +588,26 @@ export function CourseBuilder() {
   };
 
   const handleDeleteModule = (moduleId: string, moduleTitle: string) => {
-    if (!confirm(`Are you sure you want to delete the module "${moduleTitle}"? This will also delete all lessons in this module.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete the module "${moduleTitle}"? This will also delete all lessons in this module.`
+      )
+    ) {
       return;
     }
 
     if (course) {
       const updatedModules = course.modules.filter(module => module.id !== moduleId);
-      
+
       // Update order of remaining modules
       const reorderedModules = updatedModules.map((module, index) => ({
         ...module,
-        order: index
+        order: index,
       }));
 
       setCourse({
         ...course,
-        modules: reorderedModules
+        modules: reorderedModules,
       });
     }
 
@@ -497,7 +643,11 @@ export function CourseBuilder() {
           return false;
         }
 
-        if (!question.correctAnswer || typeof question.correctAnswer !== 'string' || !question.correctAnswer.trim()) {
+        if (
+          !question.correctAnswer ||
+          typeof question.correctAnswer !== 'string' ||
+          !question.correctAnswer.trim()
+        ) {
           toast.error(`Question ${i + 1} must have a correct answer selected`);
           return false;
         }
@@ -507,7 +657,10 @@ export function CourseBuilder() {
           return false;
         }
       } else if (question.type === 'short-text') {
-        if (!question.correctAnswer || (Array.isArray(question.correctAnswer) && question.correctAnswer.length === 0)) {
+        if (
+          !question.correctAnswer ||
+          (Array.isArray(question.correctAnswer) && question.correctAnswer.length === 0)
+        ) {
           toast.error(`Question ${i + 1} must have at least one correct answer`);
           return false;
         }
@@ -541,32 +694,32 @@ export function CourseBuilder() {
       case 'video':
         lessonContent = {
           videoUrl: lessonData.content.videoUrl,
-          duration: lessonData.duration
+          duration: lessonData.duration,
         };
         break;
       case 'text':
         lessonContent = {
-          textContent: lessonData.content.textContent
+          textContent: lessonData.content.textContent,
         };
         break;
       case 'pdf':
         lessonContent = {
-          pdfUrl: lessonData.content.pdfUrl
+          pdfUrl: lessonData.content.pdfUrl,
         };
         break;
       case 'attachment':
         lessonContent = {
-          attachmentUrl: lessonData.content.attachmentUrl
+          attachmentUrl: lessonData.content.attachmentUrl,
         };
         break;
       case 'quiz':
         lessonContent = {
-          quizData: lessonData.content.quizData
+          quizData: lessonData.content.quizData,
         };
         break;
       case 'reflection':
         lessonContent = {
-          reflectionPrompt: lessonData.content.reflectionPrompt
+          reflectionPrompt: lessonData.content.reflectionPrompt,
         };
         break;
     }
@@ -581,7 +734,7 @@ export function CourseBuilder() {
       order: 0,
       moduleId: selectedModuleId,
       duration: lessonData.duration,
-      isRequired: lessonData.isRequired
+      isRequired: lessonData.isRequired,
     };
 
     if (course) {
@@ -589,7 +742,7 @@ export function CourseBuilder() {
         if (module.id === selectedModuleId) {
           return {
             ...module,
-            lessons: [...module.lessons, newLesson]
+            lessons: [...module.lessons, newLesson],
           };
         }
         return module;
@@ -597,7 +750,7 @@ export function CourseBuilder() {
 
       setCourse({
         ...course,
-        modules: updatedModules
+        modules: updatedModules,
       });
     }
 
@@ -616,12 +769,12 @@ export function CourseBuilder() {
           description: '',
           questions: [] as QuizQuestion[],
           isGraded: true,
-          passingScore: 70
+          passingScore: 70,
         },
-        reflectionPrompt: ''
+        reflectionPrompt: '',
       },
       duration: 0,
-      isRequired: true
+      isRequired: true,
     });
     setShowLessonModal(false);
     toast.success('Lesson added successfully');
@@ -629,7 +782,7 @@ export function CourseBuilder() {
 
   const handleEditLesson = (lesson: Lesson) => {
     setEditingLesson(lesson);
-    
+
     // Initialize content based on lesson type
     let content = {
       videoUrl: '',
@@ -642,11 +795,11 @@ export function CourseBuilder() {
         description: '',
         questions: [] as QuizQuestion[],
         isGraded: true,
-        passingScore: 70
+        passingScore: 70,
       },
-      reflectionPrompt: ''
+      reflectionPrompt: '',
     };
-    
+
     switch (lesson.type) {
       case 'video':
         content.videoUrl = lesson.content?.videoUrl || '';
@@ -667,21 +820,21 @@ export function CourseBuilder() {
           description: '',
           questions: [],
           isGraded: true,
-          passingScore: 70
+          passingScore: 70,
         };
         break;
       case 'reflection':
         content.reflectionPrompt = lesson.content?.reflectionPrompt || '';
         break;
     }
-    
+
     setLessonData({
       title: lesson.title,
       description: lesson.description,
       type: lesson.type,
       content: content,
       duration: lesson.duration || 0,
-      isRequired: lesson.isRequired
+      isRequired: lesson.isRequired,
     });
     setSelectedModuleId(lesson.moduleId);
     setShowLessonModal(true);
@@ -708,32 +861,32 @@ export function CourseBuilder() {
       case 'video':
         lessonContent = {
           videoUrl: lessonData.content.videoUrl,
-          duration: lessonData.duration
+          duration: lessonData.duration,
         };
         break;
       case 'text':
         lessonContent = {
-          textContent: lessonData.content.textContent
+          textContent: lessonData.content.textContent,
         };
         break;
       case 'pdf':
         lessonContent = {
-          pdfUrl: lessonData.content.pdfUrl
+          pdfUrl: lessonData.content.pdfUrl,
         };
         break;
       case 'attachment':
         lessonContent = {
-          attachmentUrl: lessonData.content.attachmentUrl
+          attachmentUrl: lessonData.content.attachmentUrl,
         };
         break;
       case 'quiz':
         lessonContent = {
-          quizData: lessonData.content.quizData
+          quizData: lessonData.content.quizData,
         };
         break;
       case 'reflection':
         lessonContent = {
-          reflectionPrompt: lessonData.content.reflectionPrompt
+          reflectionPrompt: lessonData.content.reflectionPrompt,
         };
         break;
     }
@@ -741,23 +894,23 @@ export function CourseBuilder() {
     if (course) {
       const updatedModules = course.modules.map(module => {
         if (module.id === editingLesson.moduleId) {
-          const updatedLessons = module.lessons.map(lesson => 
-            lesson.id === editingLesson.id 
-              ? { 
-                  ...lesson, 
+          const updatedLessons = module.lessons.map(lesson =>
+            lesson.id === editingLesson.id
+              ? {
+                  ...lesson,
                   title: lessonData.title,
                   description: lessonData.description,
                   type: lessonData.type,
                   content: lessonContent,
                   duration: lessonData.duration,
-                  isRequired: lessonData.isRequired
+                  isRequired: lessonData.isRequired,
                 }
               : lesson
           );
-          
+
           return {
             ...module,
-            lessons: updatedLessons
+            lessons: updatedLessons,
           };
         }
         return module;
@@ -765,7 +918,7 @@ export function CourseBuilder() {
 
       setCourse({
         ...course,
-        modules: updatedModules
+        modules: updatedModules,
       });
     }
 
@@ -785,12 +938,12 @@ export function CourseBuilder() {
           description: '',
           questions: [] as QuizQuestion[],
           isGraded: true,
-          passingScore: 70
+          passingScore: 70,
         },
-        reflectionPrompt: ''
+        reflectionPrompt: '',
       },
       duration: 0,
-      isRequired: true
+      isRequired: true,
     });
     setShowLessonModal(false);
     toast.success('Lesson updated successfully');
@@ -807,7 +960,7 @@ export function CourseBuilder() {
           const updatedLessons = module.lessons.filter(lesson => lesson.id !== lessonId);
           return {
             ...module,
-            lessons: updatedLessons
+            lessons: updatedLessons,
           };
         }
         return module;
@@ -815,7 +968,7 @@ export function CourseBuilder() {
 
       setCourse({
         ...course,
-        modules: updatedModules
+        modules: updatedModules,
       });
     }
 
@@ -824,25 +977,63 @@ export function CourseBuilder() {
 
   const getLessonIcon = (type: string) => {
     switch (type) {
-      case 'video': return PlayIcon;
-      case 'text': return DocumentTextIcon;
-      case 'pdf': return DocumentArrowDownIcon;
-      case 'attachment': return PaperClipIcon;
-      case 'quiz': return QuestionMarkCircleIcon;
-      case 'reflection': return PencilSquareIcon;
-      default: return DocumentTextIcon;
+      case 'video':
+        return PlayIcon;
+      case 'text':
+        return DocumentTextIcon;
+      case 'pdf':
+        return DocumentArrowDownIcon;
+      case 'attachment':
+        return PaperClipIcon;
+      case 'quiz':
+        return QuestionMarkCircleIcon;
+      case 'reflection':
+        return PencilSquareIcon;
+      default:
+        return DocumentTextIcon;
     }
   };
+
+  const fetchModulesByCourseId = async () => {
+    try {
+      const response = await courseService.getCreatedModules(selectCourseId);
+      setSelectModule(response)
+    } catch (error: any) {
+      console.log( error?.message | "Failed to load module")
+      toast.error("Failed to Load Module")
+    }
+  };
+
+  
+  console.log('local ID:', selectCourseId);
+  console.log('Show Module Data:', selectModule);
+  console.log('Local storage:', localStorage.getItem('currentCourseId'));
+
+  // on component mount get the course Id
+  useEffect(() => {
+    const savedCourseId = localStorage.getItem('currentCourseId');
+    if (savedCourseId) {
+      setSelectCourseId(savedCourseId.toString());
+    }
+  }, []);
+
+
+  useEffect(() => {
+  if (!selectCourseId) return;
+
+  fetchModulesByCourseId(selectCourseId);
+}, [selectCourseId]);
+
+
+
+
 
   const tabs = [
     { id: 'details', name: 'Course Details' },
     { id: 'content', name: 'Content & Modules' },
     { id: 'settings', name: 'Settings' },
-    { id: 'preview', name: 'Preview & Publish' }
+    { id: 'preview', name: 'Preview & Publish' },
   ];
-
-  console.log("Show ID:", selectCourseId)
-
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -896,9 +1087,9 @@ export function CourseBuilder() {
               </label>
               {coverImagePreview && (
                 <div className="mb-4">
-                  <img 
-                    src={coverImagePreview} 
-                    alt="Cover preview" 
+                  <img
+                    src={coverImagePreview}
+                    alt="Cover preview"
                     className="w-full h-48 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
                   />
                 </div>
@@ -909,18 +1100,20 @@ export function CourseBuilder() {
                 maxFiles={1}
                 autoUpload={false}
                 onUpload={files => {
-                  // files is UploadResult[]
                   if (files && files.length > 0) {
                     const file = files[0];
-
-                    // extract actual file from uploadedFiles list (FileUploader's internal state)
                     const originalFile = file?.originalFile || file?.file || null;
 
                     if (originalFile) {
+                      // Update your course details state
                       setCourseDetails(prev => ({
                         ...prev,
                         images: originalFile,
                       }));
+
+                      // Generate a preview URL for the image
+                      const previewUrl = URL.createObjectURL(originalFile);
+                      setCoverImagePreview(previewUrl);
                     }
                   }
                 }}
@@ -939,18 +1132,16 @@ export function CourseBuilder() {
         return (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                Course Modules
-              </h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Course Modules</h3>
               <Button onClick={() => setShowModuleModal(true)}>
                 <PlusIcon className="h-4 w-4 mr-2" />
                 Add Module
               </Button>
             </div>
 
-            {course?.modules.length ? (
+            {selectModule?.length > 0 ? (
               <div className="space-y-4">
-                {course.modules.map((module, moduleIndex) => (
+                {selectModule.map(module => (
                   <Card key={module.id}>
                     <CardHeader>
                       <div className="flex items-center justify-between">
@@ -958,10 +1149,10 @@ export function CourseBuilder() {
                           <Bars3Icon className="h-5 w-5 text-gray-400" />
                           <div>
                             <h4 className="font-medium text-gray-900 dark:text-white">
-                              Module {moduleIndex + 1}: {module.title}
+                              Module {module?.moduleNumber}: {module?.Course?.courseTitle ?? 'N/A'}
                             </h4>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {module.description}
+                              {module?.description ?? 'N/A'}
                             </p>
                           </div>
                         </div>
@@ -977,31 +1168,33 @@ export function CourseBuilder() {
                             <PlusIcon className="h-4 w-4 mr-1" />
                             Add Lesson
                           </Button>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => handleEditModule(module)}
                           >
                             <PencilIcon className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => handleDeleteModule(module.id, module.title)}
                           >
                             <TrashIcon className="h-4 w-4" />
                           </Button>
-
                         </div>
                       </div>
                     </CardHeader>
-                    {module.lessons.length > 0 && (
+                    {Array.isArray(module.lessons) && module.lessons.length > 0 && (
                       <CardContent>
                         <div className="space-y-2">
                           {module.lessons.map((lesson, lessonIndex) => {
                             const Icon = getLessonIcon(lesson.type);
                             return (
-                              <div key={lesson.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                              <div
+                                key={lesson.id}
+                                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                              >
                                 <div className="flex items-center space-x-3">
                                   <Icon className="h-4 w-4 text-gray-400" />
                                   <div>
@@ -1026,22 +1219,23 @@ export function CourseBuilder() {
                                   </div>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                  <Button 
-                                    variant="outline" 
+                                  <Button
+                                    variant="outline"
                                     size="sm"
                                     onClick={() => handleEditLesson(lesson)}
                                   >
                                     <PencilIcon className="h-4 w-4" />
                                   </Button>
-                                  <Button 
-                                    variant="outline" 
+                                  <Button
+                                    variant="outline"
                                     size="sm"
-                                    onClick={() => handleDeleteLesson(lesson.id, lesson.title, lesson.moduleId)}
+                                    onClick={() =>
+                                      handleDeleteLesson(lesson.id, lesson.title, lesson.moduleId)
+                                    }
                                   >
                                     <TrashIcon className="h-4 w-4" />
                                   </Button>
                                 </div>
-
                               </div>
                             );
                           })}
@@ -1060,16 +1254,12 @@ export function CourseBuilder() {
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
                   Start by adding your first module to organize your course content.
                 </p>
-                <Button onClick={() => setShowModuleModal(true)}>
-                  Add First Module
-                </Button>
+                <Button onClick={() => setShowModuleModal(true)}>Add First Module</Button>
               </div>
             )}
 
             <div className="flex justify-end">
-              <Button onClick={handleSaveContent}>
-                Save Content
-              </Button>
+              <Button onClick={handleSaveContent}>Save Content</Button>
             </div>
           </div>
         );
@@ -1080,16 +1270,16 @@ export function CourseBuilder() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-medium text-gray-900 dark:text-white">
-                    Course Status
-                  </h4>
+                  <h4 className="font-medium text-gray-900 dark:text-white">Course Status</h4>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     Control whether students can access this course
                   </p>
                 </div>
                 <select
                   value={courseData.status}
-                  onChange={(e) => setCourseData(prev => ({ ...prev, status: e.target.value as 'draft' | 'live' }))}
+                  onChange={e =>
+                    setCourseData(prev => ({ ...prev, status: e.target.value as 'draft' | 'live' }))
+                  }
                   className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 >
                   <option value="draft">Draft</option>
@@ -1099,9 +1289,7 @@ export function CourseBuilder() {
 
               <div className="flex items-center justify-between py-4 border-b border-gray-200 dark:border-gray-700">
                 <div>
-                  <h4 className="font-medium text-gray-900 dark:text-white">
-                    Track Progress
-                  </h4>
+                  <h4 className="font-medium text-gray-900 dark:text-white">Track Progress</h4>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     Monitor student progress through the course
                   </p>
@@ -1110,7 +1298,9 @@ export function CourseBuilder() {
                   <input
                     type="checkbox"
                     checked={courseData.isTracked}
-                    onChange={(e) => setCourseData(prev => ({ ...prev, isTracked: e.target.checked }))}
+                    onChange={e =>
+                      setCourseData(prev => ({ ...prev, isTracked: e.target.checked }))
+                    }
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
@@ -1119,9 +1309,7 @@ export function CourseBuilder() {
 
               <div className="flex items-center justify-between py-4 border-b border-gray-200 dark:border-gray-700">
                 <div>
-                  <h4 className="font-medium text-gray-900 dark:text-white">
-                    Self-Paced Learning
-                  </h4>
+                  <h4 className="font-medium text-gray-900 dark:text-white">Self-Paced Learning</h4>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     Allow students to progress at their own pace
                   </p>
@@ -1130,7 +1318,9 @@ export function CourseBuilder() {
                   <input
                     type="checkbox"
                     checked={courseData.allowSelfPacing}
-                    onChange={(e) => setCourseData(prev => ({ ...prev, allowSelfPacing: e.target.checked }))}
+                    onChange={e =>
+                      setCourseData(prev => ({ ...prev, allowSelfPacing: e.target.checked }))
+                    }
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
@@ -1150,7 +1340,9 @@ export function CourseBuilder() {
                   <input
                     type="checkbox"
                     checked={courseData.requiresCertificate}
-                    onChange={(e) => setCourseData(prev => ({ ...prev, requiresCertificate: e.target.checked }))}
+                    onChange={e =>
+                      setCourseData(prev => ({ ...prev, requiresCertificate: e.target.checked }))
+                    }
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
@@ -1159,9 +1351,7 @@ export function CourseBuilder() {
 
               <div className="flex items-center justify-between py-4">
                 <div>
-                  <h4 className="font-medium text-gray-900 dark:text-white">
-                    Graded Course
-                  </h4>
+                  <h4 className="font-medium text-gray-900 dark:text-white">Graded Course</h4>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     Include assessments and grades for this course
                   </p>
@@ -1170,7 +1360,7 @@ export function CourseBuilder() {
                   <input
                     type="checkbox"
                     checked={courseData.isGraded}
-                    onChange={(e) => setCourseData(prev => ({ ...prev, isGraded: e.target.checked }))}
+                    onChange={e => setCourseData(prev => ({ ...prev, isGraded: e.target.checked }))}
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
@@ -1198,33 +1388,51 @@ export function CourseBuilder() {
                   Review all course details before publishing
                 </p>
               </div>
-              
+
               <div className="p-6 space-y-6">
                 {/* Course Details */}
                 <div>
-                  <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">Course Details</h4>
+                  <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">
+                    Course Details
+                  </h4>
                   <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-gray-600 dark:text-gray-400">Title</p>
-                        <p className="font-medium text-gray-900 dark:text-white">{courseData.title || 'Untitled Course'}</p>
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          {courseData.title || 'Untitled Course'}
+                        </p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600 dark:text-gray-400">Status</p>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${courseData.status === 'live' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            courseData.status === 'live'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}
+                        >
                           {courseData.status === 'live' ? 'Published' : 'Draft'}
                         </span>
                       </div>
                       <div className="md:col-span-2">
                         <p className="text-sm text-gray-600 dark:text-gray-400">Description</p>
-                        <div className="font-medium text-gray-900 dark:text-white prose max-w-none" dangerouslySetInnerHTML={{ __html: courseData.description || 'No description provided' }} />
+                        <div
+                          className="font-medium text-gray-900 dark:text-white prose max-w-none"
+                          dangerouslySetInnerHTML={{
+                            __html: courseData.description || 'No description provided',
+                          }}
+                        />
                       </div>
                       <div>
                         <p className="text-sm text-gray-600 dark:text-gray-400">Tags</p>
                         <div className="flex flex-wrap gap-2 mt-1">
                           {courseData.tags.length > 0 ? (
                             courseData.tags.map((tag, index) => (
-                              <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                              >
                                 {tag}
                               </span>
                             ))
@@ -1236,14 +1444,19 @@ export function CourseBuilder() {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Course Content */}
                 <div>
-                  <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">Course Content</h4>
+                  <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">
+                    Course Content
+                  </h4>
                   {course?.modules && course.modules.length > 0 ? (
                     <div className="space-y-4">
                       {course.modules.map((module, moduleIndex) => (
-                        <div key={module.id} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        <div
+                          key={module.id}
+                          className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+                        >
                           <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-700">
                             <h5 className="font-medium text-gray-900 dark:text-white">
                               Module {moduleIndex + 1}: {module.title}
@@ -1258,7 +1471,10 @@ export function CourseBuilder() {
                                 {module.lessons.map((lesson, lessonIndex) => {
                                   const Icon = getLessonIcon(lesson.type);
                                   return (
-                                    <div key={lesson.id} className="flex items-start space-x-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
+                                    <div
+                                      key={lesson.id}
+                                      className="flex items-start space-x-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600"
+                                    >
                                       <Icon className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
                                       <div className="flex-1 min-w-0">
                                         <p className="font-medium text-gray-900 dark:text-white truncate">
@@ -1290,7 +1506,9 @@ export function CourseBuilder() {
                                 })}
                               </div>
                             ) : (
-                              <p className="text-gray-500 text-sm italic">No lessons in this module</p>
+                              <p className="text-gray-500 text-sm italic">
+                                No lessons in this module
+                              </p>
                             )}
                           </div>
                         </div>
@@ -1302,48 +1520,88 @@ export function CourseBuilder() {
                     </div>
                   )}
                 </div>
-                
+
                 {/* Course Settings */}
                 <div>
-                  <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">Course Settings</h4>
+                  <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">
+                    Course Settings
+                  </h4>
                   <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">Track Progress</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">Monitor student progress</p>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            Track Progress
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Monitor student progress
+                          </p>
                         </div>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${courseData.isTracked ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            courseData.isTracked
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
                           {courseData.isTracked ? 'Enabled' : 'Disabled'}
                         </span>
                       </div>
-                      
+
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">Self-Paced Learning</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">Students progress at their own pace</p>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            Self-Paced Learning
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Students progress at their own pace
+                          </p>
                         </div>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${courseData.allowSelfPacing ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            courseData.allowSelfPacing
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
                           {courseData.allowSelfPacing ? 'Enabled' : 'Disabled'}
                         </span>
                       </div>
-                      
+
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">Certificate on Completion</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">Award certificate upon completion</p>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            Certificate on Completion
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Award certificate upon completion
+                          </p>
                         </div>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${courseData.requiresCertificate ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            courseData.requiresCertificate
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
                           {courseData.requiresCertificate ? 'Enabled' : 'Disabled'}
                         </span>
                       </div>
-                      
+
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-medium text-gray-900 dark:text-white">Graded Course</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">Include assessments and grades</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Include assessments and grades
+                          </p>
                         </div>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${courseData.isGraded ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            courseData.isGraded
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
                           {courseData.isGraded ? 'Enabled' : 'Disabled'}
                         </span>
                       </div>
@@ -1352,15 +1610,12 @@ export function CourseBuilder() {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex justify-end space-x-3 pt-4">
-              <Button 
-                variant="outline" 
-                onClick={() => setActiveTab('details')}
-              >
+              <Button variant="outline" onClick={() => setActiveTab('details')}>
                 Back to Editing
               </Button>
-              <Button 
+              <Button
                 onClick={handleFinalSave}
                 loading={finalSaving}
                 className="bg-green-600 hover:bg-green-700"
@@ -1383,7 +1638,7 @@ export function CourseBuilder() {
         <Input
           label="Lesson Title"
           value={lessonData.title}
-          onChange={(e) => setLessonData(prev => ({ ...prev, title: e.target.value }))}
+          onChange={e => setLessonData(prev => ({ ...prev, title: e.target.value }))}
           placeholder="Enter lesson title"
           required
         />
@@ -1394,7 +1649,7 @@ export function CourseBuilder() {
           </label>
           <textarea
             value={lessonData.description}
-            onChange={(e) => setLessonData(prev => ({ ...prev, description: e.target.value }))}
+            onChange={e => setLessonData(prev => ({ ...prev, description: e.target.value }))}
             rows={3}
             className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="Briefly describe what students will learn in this lesson"
@@ -1407,25 +1662,27 @@ export function CourseBuilder() {
           </label>
           <select
             value={lessonData.type}
-            onChange={(e) => setLessonData(prev => ({ 
-              ...prev, 
-              type: e.target.value as any,
-              content: {
-                videoUrl: '',
-                textContent: '',
-                pdfUrl: '',
-                attachmentUrl: '',
-                quizData: {
-                  id: '',
-                  title: '',
-                  description: '',
-                  questions: [] as QuizQuestion[],
-                  isGraded: true,
-                  passingScore: 70
+            onChange={e =>
+              setLessonData(prev => ({
+                ...prev,
+                type: e.target.value as any,
+                content: {
+                  videoUrl: '',
+                  textContent: '',
+                  pdfUrl: '',
+                  attachmentUrl: '',
+                  quizData: {
+                    id: '',
+                    title: '',
+                    description: '',
+                    questions: [] as QuizQuestion[],
+                    isGraded: true,
+                    passingScore: 70,
+                  },
+                  reflectionPrompt: '',
                 },
-                reflectionPrompt: ''
-              }
-            }))}
+              }))
+            }
             className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="video">Video</option>
@@ -1446,13 +1703,15 @@ export function CourseBuilder() {
               <input
                 type="text"
                 value={lessonData.content.videoUrl || ''}
-                onChange={(e) => setLessonData(prev => ({
-                  ...prev,
-                  content: {
-                    ...prev.content,
-                    videoUrl: e.target.value
-                  }
-                }))}
+                onChange={e =>
+                  setLessonData(prev => ({
+                    ...prev,
+                    content: {
+                      ...prev.content,
+                      videoUrl: e.target.value,
+                    },
+                  }))
+                }
                 className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
               />
@@ -1468,7 +1727,9 @@ export function CourseBuilder() {
               <input
                 type="number"
                 value={lessonData.duration || ''}
-                onChange={(e) => setLessonData(prev => ({ ...prev, duration: parseInt(e.target.value) || 0 }))}
+                onChange={e =>
+                  setLessonData(prev => ({ ...prev, duration: parseInt(e.target.value) || 0 }))
+                }
                 min="0"
                 className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Estimated time to complete"
@@ -1484,15 +1745,15 @@ export function CourseBuilder() {
                 maxSize={100 * 1024 * 1024} // 100MB
                 maxFiles={1}
                 legacyMode={false}
-                onUpload={async (uploadResults) => {
+                onUpload={async uploadResults => {
                   // Handle video upload
                   console.log('Video uploaded:', uploadResults[0]);
                   setLessonData(prev => ({
                     ...prev,
                     content: {
                       ...prev.content,
-                      videoUrl: uploadResults[0]?.url || ''
-                    }
+                      videoUrl: uploadResults[0]?.url || '',
+                    },
                   }));
                 }}
                 dropzoneText="Upload a video file (MP4, MOV, AVI)"
@@ -1508,13 +1769,15 @@ export function CourseBuilder() {
             </label>
             <RichTextEditor
               value={lessonData.content.textContent || ''}
-              onChange={(value) => setLessonData(prev => ({
-                ...prev,
-                content: {
-                  ...prev.content,
-                  textContent: value
-                }
-              }))}
+              onChange={value =>
+                setLessonData(prev => ({
+                  ...prev,
+                  content: {
+                    ...prev.content,
+                    textContent: value,
+                  },
+                }))
+              }
               placeholder="Write your lesson content here..."
               minHeight="200px"
             />
@@ -1530,13 +1793,15 @@ export function CourseBuilder() {
               <input
                 type="text"
                 value={lessonData.content.pdfUrl || ''}
-                onChange={(e) => setLessonData(prev => ({
-                  ...prev,
-                  content: {
-                    ...prev.content,
-                    pdfUrl: e.target.value
-                  }
-                }))}
+                onChange={e =>
+                  setLessonData(prev => ({
+                    ...prev,
+                    content: {
+                      ...prev.content,
+                      pdfUrl: e.target.value,
+                    },
+                  }))
+                }
                 className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="https://example.com/document.pdf"
               />
@@ -1551,15 +1816,15 @@ export function CourseBuilder() {
                 maxSize={50 * 1024 * 1024} // 50MB
                 maxFiles={1}
                 legacyMode={false}
-                onUpload={async (uploadResults) => {
+                onUpload={async uploadResults => {
                   // Handle PDF upload
                   console.log('PDF uploaded:', uploadResults[0]);
                   setLessonData(prev => ({
                     ...prev,
                     content: {
                       ...prev.content,
-                      pdfUrl: uploadResults[0]?.url || ''
-                    }
+                      pdfUrl: uploadResults[0]?.url || '',
+                    },
                   }));
                 }}
                 dropzoneText="Upload a PDF document"
@@ -1577,13 +1842,15 @@ export function CourseBuilder() {
               <input
                 type="text"
                 value={lessonData.content.attachmentUrl || ''}
-                onChange={(e) => setLessonData(prev => ({
-                  ...prev,
-                  content: {
-                    ...prev.content,
-                    attachmentUrl: e.target.value
-                  }
-                }))}
+                onChange={e =>
+                  setLessonData(prev => ({
+                    ...prev,
+                    content: {
+                      ...prev.content,
+                      attachmentUrl: e.target.value,
+                    },
+                  }))
+                }
                 className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="https://example.com/resource.zip"
               />
@@ -1598,15 +1865,15 @@ export function CourseBuilder() {
                 maxSize={100 * 1024 * 1024} // 100MB
                 maxFiles={1}
                 legacyMode={false}
-                onUpload={async (uploadResults) => {
+                onUpload={async uploadResults => {
                   // Handle file upload
                   console.log('File uploaded:', uploadResults[0]);
                   setLessonData(prev => ({
                     ...prev,
                     content: {
                       ...prev.content,
-                      attachmentUrl: uploadResults[0]?.url || ''
-                    }
+                      attachmentUrl: uploadResults[0]?.url || '',
+                    },
                   }));
                 }}
                 dropzoneText="Upload any file type"
@@ -1622,19 +1889,21 @@ export function CourseBuilder() {
               <Input
                 label="Quiz Title"
                 value={lessonData.content.quizData.title}
-                onChange={(e) => setLessonData(prev => ({
-                  ...prev,
-                  content: {
-                    ...prev.content,
-                    quizData: {
-                      ...prev.content.quizData,
-                      title: e.target.value
-                    }
-                  }
-                }))}
+                onChange={e =>
+                  setLessonData(prev => ({
+                    ...prev,
+                    content: {
+                      ...prev.content,
+                      quizData: {
+                        ...prev.content.quizData,
+                        title: e.target.value,
+                      },
+                    },
+                  }))
+                }
                 placeholder="Enter quiz title"
               />
-              
+
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Passing Score (%)
@@ -1644,58 +1913,64 @@ export function CourseBuilder() {
                   min="0"
                   max="100"
                   value={lessonData.content.quizData.passingScore}
-                  onChange={(e) => setLessonData(prev => ({
-                    ...prev,
-                    content: {
-                      ...prev.content,
-                      quizData: {
-                        ...prev.content.quizData,
-                        passingScore: parseInt(e.target.value) || 70
-                      }
-                    }
-                  }))}
+                  onChange={e =>
+                    setLessonData(prev => ({
+                      ...prev,
+                      content: {
+                        ...prev.content,
+                        quizData: {
+                          ...prev.content.quizData,
+                          passingScore: parseInt(e.target.value) || 70,
+                        },
+                      },
+                    }))
+                  }
                   className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </div>
-            
+
             <div className="space-y-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Quiz Description
               </label>
               <textarea
                 value={lessonData.content.quizData.description}
-                onChange={(e) => setLessonData(prev => ({
-                  ...prev,
-                  content: {
-                    ...prev.content,
-                    quizData: {
-                      ...prev.content.quizData,
-                      description: e.target.value
-                    }
-                  }
-                }))}
-                rows={3}
-                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Describe what this quiz covers..."
-              />
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={lessonData.content.quizData.isGraded}
-                  onChange={(e) => setLessonData(prev => ({
+                onChange={e =>
+                  setLessonData(prev => ({
                     ...prev,
                     content: {
                       ...prev.content,
                       quizData: {
                         ...prev.content.quizData,
-                        isGraded: e.target.checked
-                      }
-                    }
-                  }))}
+                        description: e.target.value,
+                      },
+                    },
+                  }))
+                }
+                rows={3}
+                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Describe what this quiz covers..."
+              />
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={lessonData.content.quizData.isGraded}
+                  onChange={e =>
+                    setLessonData(prev => ({
+                      ...prev,
+                      content: {
+                        ...prev.content,
+                        quizData: {
+                          ...prev.content.quizData,
+                          isGraded: e.target.checked,
+                        },
+                      },
+                    }))
+                  }
                   className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                 />
                 <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
@@ -1703,14 +1978,12 @@ export function CourseBuilder() {
                 </span>
               </label>
             </div>
-            
+
             {/* Questions Section */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                  Questions
-                </h3>
-                <Button 
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Questions</h3>
+                <Button
                   onClick={() => {
                     const newQuestion: QuizQuestion = {
                       id: `question-${Date.now()}`,
@@ -1718,7 +1991,7 @@ export function CourseBuilder() {
                       type: 'multiple-choice',
                       options: ['', ''],
                       correctAnswer: '',
-                      explanation: ''
+                      explanation: '',
                     };
                     setLessonData(prev => ({
                       ...prev,
@@ -1726,9 +1999,9 @@ export function CourseBuilder() {
                         ...prev.content,
                         quizData: {
                           ...prev.content.quizData,
-                          questions: [...prev.content.quizData.questions, newQuestion]
-                        }
-                      }
+                          questions: [...prev.content.quizData.questions, newQuestion],
+                        },
+                      },
                     }));
                   }}
                 >
@@ -1736,7 +2009,7 @@ export function CourseBuilder() {
                   Add Question
                 </Button>
               </div>
-              
+
               {lessonData.content.quizData.questions.length === 0 ? (
                 <div className="text-center py-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
                   <QuestionMarkCircleIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
@@ -1746,7 +2019,7 @@ export function CourseBuilder() {
                   <p className="text-gray-600 dark:text-gray-400 mb-4">
                     Add your first question to get started.
                   </p>
-                  <Button 
+                  <Button
                     onClick={() => {
                       const newQuestion: QuizQuestion = {
                         id: `question-${Date.now()}`,
@@ -1754,7 +2027,7 @@ export function CourseBuilder() {
                         type: 'multiple-choice',
                         options: ['', ''],
                         correctAnswer: '',
-                        explanation: ''
+                        explanation: '',
                       };
                       setLessonData(prev => ({
                         ...prev,
@@ -1762,9 +2035,9 @@ export function CourseBuilder() {
                           ...prev.content,
                           quizData: {
                             ...prev.content.quizData,
-                            questions: [...prev.content.quizData.questions, newQuestion]
-                          }
-                        }
+                            questions: [...prev.content.quizData.questions, newQuestion],
+                          },
+                        },
                       }));
                     }}
                   >
@@ -1785,62 +2058,88 @@ export function CourseBuilder() {
                               onClick={() => {
                                 if (index > 0) {
                                   const newQuestions = [...lessonData.content.quizData.questions];
-                                  [newQuestions[index - 1], newQuestions[index]] = [newQuestions[index], newQuestions[index - 1]];
+                                  [newQuestions[index - 1], newQuestions[index]] = [
+                                    newQuestions[index],
+                                    newQuestions[index - 1],
+                                  ];
                                   setLessonData(prev => ({
                                     ...prev,
                                     content: {
                                       ...prev.content,
                                       quizData: {
                                         ...prev.content.quizData,
-                                        questions: newQuestions
-                                      }
-                                    }
+                                        questions: newQuestions,
+                                      },
+                                    },
                                   }));
                                 }
                               }}
                               disabled={index === 0}
                               className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"
+                                  clipRule="evenodd"
+                                />
                               </svg>
                             </button>
                             <button
                               onClick={() => {
                                 if (index < lessonData.content.quizData.questions.length - 1) {
                                   const newQuestions = [...lessonData.content.quizData.questions];
-                                  [newQuestions[index], newQuestions[index + 1]] = [newQuestions[index + 1], newQuestions[index]];
+                                  [newQuestions[index], newQuestions[index + 1]] = [
+                                    newQuestions[index + 1],
+                                    newQuestions[index],
+                                  ];
                                   setLessonData(prev => ({
                                     ...prev,
                                     content: {
                                       ...prev.content,
                                       quizData: {
                                         ...prev.content.quizData,
-                                        questions: newQuestions
-                                      }
-                                    }
+                                        questions: newQuestions,
+                                      },
+                                    },
                                   }));
                                 }
                               }}
                               disabled={index === lessonData.content.quizData.questions.length - 1}
                               className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                  clipRule="evenodd"
+                                />
                               </svg>
                             </button>
                             <button
                               onClick={() => {
-                                const newQuestions = lessonData.content.quizData.questions.filter(q => q.id !== question.id);
+                                const newQuestions = lessonData.content.quizData.questions.filter(
+                                  q => q.id !== question.id
+                                );
                                 setLessonData(prev => ({
                                   ...prev,
                                   content: {
                                     ...prev.content,
                                     quizData: {
                                       ...prev.content.quizData,
-                                      questions: newQuestions
-                                    }
-                                  }
+                                      questions: newQuestions,
+                                    },
+                                  },
                                 }));
                               }}
                               className="p-1 text-red-500 hover:text-red-700"
@@ -1856,11 +2155,11 @@ export function CourseBuilder() {
                           <Input
                             label="Question"
                             value={question.question}
-                            onChange={(e) => {
+                            onChange={e => {
                               const newQuestions = [...lessonData.content.quizData.questions];
                               newQuestions[index] = {
                                 ...newQuestions[index],
-                                question: e.target.value
+                                question: e.target.value,
                               };
                               setLessonData(prev => ({
                                 ...prev,
@@ -1868,14 +2167,14 @@ export function CourseBuilder() {
                                   ...prev.content,
                                   quizData: {
                                     ...prev.content.quizData,
-                                    questions: newQuestions
-                                  }
-                                }
+                                    questions: newQuestions,
+                                  },
+                                },
                               }));
                             }}
                             placeholder="Enter your question"
                           />
-                          
+
                           {/* Question Type */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1">
@@ -1884,21 +2183,21 @@ export function CourseBuilder() {
                               </label>
                               <select
                                 value={question.type}
-                                onChange={(e) => {
+                                onChange={e => {
                                   const newQuestions = [...lessonData.content.quizData.questions];
                                   const updatedQuestion = {
                                     ...newQuestions[index],
                                     type: e.target.value as 'multiple-choice' | 'short-text',
-                                    correctAnswer: e.target.value === 'multiple-choice' ? '' : []
+                                    correctAnswer: e.target.value === 'multiple-choice' ? '' : [],
                                   };
-                                  
+
                                   // Reset options if switching to short-text
                                   if (e.target.value === 'short-text') {
                                     delete updatedQuestion.options;
                                   } else {
                                     updatedQuestion.options = ['', ''];
                                   }
-                                  
+
                                   newQuestions[index] = updatedQuestion;
                                   setLessonData(prev => ({
                                     ...prev,
@@ -1906,9 +2205,9 @@ export function CourseBuilder() {
                                       ...prev.content,
                                       quizData: {
                                         ...prev.content.quizData,
-                                        questions: newQuestions
-                                      }
-                                    }
+                                        questions: newQuestions,
+                                      },
+                                    },
                                   }));
                                 }}
                                 className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -1917,7 +2216,7 @@ export function CourseBuilder() {
                                 <option value="short-text">Short Text Answer</option>
                               </select>
                             </div>
-                            
+
                             <div className="space-y-1">
                               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                 Points
@@ -1926,11 +2225,11 @@ export function CourseBuilder() {
                                 type="number"
                                 min="1"
                                 value={question.points || 1}
-                                onChange={(e) => {
+                                onChange={e => {
                                   const newQuestions = [...lessonData.content.quizData.questions];
                                   newQuestions[index] = {
                                     ...newQuestions[index],
-                                    points: parseInt(e.target.value) || 1
+                                    points: parseInt(e.target.value) || 1,
                                   };
                                   setLessonData(prev => ({
                                     ...prev,
@@ -1938,16 +2237,16 @@ export function CourseBuilder() {
                                       ...prev.content,
                                       quizData: {
                                         ...prev.content.quizData,
-                                        questions: newQuestions
-                                      }
-                                    }
+                                        questions: newQuestions,
+                                      },
+                                    },
                                   }));
                                 }}
                                 className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                               />
                             </div>
                           </div>
-                          
+
                           {/* Options for Multiple Choice */}
                           {question.type === 'multiple-choice' && (
                             <div className="space-y-3">
@@ -1960,7 +2259,7 @@ export function CourseBuilder() {
                                     const newQuestions = [...lessonData.content.quizData.questions];
                                     newQuestions[index] = {
                                       ...newQuestions[index],
-                                      options: [...(newQuestions[index].options || []), '']
+                                      options: [...(newQuestions[index].options || []), ''],
                                     };
                                     setLessonData(prev => ({
                                       ...prev,
@@ -1968,9 +2267,9 @@ export function CourseBuilder() {
                                         ...prev.content,
                                         quizData: {
                                           ...prev.content.quizData,
-                                          questions: newQuestions
-                                        }
-                                      }
+                                          questions: newQuestions,
+                                        },
+                                      },
                                     }));
                                   }}
                                   className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
@@ -1979,7 +2278,7 @@ export function CourseBuilder() {
                                   Add Option
                                 </button>
                               </div>
-                              
+
                               {(question.options || []).map((option, optionIndex) => (
                                 <div key={optionIndex} className="flex items-center space-x-2">
                                   <input
@@ -1987,10 +2286,12 @@ export function CourseBuilder() {
                                     name={`correct-answer-${question.id}`}
                                     checked={question.correctAnswer === option}
                                     onChange={() => {
-                                      const newQuestions = [...lessonData.content.quizData.questions];
+                                      const newQuestions = [
+                                        ...lessonData.content.quizData.questions,
+                                      ];
                                       newQuestions[index] = {
                                         ...newQuestions[index],
-                                        correctAnswer: option
+                                        correctAnswer: option,
                                       };
                                       setLessonData(prev => ({
                                         ...prev,
@@ -1998,9 +2299,9 @@ export function CourseBuilder() {
                                           ...prev.content,
                                           quizData: {
                                             ...prev.content.quizData,
-                                            questions: newQuestions
-                                          }
-                                        }
+                                            questions: newQuestions,
+                                          },
+                                        },
                                       }));
                                     }}
                                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
@@ -2008,33 +2309,35 @@ export function CourseBuilder() {
                                   <input
                                     type="text"
                                     value={option}
-                                    onChange={(e) => {
+                                    onChange={e => {
                                       const newOptions = [...(question.options || [])];
                                       newOptions[optionIndex] = e.target.value;
-                                      
-                                      const newQuestions = [...lessonData.content.quizData.questions];
+
+                                      const newQuestions = [
+                                        ...lessonData.content.quizData.questions,
+                                      ];
                                       newQuestions[index] = {
                                         ...newQuestions[index],
-                                        options: newOptions
+                                        options: newOptions,
                                       };
-                                      
+
                                       // Update correct answer if it was this option
                                       if (question.correctAnswer === option) {
                                         newQuestions[index] = {
                                           ...newQuestions[index],
-                                          correctAnswer: e.target.value
+                                          correctAnswer: e.target.value,
                                         };
                                       }
-                                      
+
                                       setLessonData(prev => ({
                                         ...prev,
                                         content: {
                                           ...prev.content,
                                           quizData: {
                                             ...prev.content.quizData,
-                                            questions: newQuestions
-                                          }
-                                        }
+                                            questions: newQuestions,
+                                          },
+                                        },
                                       }));
                                     }}
                                     className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -2043,30 +2346,34 @@ export function CourseBuilder() {
                                   <button
                                     onClick={() => {
                                       if ((question.options?.length || 0) > 2) {
-                                        const newOptions = (question.options || []).filter((_, i) => i !== optionIndex);
-                                        const newQuestions = [...lessonData.content.quizData.questions];
+                                        const newOptions = (question.options || []).filter(
+                                          (_, i) => i !== optionIndex
+                                        );
+                                        const newQuestions = [
+                                          ...lessonData.content.quizData.questions,
+                                        ];
                                         newQuestions[index] = {
                                           ...newQuestions[index],
-                                          options: newOptions
+                                          options: newOptions,
                                         };
-                                        
+
                                         // Update correct answer if it was this option
                                         if (question.correctAnswer === option) {
                                           newQuestions[index] = {
                                             ...newQuestions[index],
-                                            correctAnswer: newOptions[0] || ''
+                                            correctAnswer: newOptions[0] || '',
                                           };
                                         }
-                                        
+
                                         setLessonData(prev => ({
                                           ...prev,
                                           content: {
                                             ...prev.content,
                                             quizData: {
                                               ...prev.content.quizData,
-                                              questions: newQuestions
-                                            }
-                                          }
+                                              questions: newQuestions,
+                                            },
+                                          },
                                         }));
                                       }
                                     }}
@@ -2079,7 +2386,7 @@ export function CourseBuilder() {
                               ))}
                             </div>
                           )}
-                          
+
                           {/* Correct Answers for Short Text */}
                           {question.type === 'short-text' && (
                             <div className="space-y-1">
@@ -2087,13 +2394,19 @@ export function CourseBuilder() {
                                 Correct Answers (one per line)
                               </label>
                               <textarea
-                                value={Array.isArray(question.correctAnswer) ? question.correctAnswer.join('\n') : ''}
-                                onChange={(e) => {
-                                  const answers = e.target.value.split('\n').filter(a => a.trim() !== '');
+                                value={
+                                  Array.isArray(question.correctAnswer)
+                                    ? question.correctAnswer.join('\n')
+                                    : ''
+                                }
+                                onChange={e => {
+                                  const answers = e.target.value
+                                    .split('\n')
+                                    .filter(a => a.trim() !== '');
                                   const newQuestions = [...lessonData.content.quizData.questions];
                                   newQuestions[index] = {
                                     ...newQuestions[index],
-                                    correctAnswer: answers
+                                    correctAnswer: answers,
                                   };
                                   setLessonData(prev => ({
                                     ...prev,
@@ -2101,9 +2414,9 @@ export function CourseBuilder() {
                                       ...prev.content,
                                       quizData: {
                                         ...prev.content.quizData,
-                                        questions: newQuestions
-                                      }
-                                    }
+                                        questions: newQuestions,
+                                      },
+                                    },
                                   }));
                                 }}
                                 rows={3}
@@ -2112,7 +2425,7 @@ export function CourseBuilder() {
                               />
                             </div>
                           )}
-                          
+
                           {/* Explanation */}
                           <div className="space-y-1">
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -2120,11 +2433,11 @@ export function CourseBuilder() {
                             </label>
                             <textarea
                               value={question.explanation || ''}
-                              onChange={(e) => {
+                              onChange={e => {
                                 const newQuestions = [...lessonData.content.quizData.questions];
                                 newQuestions[index] = {
                                   ...newQuestions[index],
-                                  explanation: e.target.value
+                                  explanation: e.target.value,
                                 };
                                 setLessonData(prev => ({
                                   ...prev,
@@ -2132,9 +2445,9 @@ export function CourseBuilder() {
                                     ...prev.content,
                                     quizData: {
                                       ...prev.content.quizData,
-                                      questions: newQuestions
-                                    }
-                                  }
+                                      questions: newQuestions,
+                                    },
+                                  },
                                 }));
                               }}
                               rows={2}
@@ -2159,13 +2472,15 @@ export function CourseBuilder() {
             </label>
             <textarea
               value={lessonData.content.reflectionPrompt || ''}
-              onChange={(e) => setLessonData(prev => ({
-                ...prev,
-                content: {
-                  ...prev.content,
-                  reflectionPrompt: e.target.value
-                }
-              }))}
+              onChange={e =>
+                setLessonData(prev => ({
+                  ...prev,
+                  content: {
+                    ...prev.content,
+                    reflectionPrompt: e.target.value,
+                  },
+                }))
+              }
               rows={4}
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Ask students to reflect on what they've learned..."
@@ -2178,7 +2493,7 @@ export function CourseBuilder() {
             <input
               type="checkbox"
               checked={lessonData.isRequired}
-              onChange={(e) => setLessonData(prev => ({ ...prev, isRequired: e.target.checked }))}
+              onChange={e => setLessonData(prev => ({ ...prev, isRequired: e.target.checked }))}
               className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
             />
             <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
@@ -2207,20 +2522,18 @@ export function CourseBuilder() {
                       description: '',
                       questions: [] as QuizQuestion[],
                       isGraded: true,
-                      passingScore: 70
+                      passingScore: 70,
                     },
-                    reflectionPrompt: ''
+                    reflectionPrompt: '',
                   },
                   duration: 0,
-                  isRequired: true
+                  isRequired: true,
                 });
               }}
             >
               Cancel
             </Button>
-            <Button
-              onClick={editingLesson ? handleUpdateLesson : handleAddLesson}
-            >
+            <Button onClick={editingLesson ? handleUpdateLesson : handleAddLesson}>
               {editingLesson ? 'Update Lesson' : 'Add Lesson'}
             </Button>
           </div>
@@ -2238,7 +2551,9 @@ export function CourseBuilder() {
             {isEditing ? 'Edit Course' : 'Create New Course'}
           </h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            {isEditing ? 'Update your course content and settings' : 'Build an engaging learning experience'}
+            {isEditing
+              ? 'Update your course content and settings'
+              : 'Build an engaging learning experience'}
           </p>
         </div>
         <div className="flex items-center space-x-4">
@@ -2251,7 +2566,7 @@ export function CourseBuilder() {
       {/* Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700 mb-8">
         <nav className="-mb-px flex space-x-8">
-          {tabs.map((tab) => (
+          {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -2269,9 +2584,7 @@ export function CourseBuilder() {
 
       {/* Tab Content */}
       <Card>
-        <CardContent className="p-8">
-          {renderTabContent()}
-        </CardContent>
+        <CardContent className="p-8">{renderTabContent()}</CardContent>
       </Card>
 
       {/* Add Module Modal */}
@@ -2280,15 +2593,21 @@ export function CourseBuilder() {
         onClose={() => {
           setShowModuleModal(false);
           setEditingModule(null);
-          setModuleData({ title: '', description: '' });
+          setModuleData({ title: '', description: '', moduleNumber: '' });
         }}
         title={editingModule ? 'Edit Module' : 'Add New Module'}
       >
         <div className="space-y-4">
           <Input
+            label="Module Number"
+            value={moduleData.moduleNumber}
+            onChange={e => setModuleData(prev => ({ ...prev, moduleNumber: e.target.value }))}
+            placeholder="Enter module Number"
+          />
+          <Input
             label="Module Title"
             value={moduleData.title}
-            onChange={(e) => setModuleData(prev => ({ ...prev, title: e.target.value }))}
+            onChange={e => setModuleData(prev => ({ ...prev, title: e.target.value }))}
             placeholder="Enter module title"
           />
           <div className="space-y-1">
@@ -2297,15 +2616,15 @@ export function CourseBuilder() {
             </label>
             <RichTextEditor
               value={moduleData.description}
-              onChange={(value) => setModuleData(prev => ({ ...prev, description: value }))}
+              onChange={value => setModuleData(prev => ({ ...prev, description: value }))}
               placeholder="Describe what this module covers"
               minHeight="120px"
               showToolbar={false}
             />
           </div>
           <div className="flex justify-end space-x-3">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setShowModuleModal(false);
                 setEditingModule(null);
@@ -2314,8 +2633,43 @@ export function CourseBuilder() {
             >
               Cancel
             </Button>
-            <Button onClick={editingModule ? handleUpdateModule : handleAddModule}>
-              {editingModule ? 'Update Module' : 'Add Module'}
+            <Button
+              onClick={editingModule ? handleUpdateModule : handleAddModule}
+              disabled={isSavingModule} // optional, disable while saving
+              className="flex items-center justify-center space-x-2"
+            >
+              {isSavingModule && (
+                <svg
+                  className="animate-spin h-4 w-4 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4l3.5-3.5L12 0v4a8 8 0 11-8 8z"
+                  ></path>
+                </svg>
+              )}
+
+              <span>
+                {isSavingModule
+                  ? editingModule
+                    ? 'Updating Module...'
+                    : 'Creating Module...'
+                  : editingModule
+                  ? 'Update Module'
+                  : 'Add Module'}
+              </span>
             </Button>
           </div>
         </div>
@@ -2343,12 +2697,12 @@ export function CourseBuilder() {
                   description: '',
                   questions: [] as QuizQuestion[],
                   isGraded: true,
-                  passingScore: 70
+                  passingScore: 70,
                 },
-                reflectionPrompt: ''
+                reflectionPrompt: '',
               },
               duration: 0,
-              isRequired: true
+              isRequired: true,
             });
           }}
           title={editingLesson ? 'Edit Lesson' : 'Add New Lesson'}
@@ -2357,7 +2711,6 @@ export function CourseBuilder() {
           {renderLessonForm()}
         </Modal>
       )}
-
     </div>
   );
 }

@@ -22,13 +22,9 @@ class CourseService {
     }
   }
 
-  async createModules(formData: FormData, courseId: string) {
+  async createModules(formData:{}, courseId: string) {
     try {
-      const response = await apiClient.post(`/create/course/${courseId}/module`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await apiClient.post(`/create/course/${courseId}/module`, formData);
       console.log('[courseService] RESPONSE FROM SERVER', response?.data);
       return response?.data;
     } catch (error) {
@@ -38,6 +34,18 @@ class CourseService {
         err?.response?.data?.message || err?.message
       );
       throw new Error(err?.response?.data?.message || err?.message);
+    }
+  }
+
+  async getCreatedModules(courseId:string){
+    try {
+      const response = await apiClient.get(`/course/${courseId}/modules`);
+      console.log("[courseService] SUCCESS RESPONSE FROM SERVER", response?.data)
+      return response?.data?.courseModules;
+    } catch (error) {
+      const err = error as AxiosError<{message?:string}>
+      console.log('[courseService] ERROR RESPONSE FROM SERVER', err?.response?.data?.message || err?.message);
+      throw new Error(err?.message || err?.response?.data?.message)
     }
   }
 

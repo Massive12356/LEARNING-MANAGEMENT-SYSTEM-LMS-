@@ -120,6 +120,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     console.log('handleLogout called');
     try {
       await logout();
+      localStorage.removeItem('courseBuilderState');
       navigate('/login');
     } catch (error) {
       toast.error('Failed to logout');
