@@ -289,6 +289,8 @@ class AuthService {
       localStorage.removeItem('authTokens');
       localStorage.removeItem('auth-storage'); // Zustand persisted store
       localStorage.removeItem('resetToken');
+      localStorage.removeItem('courseBuilderState');
+      localStorage.removeItem('currentCourseId');
 
       // 3️⃣ Clear sessionStorage too
       sessionStorage.clear();

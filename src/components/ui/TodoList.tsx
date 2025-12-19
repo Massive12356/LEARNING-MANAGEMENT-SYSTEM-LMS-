@@ -411,7 +411,7 @@ const handleCompleteTask = async (item: TodoItem) => {
                   item.status === 'completed'
                     ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 opacity-75'
                     : isOverdue(item)
-                    ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 animate-pulse'
+                    ? 'bg-red-300 dark:bg-red-600 border-red-500 dark:border-red-800 animate-pulse'
                     : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500'
                 }`}
               >

@@ -1,9 +1,24 @@
 export type UserRole = 'student' | 'teacher' | 'admin' | 'superuser';
 export type UserStatus = 'active' | 'pending';
 
-export type CourseStatus = 'draft' | 'live';
+export type CourseStatus = 'draft' | 'published' | 'archived' | 'pending';
 export type ProgramStatus = 'draft' | 'live';
 export type OrganizationStatus = 'draft' | 'live' | 'active' | 'suspended';
+
+export interface courseSettings {
+  courseStatus: CourseStatus;
+  trackingProgress: boolean;
+  selfPacedLearning: boolean;
+  certificateOnCompletion: boolean;
+  gradedCourse: boolean;
+}
+
+export interface createCoursePayload {
+  programIds?: number;
+  courseId: number;
+  courseSettingsId: number;
+  courseModuleId:number[]
+}
 
 export interface User {
   id: string;
