@@ -145,6 +145,7 @@ export function CourseViewer() {
             title="Knowledge Check"
             description={currentLesson.description}
             timeLimit={15} // 15 minutes
+            maxAttempts={3}
             passingScore={70}
             onSubmit={(answers, score) => {
               console.log('Quiz submitted:', { answers, score });

@@ -80,7 +80,9 @@ export function CourseBuilder() {
         description: '',
         questions: [] as QuizQuestion[],
         isGraded: true,
-        passingScore: 70
+        passingScore: 70,
+        duration: 30, // Default duration of 30 minutes
+        maxAttempts: 3 // Default maximum attempts
       },
       reflectionPrompt: ''
     } as any,
@@ -113,7 +115,6 @@ export function CourseBuilder() {
         requiresCertificate: courseData.requiresCertificate,
         isGraded: courseData.isGraded
       });
-      // Set cover image preview if there's a cover image
       if (courseData.coverImage) {
         setCoverImagePreview(courseData.coverImage);
       }
@@ -621,7 +622,9 @@ export function CourseBuilder() {
         description: '',
         questions: [] as QuizQuestion[],
         isGraded: true,
-        passingScore: 70
+        passingScore: 70,
+        duration: 30, // Default duration of 30 minutes
+        maxAttempts: 3 // Default maximum attempts
       },
       reflectionPrompt: ''
     };
@@ -1583,7 +1586,7 @@ export function CourseBuilder() {
         {lessonData.type === 'quiz' && (
           <div className="space-y-6">
             {/* Quiz Settings */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Input
                 label="Quiz Title"
                 value={lessonData.content.quizData.title}
@@ -1616,6 +1619,50 @@ export function CourseBuilder() {
                       quizData: {
                         ...prev.content.quizData,
                         passingScore: parseInt(e.target.value) || 70
+                      }
+                    }
+                  }))}
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Duration (minutes)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={lessonData.content.quizData.duration || 30}
+                  onChange={(e) => setLessonData(prev => ({
+                    ...prev,
+                    content: {
+                      ...prev.content,
+                      quizData: {
+                        ...prev.content.quizData,
+                        duration: parseInt(e.target.value) || 30
+                      }
+                    }
+                  }))}
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Maximum Attempts
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={lessonData.content.quizData.maxAttempts || 3}
+                  onChange={(e) => setLessonData(prev => ({
+                    ...prev,
+                    content: {
+                      ...prev.content,
+                      quizData: {
+                        ...prev.content.quizData,
+                        maxAttempts: parseInt(e.target.value) || 3
                       }
                     }
                   }))}
@@ -2172,7 +2219,9 @@ export function CourseBuilder() {
                       description: '',
                       questions: [] as QuizQuestion[],
                       isGraded: true,
-                      passingScore: 70
+                      passingScore: 70,
+                      duration: 30, // Default duration of 30 minutes
+                      maxAttempts: 3 // Default maximum attempts
                     },
                     reflectionPrompt: ''
                   },

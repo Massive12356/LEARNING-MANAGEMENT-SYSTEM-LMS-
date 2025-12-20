@@ -75,7 +75,7 @@ export interface GetOrganizationsResponse {
   totalOrganizations: number;
 }
 
-export interface organizationSearchQuery {
+export interface OrganizationSearchQuery {
   name?: string;
   organizationCode?: string;
 }
@@ -128,6 +128,8 @@ export interface Quiz {
   questions: QuizQuestion[];
   isGraded: boolean;
   passingScore?: number;
+  duration?: number; // in minutes
+  maxAttempts?: number;
   lessonId: string;
 }
 

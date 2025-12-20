@@ -18,6 +18,7 @@ interface QuizComponentProps {
   title?: string;
   description?: string;
   timeLimit?: number; // in minutes
+  maxAttempts?: number;
   passingScore?: number; // percentage
   showExplanations?: boolean;
   onSubmit: (answers: Record<string, string>, score: number) => void;
@@ -30,6 +31,7 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
   title = 'Knowledge Check',
   description,
   timeLimit,
+  maxAttempts,
   passingScore = 70,
   showExplanations = true,
   onSubmit,
@@ -41,6 +43,7 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
   const [showResults, setShowResults] = useState(false);
   const [score, setScore] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(timeLimit ? timeLimit * 60 : 0);
+  const [attempts, setAttempts] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   // Timer effect
@@ -103,11 +106,19 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
 
   const handleSubmit = () => {
     if (isSubmitted) return;
+    
+    // Check if max attempts reached
+    if (maxAttempts && attempts >= maxAttempts) {
+      // Optionally show a message or disable submission
+      console.log('Maximum attempts reached');
+      return;
+    }
 
     const finalScore = calculateScore();
     setScore(finalScore);
     setShowResults(true);
     setIsSubmitted(true);
+    setAttempts(prev => prev + 1);
 
     onSubmit(answers, finalScore);
     
@@ -345,7 +356,12 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
           <div className="space-y-4">
             <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
               <span>{questions.length} question{questions.length !== 1 ? 's' : ''}</span>
-              <span>Passing score: {passingScore}%</span>
+              <div className="flex space-x-4">
+                <span>Passing score: {passingScore}%</span>
+                {maxAttempts && (
+                  <span>Attempt {attempts + 1} of {maxAttempts}</span>
+                )}
+              </div>
             </div>
             
             {/* Progress Bar */}
