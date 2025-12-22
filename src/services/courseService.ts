@@ -91,6 +91,19 @@ class CourseService {
       throw new Error(err?.message || err?.response?.data?.message)
     }
   }
+
+  async teacherDashboardStats(){
+    try {
+      const response = await apiClient.get("/teacher/stats");
+      console.log("[courseService] SUCCESS RESPONSE FROM SERVER", response?.data)
+      return response?.data?.stats
+    } catch (error) {
+      const err = error as AxiosError<{message?: string}>
+      console.log("[courseService] ERROR RESPONSE FROM SERVER", err?.response?.data?.message ?? err?.message)
+
+      throw new Error(err?.response?.data?.message ?? err?.message)
+    }
+  }
 }
 
 export const courseService = new CourseService();

@@ -20,6 +20,14 @@ export interface createCoursePayload {
   courseModuleId:number[]
 }
 
+export interface teacherDashboardData{
+  totalPrograms: number;
+  totalCourses: number;
+  totalLiveCourses: number;
+  totalStudents: number;
+  averageCompletions: number
+}
+
 export interface User {
   id: string;
   email: string;
