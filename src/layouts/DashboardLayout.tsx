@@ -121,6 +121,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     try {
       await logout();
       navigate('/login');
+      sessionStorage.removeItem('settingID');
+      sessionStorage.removeItem('currentCourseId');
     } catch (error) {
       toast.error('Failed to logout');
     }

@@ -131,14 +131,6 @@ export function CourseList() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8">
       {/* Header with Organization Context */}
@@ -150,17 +142,32 @@ export function CourseList() {
           <p className="mt-2 text-gray-600 dark:text-gray-400">
             Manage and organize your course content
           </p>
-          {organization ? (
-            <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
-              <BuildingOfficeIcon className="h-4 w-4 mr-1" />
-              <span>{organization.name}</span>
-            </div>
-          ) : (
-            <div className="mt-2 flex items-center text-sm text-yellow-600 dark:text-yellow-400">
-              <BuildingOfficeIcon className="h-4 w-4 mr-1" />
-              <span>No organization assigned - contact your admin</span>
-            </div>
-          )}
+          {loading ? (
+                        <div className="mt-2 h-4 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded"></div>
+                      ) : organization ? (
+                        <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
+                          {organization.logo ? (
+                            <img
+                              src={organization.logo}
+                              alt={organization.name}
+                              className="w-7 h-7 object-cover mr-1 rounded-full"
+                            />
+                          ) : (
+                            <BuildingOfficeIcon className="h-4 w-4 mr-1" />
+                          )}
+                          <p>
+                            Teaching at{' '}
+                            <span className="font-medium text-blue-600 dark:text-yellow-400">
+                              {organization.name}
+                            </span>
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="mt-2 flex items-center text-sm text-yellow-600 dark:text-yellow-400">
+                          <BuildingOfficeIcon className="h-4 w-4 mr-1" />
+                          <span>No organization assigned - contact your admin</span>
+                        </div>
+                      )}
         </div>
         <Link to="/teacher/courses/new">
           <Button disabled={!organization}>

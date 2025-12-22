@@ -5,23 +5,25 @@ import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { RichTextDisplay } from '../../components/ui/RichTextEditor';
 import { mockApi } from '../../services/mockApi';
-import { Course, Organization } from '../../types';
+import { teacherDashboardData, Organization } from '../../types';
 import { organizationService } from '../../services/organizationService';
-import { 
-  BookOpenIcon, 
-  AcademicCapIcon, 
-  UserGroupIcon, 
+import {
+  BookOpenIcon,
+  AcademicCapIcon,
+  UserGroupIcon,
   ChartBarIcon,
   EyeIcon,
   PencilIcon,
   PlusIcon,
-  BuildingOfficeIcon
+  BuildingOfficeIcon,
 } from '@heroicons/react/24/outline';
 import { DetailedAnalytics } from '../../components/teacher/DetailedAnalytics';
+import { courseService } from '../../services/courseService';
+import toast from 'react-hot-toast';
 
 export function TeacherDashboard() {
   const { user } = useAuthStore();
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [dashboardData, setDashboardData] = useState<teacherDashboardData | null>(null);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'analytics'>('overview');
@@ -29,17 +31,16 @@ export function TeacherDashboard() {
   useEffect(() => {
     const loadDashboardData = async () => {
       if (!user) return;
-      
+
       try {
-        const [coursesData, programsData] = await Promise.all([
-          mockApi.getCourses({ teacherId: user.id }),
-          mockApi.getPrograms()
-        ]);
-        
-        setCourses(coursesData);
+        const response = await courseService.teacherDashboardStats();
+
+        setDashboardData(response);
         // programsData is not used, so we don't need to store it
-      } catch (error) {
+        console.log('Data:', response);
+      } catch (error: any) {
         console.error('Failed to load dashboard data:', error);
+        toast.error(error?.message ?? 'Failed to load Dashboard Data');
       } finally {
         setLoading(false);
       }
@@ -51,56 +52,46 @@ export function TeacherDashboard() {
 
   const loadOrganization = async () => {
     if (!user?.organizationDetails?.id) return;
-    
+
     try {
-      const orgData = await organizationService.getOrganizationById(user?.organizationDetails?.id.toString());
+      const orgData = await organizationService.getOrganizationById(
+        user?.organizationDetails?.id.toString()
+      );
       setOrganization(orgData);
     } catch (error) {
       console.error('Failed to load organization:', error);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  const liveCourses = courses.filter(course => course.status === 'live');
-  const totalStudents = 156; // Mock data
-  const avgCompletion = 78; // Mock data
-
   const stats = [
     {
       name: 'Total Courses',
-      value: courses.length.toString(),
+      value: dashboardData?.totalCourses ?? 0,
       icon: BookOpenIcon,
       color: 'text-blue-600',
-      bgColor: 'bg-blue-100 dark:bg-blue-900'
+      bgColor: 'bg-blue-100 dark:bg-blue-900',
     },
     {
       name: 'Live Courses',
-      value: liveCourses.length.toString(),
+      value: dashboardData?.totalLiveCourses ?? 0,
       icon: EyeIcon,
       color: 'text-green-600',
-      bgColor: 'bg-green-100 dark:bg-green-900'
+      bgColor: 'bg-green-100 dark:bg-green-900',
     },
     {
       name: 'Total Students',
-      value: totalStudents.toString(),
+      value: dashboardData?.totalStudents.toString(),
       icon: UserGroupIcon,
       color: 'text-purple-600',
-      bgColor: 'bg-purple-100 dark:bg-purple-900'
+      bgColor: 'bg-purple-100 dark:bg-purple-900',
     },
     {
       name: 'Avg Completion',
-      value: `${avgCompletion}%`,
+      value: `${dashboardData?.averageCompletions ?? 0}%`,
       icon: ChartBarIcon,
       color: 'text-yellow-600',
-      bgColor: 'bg-yellow-100 dark:bg-yellow-900'
-    }
+      bgColor: 'bg-yellow-100 dark:bg-yellow-900',
+    },
   ];
 
   return (
@@ -116,10 +107,25 @@ export function TeacherDashboard() {
             <p className="mt-2 text-gray-600 dark:text-gray-400">
               Manage your courses and track student progress
             </p>
-            {organization ? (
+            {loading ? (
+              <div className="mt-2 h-4 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded"></div>
+            ) : organization ? (
               <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
-                <BuildingOfficeIcon className="h-4 w-4 mr-1" />
-                <span>Teaching at {organization.name}</span>
+                {organization.logo ? (
+                  <img
+                    src={organization.logo}
+                    alt={organization.name}
+                    className="w-7 h-7 object-cover mr-1 rounded-full"
+                  />
+                ) : (
+                  <BuildingOfficeIcon className="h-4 w-4 mr-1" />
+                )}
+                <p>
+                  Teaching at{' '}
+                  <span className="font-medium text-blue-600 dark:text-yellow-400">
+                    {organization.name}
+                  </span>
+                </p>
               </div>
             ) : (
               <div className="mt-2 flex items-center text-sm text-yellow-600 dark:text-yellow-400">
@@ -168,7 +174,7 @@ export function TeacherDashboard() {
           <>
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {stats.map((stat) => {
+              {stats.map(stat => {
                 const Icon = stat.icon;
                 return (
                   <Card key={stat.name}>
@@ -177,12 +183,18 @@ export function TeacherDashboard() {
                         <Icon className={`h-6 w-6 ${stat.color}`} />
                       </div>
                       <div className="ml-4">
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                          {stat.value}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {stat.name}
-                        </p>
+                        {loading ? (
+                          <div className="h-4 w-24 rounded-md bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+                        ) : (
+                          <p
+                            className={` 
+                            text-2xl'
+                           font-bold text-gray-900 dark:text-white`}
+                          >
+                            {stat.value}
+                          </p>
+                        )}
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{stat.name}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -203,7 +215,9 @@ export function TeacherDashboard() {
                     <div className="p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer">
                       <div className="text-center">
                         <PlusIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                        <h3 className="font-medium text-gray-900 dark:text-white">Create New Course</h3>
+                        <h3 className="font-medium text-gray-900 dark:text-white">
+                          Create New Course
+                        </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                           Start building your next course
                         </p>
@@ -215,7 +229,9 @@ export function TeacherDashboard() {
                     <div className="p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer">
                       <div className="text-center">
                         <AcademicCapIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                        <h3 className="font-medium text-gray-900 dark:text-white">Create Program</h3>
+                        <h3 className="font-medium text-gray-900 dark:text-white">
+                          Create Program
+                        </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                           Group courses into a program
                         </p>
@@ -239,7 +255,9 @@ export function TeacherDashboard() {
                     <div className="p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer">
                       <div className="text-center">
                         <BookOpenIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                        <h3 className="font-medium text-gray-900 dark:text-white">Manage Courses</h3>
+                        <h3 className="font-medium text-gray-900 dark:text-white">
+                          Manage Courses
+                        </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                           Edit or publish your courses
                         </p>
@@ -251,7 +269,7 @@ export function TeacherDashboard() {
             </Card>
 
             {/* Recent Courses */}
-            {courses.length > 0 && (
+            {/* {dashboardData?.length > 0 && (
               <Card>
                 <CardHeader>
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -260,9 +278,9 @@ export function TeacherDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {courses.slice(0, 3).map((course) => (
-                      <div 
-                        key={course.id} 
+                    {dashboardData?.slice(0, 3).map(course => (
+                      <div
+                        key={course.id}
                         className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
                       >
                         <div className="aspect-w-16 aspect-h-9">
@@ -280,11 +298,13 @@ export function TeacherDashboard() {
                             <RichTextDisplay content={course.description} />
                           </div>
                           <div className="mt-4 flex items-center justify-between">
-                            <span className={`px-2 py-1 text-xs rounded-full ${
-                              course.status === 'live' 
-                                ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                                : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
-                            }`}>
+                            <span
+                              className={`px-2 py-1 text-xs rounded-full ${
+                                course.status === 'live'
+                                  ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                                  : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
+                              }`}
+                            >
                               {course.status}
                             </span>
                             <div className="flex space-x-2">
@@ -306,7 +326,7 @@ export function TeacherDashboard() {
                   </div>
                 </CardContent>
               </Card>
-            )}
+            )} */}
           </>
         ) : (
           <DetailedAnalytics />

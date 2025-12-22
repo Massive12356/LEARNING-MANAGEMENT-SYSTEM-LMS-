@@ -1,9 +1,32 @@
 export type UserRole = 'student' | 'teacher' | 'admin' | 'superuser';
 export type UserStatus = 'active' | 'pending';
 
-export type CourseStatus = 'draft' | 'live';
+export type CourseStatus = 'draft' | 'published' | 'archived' | 'pending';
 export type ProgramStatus = 'draft' | 'live';
 export type OrganizationStatus = 'draft' | 'live' | 'active' | 'suspended';
+
+export interface courseSettings {
+  courseStatus: CourseStatus;
+  trackingProgress: boolean;
+  selfPacedLearning: boolean;
+  certificateOnCompletion: boolean;
+  gradedCourse: boolean;
+}
+
+export interface createCoursePayload {
+  programIds?: number;
+  courseId: number;
+  courseSettingsId: number;
+  courseModuleId:number[]
+}
+
+export interface teacherDashboardData{
+  totalPrograms: number;
+  totalCourses: number;
+  totalLiveCourses: number;
+  totalStudents: number;
+  averageCompletions: number
+}
 
 export interface User {
   id: string;
@@ -248,7 +271,7 @@ export interface ReflectionSubmission {
 }
 
 // Todo Types
-export type TodoPriority = 'low' | 'medium' | 'high';
+export type TodoPriority = 'Low Priority' | 'Medium Priority' | 'High Priority';
 export type TodoStatus = 'pending' | 'in-progress' | 'completed' | 'cancelled';
 
 export interface TodoItem {

@@ -8,14 +8,19 @@ interface StudentTodoProps {
 }
 
 export const StudentTodo: React.FC<StudentTodoProps> = ({ userId, className = '' }) => {
-  const { todos, addTodo, updateTodo, deleteTodo } = useTodos(userId);
+  const { todos, loading, pagination, goToPage, setPageSize, addTodo, updateTodo, deleteTodo } =
+    useTodos(userId);
 
   return (
     <div className={`space-y-6 ${className}`}>
       <Card>
         <CardContent className="p-0">
           <TodoList
-            items={todos}
+            todos={todos}
+            loading={loading}
+            pagination={pagination}
+            goToPage={goToPage}
+            setPageSize={setPageSize}
             onAdd={addTodo}
             onUpdate={updateTodo}
             onDelete={deleteTodo}
