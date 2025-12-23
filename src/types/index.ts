@@ -110,10 +110,10 @@ export interface Course {
   coverImage?: string;
   tags: string[];
   status: CourseStatus;
-  isTracked: boolean;
-  allowSelfPacing: boolean;
-  requiresCertificate: boolean;
-  isGraded: boolean;
+  trackingProgress: boolean;
+  selfPacedLearning: boolean;
+  certificateOnCompletion: boolean;
+  gradedCourse: boolean;
   organizationId?: string;
   teacherId: string;
   modules: Module[];
@@ -161,8 +161,9 @@ export interface QuizQuestion {
   question: string;
   type: 'multiple-choice' | 'short-text';
   options?: string[];
-  correctAnswer: string | string[];
+  correctAnswers: string[];
   explanation?: string;
+  points?: number
 }
 
 export interface Program {
@@ -701,3 +702,126 @@ export interface OrganizationStatsResponse{
   message: string;
   stats: OrganizationStats;
 }
+
+// types for fetching course details on teacher dashboard
+export interface CourseResponse {
+  id: number;
+  program: Program | null;
+  course: Courses;
+  settings: CourseSettings;
+  modules: CourseModule[];
+  enrollmentStats: EnrollmentStats;
+  enrolledStudents: EnrolledStudent[];
+  teacher: Teacher;
+  organization: Organization;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface CourseListItem {
+  id: number;
+  title: string;
+  description: string;
+  tags: string[];
+  coverImage: string | null;
+  status: CourseStatus;
+  modulesCount: number;
+  programCertificate: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+
+export interface Courses {
+  id: number;
+  title: string;
+  description: string; // HTML string
+  tags: string[];
+  images: string[];
+}
+
+export interface CourseSettings {
+  id: number;
+  courseStatus: CourseStatus
+  trackingProgress: boolean;
+  selfPacedLearning: boolean;
+  certificateOnCompletion: boolean;
+  gradedCourse: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CourseModule {
+  id: number;
+  moduleNumber: number;
+  title: string;
+  description: string; // HTML string
+  contents: CourseLesson[];
+  createdAt: string;
+}
+
+export interface CourseLesson {
+  id: number;
+  lessonNumber: number;
+  title: string;
+  lessonDescription: string;
+  lessonType: LessonType;
+
+  videoUrl: string | null;
+  videoDuration: number | null;
+
+  textContent: string | null;
+  pdfUrl: string | null;
+  fileAttachmentURL: string | null;
+
+  quizPassingScore: number | null;
+  quizDuration: number | null;
+  quizMaxAttempts: number | null;
+
+  reflectionPrompt: string | null;
+  images: string[];
+
+  createdAt: string;
+}
+
+export interface EnrollmentStats {
+  totalEnrollments: number;
+  completedEnrollments: number;
+  completionRate: number;
+}
+
+export interface EnrolledStudent {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  progress?: number;
+  completed?: boolean;
+}
+
+export interface Teacher {
+  id: number;
+  firstName: string;
+  lastName: string;
+  role: 'teacher' | 'admin';
+  organizationId: string;
+}
+
+export interface programStats {
+  totalPrograms: number;
+  totalLivePrograms: number;
+  programsWithCertificates: number;
+  availableCourses: number;
+}
+
+export interface programPayload{
+  title: string
+  description: string
+  images:string
+  programStatus: CourseStatus
+  requiredCourseOrder: boolean
+  programCertificate: boolean;
+  courseGeneralIds: number[]
+}
+
+
+

@@ -4,7 +4,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { mockApi } from '../../services/mockApi';
-import { Program, Course } from '../../types';
+import { Program, Course, programStats } from '../../types';
 import { 
   MagnifyingGlassIcon,
   FunnelIcon,
@@ -17,11 +17,13 @@ import {
   PlusIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { courseService } from '../../services/courseService';
 
 export function ProgramList() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const [programs, setPrograms] = useState<Program[]>([]);
+  const [programs, setPrograms] = useState(null);
+  const [programsStats, setProgramsStats] = useState<programStats | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [filteredPrograms, setFilteredPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,9 +34,9 @@ export function ProgramList() {
     loadData();
   }, [user]);
 
-  useEffect(() => {
-    filterPrograms();
-  }, [programs, searchTerm, statusFilter]);
+  // useEffect(() => {
+  //   filterPrograms();
+  // }, [programs, searchTerm, statusFilter]);
 
   const loadData = async () => {
     if (!user?.organizationId) {
@@ -44,16 +46,11 @@ export function ProgramList() {
     }
     
     try {
-      const [programsData, coursesData] = await Promise.all([
-        mockApi.getPrograms({ organizationId: user.organizationId }),
-        mockApi.getCourses({ organizationId: user.organizationId })
-      ]);
-      
-      setPrograms(programsData);
-      setCourses(coursesData);
-    } catch (error) {
-      console.error('Failed to load programs:', error);
-      toast.error('Failed to load programs');
+      const response = await courseService.loadProgramStats()
+      setProgramsStats(response)
+      return response
+    } catch (error: any) {
+      toast.error(error?.message);
     } finally {
       setLoading(false);
     }
@@ -86,22 +83,12 @@ export function ProgramList() {
     navigate(`/teacher/programs/${programId}/edit`);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            My Programs
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">My Programs</h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
             Manage your learning programs and course sequences
           </p>
@@ -124,12 +111,15 @@ export function ProgramList() {
               <AcademicCapIcon className="h-6 w-6 text-blue-600" />
             </div>
             <div className="ml-4">
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {programs.length}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Total Programs
-              </p>
+              {loading ? (
+                <div className="h-4 w-24 rounded-md bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+              ) : (
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {programsStats?.totalPrograms ?? 0}
+                </p>
+              )}
+
+              <p className="text-sm text-gray-600 dark:text-gray-400">Total Programs</p>
             </div>
           </CardContent>
         </Card>
@@ -140,12 +130,14 @@ export function ProgramList() {
               <EyeIcon className="h-6 w-6 text-green-600" />
             </div>
             <div className="ml-4">
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {programs.filter(p => p.status === 'live').length}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Live Programs
-              </p>
+              {loading ? (
+                <div className="h-4 w-24 rounded-md bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+              ) : (
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {programsStats?.totalLivePrograms ?? 0}
+                </p>
+              )}
+              <p className="text-sm text-gray-600 dark:text-gray-400">Live Programs</p>
             </div>
           </CardContent>
         </Card>
@@ -156,12 +148,15 @@ export function ProgramList() {
               <TrophyIcon className="h-6 w-6 text-yellow-600" />
             </div>
             <div className="ml-4">
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {programs.filter(p => p.requiresCertificate).length}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                With Certificates
-              </p>
+              {loading ? (
+                <div className="h-4 w-24 rounded-md bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+              ) : (
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {programsStats?.programsWithCertificates ?? 0}
+                </p>
+              )}
+
+              <p className="text-sm text-gray-600 dark:text-gray-400">With Certificates</p>
             </div>
           </CardContent>
         </Card>
@@ -172,12 +167,15 @@ export function ProgramList() {
               <BookOpenIcon className="h-6 w-6 text-purple-600" />
             </div>
             <div className="ml-4">
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {courses.length}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Available Courses
-              </p>
+              {loading ? (
+                <div className="h-4 w-24 rounded-md bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+              ) : (
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {programsStats?.availableCourses ?? 0}
+                </p>
+              )}
+
+              <p className="text-sm text-gray-600 dark:text-gray-400">Available Courses</p>
             </div>
           </CardContent>
         </Card>
@@ -194,17 +192,17 @@ export function ProgramList() {
                   type="text"
                   placeholder="Search programs..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={e => setSearchTerm(e.target.value)}
                   className="pl-10 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <FunnelIcon className="h-4 w-4 text-gray-400" />
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as any)}
+                onChange={e => setStatusFilter(e.target.value as any)}
                 className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
               >
                 <option value="all">All Status</option>
@@ -219,10 +217,10 @@ export function ProgramList() {
       {/* Programs List */}
       {filteredPrograms.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredPrograms.map((program) => {
+          {filteredPrograms.map(program => {
             const programCourses = getProgramCourses(program);
             const completedCourses = programCourses.filter(c => c.status === 'live').length;
-            
+
             return (
               <Card key={program.id}>
                 <CardHeader>
@@ -254,21 +252,21 @@ export function ProgramList() {
                       <BookOpenIcon className="h-4 w-4 mr-2 flex-shrink-0" />
                       <span>{programCourses.length} courses</span>
                     </div>
-                    
+
                     <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                       <TrophyIcon className="h-4 w-4 mr-2 flex-shrink-0" />
                       <span>
                         {program.requiresCertificate ? 'Certificate awarded' : 'No certificate'}
                       </span>
                     </div>
-                    
+
                     {program.requiredOrder && (
                       <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                         <LockClosedIcon className="h-4 w-4 mr-2 flex-shrink-0" />
                         <span>Required order</span>
                       </div>
                     )}
-                    
+
                     <div className="pt-4 flex justify-between">
                       <Button
                         variant="outline"
@@ -296,18 +294,14 @@ export function ProgramList() {
           <CardContent className="text-center py-12">
             <AcademicCapIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              {searchTerm || statusFilter !== 'all' 
-                ? 'No programs found' 
-                : 'No programs yet'
-              }
+              {searchTerm || statusFilter !== 'all' ? 'No programs found' : 'No programs yet'}
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
               {searchTerm || statusFilter !== 'all'
-                ? 'Try adjusting your search or filters to find what you\'re looking for.'
-                : 'Learning programs will appear here when you create them.'
-              }
+                ? "Try adjusting your search or filters to find what you're looking for."
+                : 'Learning programs will appear here when you create them.'}
             </p>
-            {(!searchTerm && statusFilter === 'all') && (
+            {!searchTerm && statusFilter === 'all' && (
               <Link to="/teacher/programs/new">
                 <Button>
                   <PlusIcon className="h-4 w-4 mr-2" />

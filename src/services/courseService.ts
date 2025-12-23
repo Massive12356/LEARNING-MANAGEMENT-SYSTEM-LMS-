@@ -1,6 +1,6 @@
 import { AxiosError } from 'axios';
 import apiClient from './apiClient';
-import { courseSettings, createCoursePayload } from '../types';
+import { courseSettings, createCoursePayload, programPayload } from '../types';
 
 class CourseService {
   //service functions for handling posting courses
@@ -102,6 +102,42 @@ class CourseService {
       console.log("[courseService] ERROR RESPONSE FROM SERVER", err?.response?.data?.message ?? err?.message)
 
       throw new Error(err?.response?.data?.message ?? err?.message)
+    }
+  }
+
+  async loadAllCourses(){
+    try {
+      const response = await apiClient.get('/course/general');
+      console.log("[courseService] SUCCESS RESPONSE FROM SERVER", response?.data)
+      return response?.data?.data
+    } catch (error) {
+      const err = error as AxiosError<{message?: string}>
+      console.log("[courseService] ERROR RESPONSE FROM SERVER", err?.response?.data?.message ?? err?.message)
+      throw new Error(err?.message ?? err?.response?.data?.message)
+    }
+  }
+
+  async loadProgramStats(){
+    try {
+      const response = await apiClient.get('/program/statistics');
+      console.log("[courseService] SUCCESS RESPONSE FROM SERVER", response?.data?.statistics)
+      return response?.data?.statistics
+    } catch (error) {
+      const err = error as AxiosError<{message?:string}>
+      console.log("[courseService] ERROR RESPONSE FROM SERVER", err?.response?.data?.message ?? err?.message)
+      throw new Error(err?.message ?? err?.response?.data?.message)
+    }
+  }
+
+  async createProgram(payload: programPayload){
+    try {
+      const response = await apiClient.post('/create/program', payload);
+      console.log("[courseService] SUCCESS RESPONSE FROM SERVER", response?.data)
+      return response?.data
+    } catch (error) {
+      const err = error as AxiosError<{message?:string}>
+      console.log("[courseService] ERROR RESPONSE FROM SERVER", err?.response?.data?.message ?? err?.message)
+      throw new Error(err?.message ?? err?.response?.data?.message)
     }
   }
 }

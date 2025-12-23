@@ -146,7 +146,7 @@ export function CourseBuilder() {
               title: '',
               description: '',
               questions: [],
-              isGraded: true,
+              gradedCourse: true,
               passingScore: 70,
             },
             reflectionPrompt: '',
@@ -603,7 +603,7 @@ export function CourseBuilder() {
           formData.append('quizTotalScore', String(lessonData.content.quizData.totalScore || 0));
           formData.append(
             'quizGradingPreferenceType',
-            lessonData.content.quizData.isGraded ? 'graded' : 'raw'
+            lessonData.content.quizData.gradedCourse ? 'graded' : 'raw'
           );
           break;
 
@@ -1918,7 +1918,7 @@ export function CourseBuilder() {
                   className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-              
+
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Duration (minutes)
@@ -1927,20 +1927,22 @@ export function CourseBuilder() {
                   type="number"
                   min="1"
                   value={lessonData.content.quizData.duration || 30}
-                  onChange={(e) => setLessonData(prev => ({
-                    ...prev,
-                    content: {
-                      ...prev.content,
-                      quizData: {
-                        ...prev.content.quizData,
-                        duration: parseInt(e.target.value) || 30
-                      }
-                    }
-                  }))}
+                  onChange={e =>
+                    setLessonData(prev => ({
+                      ...prev,
+                      content: {
+                        ...prev.content,
+                        quizData: {
+                          ...prev.content.quizData,
+                          duration: parseInt(e.target.value) || 30,
+                        },
+                      },
+                    }))
+                  }
                   className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-              
+
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Maximum Attempts
@@ -1949,16 +1951,18 @@ export function CourseBuilder() {
                   type="number"
                   min="1"
                   value={lessonData.content.quizData.maxAttempts || 3}
-                  onChange={(e) => setLessonData(prev => ({
-                    ...prev,
-                    content: {
-                      ...prev.content,
-                      quizData: {
-                        ...prev.content.quizData,
-                        maxAttempts: parseInt(e.target.value) || 3
-                      }
-                    }
-                  }))}
+                  onChange={e =>
+                    setLessonData(prev => ({
+                      ...prev,
+                      content: {
+                        ...prev.content,
+                        quizData: {
+                          ...prev.content.quizData,
+                          maxAttempts: parseInt(e.target.value) || 3,
+                        },
+                      },
+                    }))
+                  }
                   className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -1992,7 +1996,7 @@ export function CourseBuilder() {
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  checked={lessonData.content.quizData.isGraded}
+                  checked={lessonData.content.quizData.gradedCourse}
                   onChange={e =>
                     setLessonData(prev => ({
                       ...prev,
@@ -2000,7 +2004,7 @@ export function CourseBuilder() {
                         ...prev.content,
                         quizData: {
                           ...prev.content.quizData,
-                          isGraded: e.target.checked,
+                          gradedCourse: e.target.checked,
                         },
                       },
                     }))
@@ -2024,8 +2028,9 @@ export function CourseBuilder() {
                       question: '',
                       type: 'multiple-choice',
                       options: ['', ''],
-                      correctAnswer: '',
+                      correctAnswers: [],
                       explanation: '',
+                      points: 1,
                     };
                     setLessonData(prev => ({
                       ...prev,
@@ -2060,8 +2065,9 @@ export function CourseBuilder() {
                         question: '',
                         type: 'multiple-choice',
                         options: ['', ''],
-                        correctAnswer: '',
+                        correctAnswers: [],
                         explanation: '',
+                        points: 1,
                       };
                       setLessonData(prev => ({
                         ...prev,
@@ -2222,7 +2228,7 @@ export function CourseBuilder() {
                                   const updatedQuestion = {
                                     ...newQuestions[index],
                                     type: e.target.value as 'multiple-choice' | 'short-text',
-                                    correctAnswer: e.target.value === 'multiple-choice' ? '' : [],
+                                    correctAnswers: e.target.value === 'multiple-choice' ? '' : [],
                                   };
 
                                   // Reset options if switching to short-text
@@ -2318,14 +2324,14 @@ export function CourseBuilder() {
                                   <input
                                     type="radio"
                                     name={`correct-answer-${question.id}`}
-                                    checked={question.correctAnswer === option}
+                                    checked={(question.correctAnswers || []).includes(option)}
                                     onChange={() => {
                                       const newQuestions = [
                                         ...lessonData.content.quizData.questions,
                                       ];
                                       newQuestions[index] = {
                                         ...newQuestions[index],
-                                        correctAnswer: option,
+                                        correctAnswers: [option],
                                       };
                                       setLessonData(prev => ({
                                         ...prev,
@@ -2356,12 +2362,16 @@ export function CourseBuilder() {
                                       };
 
                                       // Update correct answer if it was this option
-                                      if (question.correctAnswer === option) {
-                                        newQuestions[index] = {
-                                          ...newQuestions[index],
-                                          correctAnswer: e.target.value,
-                                        };
-                                      }
+                                      const wasCorrect = (question.correctAnswers || []).includes(option);
+
+                                      newQuestions[index] = {
+                                        ...newQuestions[index],
+                                        options: newOptions,
+                                        correctAnswers: wasCorrect
+                                          ? [e.target.value]
+                                          : question.correctAnswers,
+                                      };
+
 
                                       setLessonData(prev => ({
                                         ...prev,
@@ -2392,10 +2402,10 @@ export function CourseBuilder() {
                                         };
 
                                         // Update correct answer if it was this option
-                                        if (question.correctAnswer === option) {
+                                        if (question.correctAnswers === option) {
                                           newQuestions[index] = {
                                             ...newQuestions[index],
-                                            correctAnswer: newOptions[0] || '',
+                                            correctAnswers: newOptions[0] || '',
                                           };
                                         }
 
@@ -2429,8 +2439,8 @@ export function CourseBuilder() {
                               </label>
                               <textarea
                                 value={
-                                  Array.isArray(question.correctAnswer)
-                                    ? question.correctAnswer.join('\n')
+                                  Array.isArray(question.correctAnswers)
+                                    ? question.correctAnswers.join('\n')
                                     : ''
                                 }
                                 onChange={e => {
@@ -2440,7 +2450,7 @@ export function CourseBuilder() {
                                   const newQuestions = [...lessonData.content.quizData.questions];
                                   newQuestions[index] = {
                                     ...newQuestions[index],
-                                    correctAnswer: answers,
+                                    correctAnswers: answers,
                                   };
                                   setLessonData(prev => ({
                                     ...prev,
