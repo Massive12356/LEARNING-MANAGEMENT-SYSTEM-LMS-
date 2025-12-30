@@ -813,6 +813,27 @@ export interface programStats {
   availableCourses: number;
 }
 
+export interface teacherAnalyticsStats {
+  totalCourses: number;
+  totalStudents: number;
+  averageCompletionRate: number;
+  totalCertificatesIssued: number;
+}
+
+export interface coursePerformanceAnalytics {
+  courseName: string;
+  courseStatus: CourseStatus;
+  studentCount: number;
+  completionRate: number;
+  averageScore: number;
+}
+
+export interface dashboardAnalyticsResponse {
+  totalStudents: number;
+  completionRate: number;
+  averageTimeSpentHours?: number;
+}
+
 export interface programPayload{
   title: string
   description: string
@@ -822,6 +843,41 @@ export interface programPayload{
   programCertificate: boolean;
   courseGeneralIds: number[]
 }
+
+export interface AnalyticsMetrics {
+  activeUsers: number;
+  newEnrollments: number;
+  completions: number;
+}
+export interface AnalyticsSummary extends AnalyticsMetrics {}
+export interface DailyAnalyticsBreakdown extends AnalyticsMetrics {
+  date: string;
+}
+export interface AnalyticsPeriod {
+  startDate: string; 
+  endDate: string;
+}
+
+export interface DashboardAnalyticsData {
+  summary: AnalyticsSummary;
+  dailyBreakdown: DailyAnalyticsBreakdown[];
+  period: AnalyticsPeriod;
+}
+export interface DashboardAnalyticsResponse {
+  data: DashboardAnalyticsData;
+}
+
+export interface PopularCourse {
+  courseId: number;
+  courseName: string;
+  courseDescription: string;
+  courseStatus: 'draft' | 'published';
+  enrolledStudents: number;
+  completionRate: number;
+  totalContent: number;
+  createdAt: string;
+}
+
 
 
 

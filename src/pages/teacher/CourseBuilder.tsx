@@ -2536,8 +2536,8 @@ export function CourseBuilder() {
           <label className="flex items-center">
             <input
               type="checkbox"
-              checked={lessonData.isRequired}
-              onChange={e => setLessonData(prev => ({ ...prev, isRequired: e.target.checked }))}
+              checked={lessonData.trackingProgress}
+              onChange={e => setLessonData(prev => ({ ...prev, trackingProgress: e.target.checked }))}
               className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
             />
             <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
@@ -2565,7 +2565,7 @@ export function CourseBuilder() {
                       title: '',
                       description: '',
                       questions: [] as QuizQuestion[],
-                      isGraded: true,
+                      gradedCourse: true,
                       passingScore: 70,
                     },
                     reflectionPrompt: '',

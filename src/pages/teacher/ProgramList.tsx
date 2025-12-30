@@ -31,14 +31,14 @@ export function ProgramList() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'live' | 'draft'>('all');
 
   useEffect(() => {
-    loadData();
+    loadStatsData();
   }, [user]);
 
   // useEffect(() => {
   //   filterPrograms();
   // }, [programs, searchTerm, statusFilter]);
 
-  const loadData = async () => {
+  const loadStatsData = async () => {
     if (!user?.organizationId) {
       toast.error('You must be assigned to an organization to manage programs');
       navigate('/teacher/dashboard');
