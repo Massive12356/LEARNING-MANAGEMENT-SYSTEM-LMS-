@@ -5,6 +5,7 @@ import {
   courseSettings,
   createCoursePayload,
   DashboardAnalyticsResponse,
+  EditModulePayload,
   programPayload,
 } from '../types';
 
@@ -61,6 +62,25 @@ class CourseService {
   async createCourseContent(formData: FormData, id: string) {
     try {
       const response = await apiClient.post(`/create/course/${id}/content`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log('[courseService CreateLesson]  SUCCESS RESPONSE FROM SERVER', response?.data);
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService CreateLesson] ERROR RESPONSE FROM SERVER',
+        err?.response?.data?.message || err?.message
+      );
+      throw new Error(err?.response?.data?.message || err?.message);
+    }
+  }
+
+  async editCourseContent(formData: FormData, id: string) {
+    try {
+      const response = await apiClient.patch(`/content/${id}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -247,10 +267,88 @@ class CourseService {
     }
   }
 
-  async PopularCourses(){
+  async PopularCourses() {
     try {
       const response = await apiClient.get('/analytics/popular-courses');
       console.log('[courseService] SUCCESS RESPONSE FROM SERVER', response?.data?.data);
+      return response?.data?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService] ERROR RESPONSE FROM SERVER',
+        err?.message ?? err?.response?.data?.message
+      );
+      throw new Error(err?.message ?? err?.response?.data?.message);
+    }
+  }
+
+  // editing courses service functions
+  async editModule(moduleId: string, payload: EditModulePayload) {
+    try {
+      const response = await apiClient.patch(`/module/${moduleId}`, payload);
+      console.log('[courseService] SUCCESS RESPONSE FROM SERVER', response?.data);
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService] ERROR RESPONSE FROM SERVER',
+        err?.message ?? err?.response?.data?.message
+      );
+      throw new Error(err?.message ?? err?.response?.data?.message);
+    }
+  }
+
+  // deleting modules, lessons and general courses created
+  async deleteModule(moduleId: string) {
+    try {
+      const response = await apiClient.delete(`/module/${moduleId}`);
+      console.log('[courseService] SUCCESS RESPONSE FROM SERVER', response?.data);
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService] ERROR RESPONSE FROM SERVER',
+        err?.message ?? err?.response?.data?.message
+      );
+      throw new Error(err?.message ?? err?.response?.data?.message);
+    }
+  }
+
+  async deleteLesson(lessonId: string) {
+    try {
+      const response = await apiClient.delete(`/content/${lessonId}`);
+      console.log('[courseService] SUCCESS RESPONSE FROM SERVER', response?.data);
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService] ERROR RESPONSE FROM SERVER',
+        err?.message ?? err?.response?.data?.message
+      );
+      throw new Error(err?.message ?? err?.response?.data?.message);
+    }
+  }
+
+  async deleteCourse(courseId: string) {
+    try {
+      const response = await apiClient.delete(`/course/general/${courseId}`);
+      console.log('[courseService] SUCCESS RESPONSE FROM SERVER', response?.data);
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService] ERROR RESPONSE FROM SERVER',
+        err?.message ?? err?.response?.data?.message
+      );
+      throw new Error(err?.message ?? err?.response?.data?.message);
+    }
+  }
+
+  // adding program  details here too
+  async loadAllPrograms(organizationId: string) {
+    try {
+      const response = await apiClient.get(`/programs/organization/${organizationId}`);
+      console.log('[courseService LOAD_ALL_PROGRAMS] SUCCESS RESPONSE FROM SERVER', response?.data?.data);
       return response?.data?.data;
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;

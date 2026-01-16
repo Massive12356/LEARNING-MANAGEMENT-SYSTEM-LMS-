@@ -6,6 +6,7 @@ import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { RichTextEditor } from '../../components/ui/RichTextEditor';
 import { FileUploader } from '../../components/ui/FileUploader';
 import { StudentManagement } from '../../components/teacher/StudentManagement';
@@ -93,7 +94,33 @@ export function CourseBuilder() {
   const [showLessonModal, setShowLessonModal] = useState(false);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
+  
+  // Delete confirmation states
+  const [showDeleteModuleModal, setShowDeleteModuleModal] = useState(false);
+  const [showDeleteLessonModal, setShowDeleteLessonModal] = useState(false);
+  const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
   const [selectedModuleId, setSelectedModuleId] = useState<string>('');
+
+  // Function to check if form is empty
+  const isFormEmpty = () => {
+    // Check course details
+    const isCourseDetailsEmpty = !courseDetails.courseTitle.trim() && 
+                                 !courseDetails.description.trim() && 
+                                 (!courseDetails.images || courseDetails.images === null) && 
+                                 (!courseDetails.tags || courseDetails.tags.length === 0);
+    
+    // Check if modules exist
+    const hasModules = selectModule && selectModule.length > 0;
+    
+    // Check if any settings have been changed from defaults
+    const isSettingsEmpty = courseData.courseStatus === 'draft' &&
+                           courseData.trackingProgress === true &&
+                           courseData.selfPacedLearning === true &&
+                           courseData.certificateOnCompletion === false &&
+                           courseData.gradedCourse === false;
+    
+    return isCourseDetailsEmpty && !hasModules && isSettingsEmpty;
+  };
   const [studentCount, setStudentCount] = useState(0);
   const [selectCourseId, setSelectCourseId] = useState<string>(''); // holds course id after creation
   const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
@@ -130,11 +157,13 @@ export function CourseBuilder() {
           description: '',
           images: null,
           tags: [],
+          courseStatus: 'draft',
         },
         moduleData: savedState.moduleData || [],
         lessonData: savedState.lessonData || {
+          lessonNumber: '',
           title: '',
-          description: '',
+          lessonDescription: '',
           type: 'video',
           content: {
             videoUrl: '',
@@ -178,8 +207,9 @@ export function CourseBuilder() {
       },
       moduleData: [],
       lessonData: {
+        lessonNumber: '',
         title: '',
-        description: '',
+        LessonDescription: '',
         type: 'video' as 'video' | 'textContent' | 'pdf' | 'attachment' | 'quiz' | 'reflection',
         content: {
           videoUrl: '',
@@ -207,11 +237,11 @@ export function CourseBuilder() {
   const [courseDetails, setCourseDetails] = useState(initialState.courseDetails);
   const [moduleData, setModuleData] = useState<any[]>(initialState.moduleData);
   const [lessonData, setLessonData] = useState(initialState.lessonData);
-  const isEditing = !!courseId;
+  const isEditingExisting = !!courseId;
 
   // Save state to localStorage whenever it changes (but not for editing existing courses)
   useEffect(() => {
-    if (!isEditing) {
+    if (!isEditingExisting) {
       const stateToSave = {
         courseData,
         courseDetails,
@@ -220,10 +250,12 @@ export function CourseBuilder() {
       };
       saveCourseBuilderState(stateToSave);
     }
-  }, [courseData, courseDetails, moduleData, lessonData, isEditing]);
+  }, [courseData, courseDetails, moduleData, lessonData, isEditingExisting]);
+
+  console.log("UserDetails:", user);
 
   useEffect(() => {
-    if (isEditing) {
+    if (isEditingExisting) {
       loadCourse();
     }
   }, [courseId]);
@@ -316,7 +348,7 @@ export function CourseBuilder() {
   };
 
   const handleFinalSave = async () => {
-    if (!courseData.title.trim()) {
+    if (!courseDetails?.courseTitle.trim()) {
       toast.error('Course title is required');
       return;
     }
@@ -417,6 +449,10 @@ export function CourseBuilder() {
   };
 
   const handleUpdateModule = async () => {
+    if (!moduleIds) {
+      toast.error('Please create course details first');
+      return;
+    }
     if (!moduleData.title.trim()) {
       toast.error('Module title is required');
       return;
@@ -424,24 +460,30 @@ export function CourseBuilder() {
 
     if (!editingModule) return;
 
-    if (course) {
-      const updatedModules = course.modules.map(module =>
-        module.id === editingModule.id
-          ? { ...module, title: moduleData.title, description: moduleData.description }
-          : module
-      );
+    const payload = {
+      moduleNumber: moduleData.moduleNumber,
+      title: moduleData.title,
+      description: moduleData.description,
+      courseContentId: moduleIds,
+    };
 
-      setCourse({
-        ...course,
-        modules: updatedModules,
-      });
+    setIsSavingModule(true);
+
+    try {
+      const response = await courseService.editModule(editingModule.id, payload);
+      await fetchModulesByCourseId();
+      setEditingModule(null);
+      setModuleData({ title: '', description: '', moduleNumber: '' });
+      setShowModuleModal(false);
+      toast.success('Module updated successfully');
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to update module');
+    } finally {
+      setIsSavingModule(false);
     }
-
-    setEditingModule(null);
-    setModuleData({ title: '', description: '' });
-    setShowModuleModal(false);
-    toast.success('Module updated successfully');
   };
+
+  console.log('module id to edit', editingModule?.id);
 
   const handleDeleteModule = (moduleId: string, moduleTitle: string) => {
     if (
@@ -632,174 +674,220 @@ export function CourseBuilder() {
     }
   };
 
-  const handleEditLesson = (lesson: Lesson) => {
-    setEditingLesson(lesson);
-
-    // Initialize content based on lesson type
-    let content = {
-      videoUrl: '',
-      textContent: '',
-      pdfUrl: '',
-      attachmentUrl: '',
-      quizData: {
-        id: '',
-        title: '',
-        description: '',
-        questions: [] as QuizQuestion[],
-        isGraded: true,
-        passingScore: 70,
-      },
-      reflectionPrompt: '',
-    };
-
-    switch (lesson.type) {
-      case 'video':
-        content.videoUrl = lesson.content?.videoUrl || '';
-        break;
-      case 'text':
-        content.textContent = lesson.content?.textContent || '';
-        break;
-      case 'pdf':
-        content.pdfUrl = lesson.content?.pdfUrl || '';
-        break;
-      case 'attachment':
-        content.attachmentUrl = lesson.content?.attachmentUrl || '';
-        break;
-      case 'quiz':
-        content.quizData = lesson.content?.quizData || {
-          id: '',
-          title: '',
-          description: '',
-          questions: [],
-          isGraded: true,
-          passingScore: 70,
-        };
-        break;
-      case 'reflection':
-        content.reflectionPrompt = lesson.content?.reflectionPrompt || '';
-        break;
-    }
-
-    setLessonData({
-      title: lesson.title,
-      description: lesson.description,
-      type: lesson.type,
-      content: content,
-      duration: lesson.duration || 0,
-      isRequired: lesson.isRequired,
-    });
-    setSelectedModuleId(lesson.moduleId);
-    setShowLessonModal(true);
+  // normalizing type of lesson for editing
+  const normalizeLessonType = (type: string) => {
+    if (type === 'textContent') return 'text';
+    return type;
   };
+
+  const getEmptyContentForType = (type: string) => {
+    switch (type) {
+      case 'text':
+        return { textContent: '' };
+      case 'video':
+        return { videoUrl: '' };
+      case 'pdf':
+        return { pdfUrl: '' };
+      case 'attachment':
+        return { attachmentUrl: '' };
+      case 'quiz':
+        return {
+          quizData: {
+            title: '',
+            description: '',
+            questions: [],
+            gradedCourse: true,
+            passingScore: 70,
+          },
+        };
+      case 'reflection':
+        return { reflectionPrompt: '' };
+      default:
+        return {};
+    }
+  };
+
+  const hydrateContentByType = (lesson: Lesson) => {
+    switch (lesson.lessonType) {
+      case 'textContent':
+        return { textContent: lesson.textContent || '' };
+
+      case 'video':
+        return { videoUrl: lesson.videoUrl || '' };
+
+      case 'pdf':
+        return { pdfUrl: lesson.pdfUrl || '' };
+
+      case 'attachment':
+        return { attachmentUrl: lesson.attachmentUrl || '' };
+
+      case 'quiz':
+        return {
+          quizData: {
+            title: lesson.quizData?.title || '',
+            description: lesson.quizData?.description || '',
+            questions: lesson.quizData?.questions || [],
+            gradedCourse: lesson.quizData?.gradedCourse ?? true,
+            passingScore: lesson.quizData?.passingScore ?? 70,
+          },
+        };
+
+      case 'reflection':
+        return {
+          reflectionPrompt: lesson.reflectionPrompt || '',
+        };
+
+      default:
+        return {};
+    }
+  };
+
+
+
+ const handleEditLesson = (lesson: Lesson) => {
+   setEditingLesson(lesson);
+
+   const uiType = lesson.lessonType === 'textContent' ? 'text' : lesson.lessonType;
+
+   setLessonData({
+     lessonNumber: lesson.lessonNumber || '',
+     title: lesson.title || '',
+     description: lesson.lessonDescription || '',
+     type: uiType,
+     content: hydrateContentByType(lesson),
+     duration: lesson.duration || 0,
+     trackingProgress: lesson.trackingProgress ?? true,
+   });
+
+   setSelectedModuleId(lesson.moduleId);
+   setShowLessonModal(true);
+ };
+
 
   const handleUpdateLesson = async () => {
-    if (!lessonData.title.trim()) {
-      toast.error('Lesson title is required');
-      return;
-    }
-
-    if (!editingLesson) return;
-
-    // Validate quiz data if it's a quiz lesson
-    if (lessonData.type === 'quiz') {
-      if (!validateQuizData(lessonData.content.quizData)) {
+    try {
+      // ===== BASIC VALIDATION =====
+      if (!lessonData.title?.trim()) {
+        toast.error('Lesson Title is Required');
         return;
       }
-    }
 
-    // Create lesson based on type
-    let lessonContent = {};
-    switch (lessonData.type) {
-      case 'video':
-        lessonContent = {
-          videoUrl: lessonData.content.videoUrl,
-          duration: lessonData.duration,
-        };
-        break;
-      case 'text':
-        lessonContent = {
-          textContent: lessonData.content.textContent,
-        };
-        break;
-      case 'pdf':
-        lessonContent = {
-          pdfUrl: lessonData.content.pdfUrl,
-        };
-        break;
-      case 'attachment':
-        lessonContent = {
-          attachmentUrl: lessonData.content.attachmentUrl,
-        };
-        break;
-      case 'quiz':
-        lessonContent = {
-          quizData: lessonData.content.quizData,
-        };
-        break;
-      case 'reflection':
-        lessonContent = {
-          reflectionPrompt: lessonData.content.reflectionPrompt,
-        };
-        break;
-    }
+      if (!editingLesson?.id) {
+        toast.error('No lesson selected for update');
+        return;
+      }
 
-    if (course) {
-      const updatedModules = course.modules.map(module => {
-        if (module.id === editingLesson.moduleId) {
-          const updatedLessons = module.lessons.map(lesson =>
-            lesson.id === editingLesson.id
-              ? {
-                  ...lesson,
-                  title: lessonData.title,
-                  description: lessonData.description,
-                  type: lessonData.type,
-                  content: lessonContent,
-                  duration: lessonData.duration,
-                  isRequired: lessonData.isRequired,
-                }
-              : lesson
+      setIsAddingLesson(true);
+
+      // ===== MAP UI TYPE → BACKEND TYPE =====
+      const backendLessonType = lessonData.type === 'text' ? 'textContent' : lessonData.type;
+
+      const formData = new FormData();
+
+      // ===== HELPERS =====
+      const appendString = (key: string, value?: string) => {
+        if (typeof value === 'string' && value.trim() !== '') {
+          formData.append(key, value);
+        }
+      };
+
+      const appendInt = (key: string, value?: number) => {
+        if (typeof value === 'number' && !Number.isNaN(value)) {
+          formData.append(key, String(value));
+        }
+      };
+
+      // ===== BASE FIELDS =====
+      appendString('title', lessonData.title);
+      appendString('lessonType', backendLessonType);
+      appendString('lessonDescription', lessonData.description);
+
+      appendInt('lessonNumber', lessonData.lessonNumber);
+      appendInt('moduleNumber', selectedModuleNumber);
+      appendInt('courseModuleId', selectedModuleId);
+      appendInt('organizationId', user?.organizationId);
+
+      // ===== FILE UPLOAD (ONLY IF CHANGED) =====
+      if (lessonData.imageFile instanceof File) {
+        switch (backendLessonType) {
+          case 'video':
+            formData.append('videoUpload', lessonData.imageFile);
+            break;
+
+          case 'pdf':
+            formData.append('pdfUpload', lessonData.imageFile);
+            break;
+
+          case 'attachment':
+            formData.append('attachmentFile', lessonData.imageFile);
+            break;
+
+          default:
+            break;
+        }
+      }
+
+      // ===== TYPE-SPECIFIC PAYLOAD =====
+      switch (backendLessonType) {
+        case 'textContent':
+          appendString('textContent', lessonData.content.textContent);
+          break;
+
+        case 'video':
+          appendString('videoUrl', lessonData.content.videoUrl);
+          appendInt('videoDuration', lessonData.videoDuration);
+          break;
+
+        case 'pdf':
+          appendString('pdfUrl', lessonData.content.pdfUrl);
+          break;
+
+        case 'attachment':
+          appendString('fileAttachmentURL', lessonData.content.attachmentUrl);
+          break;
+
+        case 'quiz':
+          formData.append(
+            'quizQuestions',
+            JSON.stringify(lessonData.content.quizData?.questions ?? [])
           );
 
-          return {
-            ...module,
-            lessons: updatedLessons,
-          };
-        }
-        return module;
-      });
+          appendInt('quizTotalScore', lessonData.content.quizData?.totalScore);
 
-      setCourse({
-        ...course,
-        modules: updatedModules,
-      });
+          appendString(
+            'quizGradingPreferenceType',
+            lessonData.content.quizData?.gradedCourse ? 'graded' : 'raw'
+          );
+          break;
+
+        case 'reflection':
+          appendString('reflectionPrompt', lessonData.content.reflectionPrompt);
+          break;
+      }
+
+      // ===== DEBUG (KEEP UNTIL STABLE) =====
+      for (const [key, value] of formData.entries()) {
+        console.log('[UPDATE PAYLOAD]', key, value);
+      }
+
+      // ===== API CALL =====
+      await courseService.editCourseContent(formData, editingLesson.id);
+
+      toast.success('Lesson updated successfully');
+
+      await fetchModulesByCourseId();
+      resetLessonForm();
+      setEditingLesson(null);
+      setShowLessonModal(false);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.response?.data?.message || 'Failed to update lesson');
+    } finally {
+      setIsAddingLesson(false);
     }
-
-    setEditingLesson(null);
-    setLessonData({
-      title: '',
-      description: '',
-      type: 'video',
-      content: {
-        videoUrl: '',
-        textContent: '',
-        pdfUrl: '',
-        attachmentUrl: '',
-        quizData: {
-          id: '',
-          title: '',
-          description: '',
-          questions: [] as QuizQuestion[],
-          isGraded: true,
-          passingScore: 70,
-        },
-        reflectionPrompt: '',
-      },
-      duration: 0,
-      isRequired: true,
-    });
-    setShowLessonModal(false);
-    toast.success('Lesson updated successfully');
   };
+
+  console.log('setting editing Lesson Id: ', editingLesson?.id);
 
   const handleDeleteLesson = (lessonId: string, lessonTitle: string, moduleId: string) => {
     if (!confirm(`Are you sure you want to delete the lesson "${lessonTitle}"?`)) {
@@ -889,11 +977,33 @@ export function CourseBuilder() {
   const resetCourseBuilder = () => {
     clearCourseBuilderState();
 
-    // reset react states
-    setLessonData({
+    // reset all react states
+    setCourseData({
       title: '',
       description: '',
-      type: 'video',
+      tags: [] as string[],
+      courseStatus: 'draft' as CourseStatus,
+      trackingProgress: true,
+      selfPacedLearning: true,
+      certificateOnCompletion: false,
+      gradedCourse: false,
+      coverImage: '',
+    });
+    
+    setCourseDetails({
+      courseTitle: '',
+      description: '',
+      images: null as File | null,
+      tags: [],
+    });
+    
+    setModuleData([]);
+    
+    setLessonData({
+      lessonNumber: '',
+      title: '',
+      lessonDescription: '',
+      type: 'video' as 'video' | 'textContent' | 'pdf' | 'attachment' | 'quiz' | 'reflection',
       content: {
         videoUrl: '',
         textContent: '',
@@ -903,32 +1013,31 @@ export function CourseBuilder() {
           id: '',
           title: '',
           description: '',
-          questions: [],
-          isGraded: true,
+          questions: [] as QuizQuestion[],
+          gradedCourse: true,
           passingScore: 70,
         },
         reflectionPrompt: '',
-      },
+      } as any,
       duration: 0,
       isRequired: true,
     });
 
-    setCourseData({
-      title: '',
-      description: '',
-      tags: '',
-      courseStatus: '',
-      trackingProgress: false,
-      selfPacedLearning: false,
-      certificateOnCompletion: false,
-      gradedCourse: false,
-    });
-
-    setCourseSettingId();
+    setCourse(null);
+    setCourseSettingId(null);
     setModuleIds([]);
-    setSelectedModuleId();
-    setSelectCourseId();
-    setSelectModule();
+    setSelectCourseId('');
+    setSelectModule([]);
+    setSelectedModuleId('');
+    setSelectedModuleNumber(null);
+    setEditingModule(null);
+    setEditingLesson(null);
+    setCoverImagePreview(null);
+    setActiveTab('details');
+    
+    // Reset modal states
+    setShowModuleModal(false);
+    setShowLessonModal(false);
   };
 
   console.log('local ID:', selectCourseId);
@@ -964,6 +1073,99 @@ export function CourseBuilder() {
       setModuleIds(ids);
     }
   }, [courseModules]);
+
+  // Delete module functions
+  const handleDeleteModuleClick = (moduleId: string, moduleTitle: string) => {
+    // Create a temporary module object to store the ID for deletion
+    setEditingModule({ id: moduleId, title: moduleTitle } as Module); // Store the module ID to be deleted
+    setShowDeleteModuleModal(true);
+  };
+
+  const handleConfirmDeleteModule = async () => {
+    if (!editingModule?.id){
+      toast.error('No module selected for deletion');
+      return;
+    } 
+    
+    try {
+      // First, delete all lessons within the module
+      const module = selectModule.find(m => m.id === editingModule.id);
+      if (module && module.Contents && module.Contents.length > 0) {
+        // Delete each lesson in the module
+        for (const lesson of module.Contents) {
+          try {
+            await courseService.deleteLesson(lesson.id);
+          } catch (lessonError) {
+            console.error(`Failed to delete lesson ${lesson.id}:`, lessonError);
+            // Continue with other lessons even if one fails
+          }
+        }
+        
+        // Fetch updated module data to ensure backend has processed the lesson deletions
+        await fetchModulesByCourseId();
+        
+        // Wait a moment to ensure the backend syncs the deletion
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      // Then delete the module
+      await courseService.deleteModule(editingModule.id);
+      
+      // Update local state
+      const updatedModules = selectModule.filter(module => module.id !== editingModule.id);
+      setSelectModule(updatedModules);
+      
+      await fetchModulesByCourseId();
+      
+      toast.success('Module deleted successfully');
+    } catch (error: any) {
+        toast.error(error?.message || 'Failed to delete module');
+    } finally {
+      setShowDeleteModuleModal(false);
+      setEditingModule(null);
+    }
+  };
+
+  // Delete lesson functions
+  const handleDeleteLessonClick = (lessonId: string, lessonTitle: string, moduleId: string) => {
+    // Create a temporary lesson object to store the ID for deletion
+    setEditingLesson({ id: lessonId, title: lessonTitle, moduleId } as Lesson); // Store the lesson ID to be deleted
+    setShowDeleteLessonModal(true);
+  };
+
+  const handleConfirmDeleteLesson = async () => {
+    if (!editingLesson?.id) {
+      toast.error('No lesson selected for deletion');
+      return;
+    }
+    
+    try {
+      // Call your delete lesson API here
+      await courseService.deleteLesson(editingLesson.id);
+      
+      // Update local state
+      const updatedModules = selectModule.map(module => {
+        if (module.id === editingLesson.moduleId) {
+          return {
+            ...module,
+            Contents: module.Contents.filter(lesson => lesson.id !== editingLesson.id)
+          };
+        }
+        return module;
+      });
+      
+      setSelectModule(updatedModules);
+
+      await fetchModulesByCourseId();
+      
+      toast.success('Lesson deleted successfully');
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to delete lesson');
+    } finally {
+      setShowDeleteLessonModal(false);
+      setEditingLesson(null);
+    }
+  };
 
   const tabs = [
     { id: 'details', name: 'Course Details' },
@@ -1139,9 +1341,9 @@ export function CourseBuilder() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDeleteModule(module.id, module.title)}
+                            onClick={() => handleDeleteModuleClick(module.id, module.title)}
                           >
-                            <TrashIcon className="h-4 w-4" />
+                            <TrashIcon className="h-4 w-4 text-red-600" />
                           </Button>
                         </div>
                       </div>
@@ -1186,16 +1388,16 @@ export function CourseBuilder() {
                                     size="sm"
                                     onClick={() => handleEditLesson(lesson)}
                                   >
-                                    <PencilIcon className="h-4 w-4" />
+                                    <PencilIcon className="h-4 w-4 text-green-700" />
                                   </Button>
                                   <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={() =>
-                                      handleDeleteLesson(lesson.id, lesson.title, lesson.moduleId)
+                                      handleDeleteLessonClick(lesson.id, lesson.title, lesson.moduleId)
                                     }
                                   >
-                                    <TrashIcon className="h-4 w-4" />
+                                    <TrashIcon className="h-4 w-4 text-red-600" />
                                   </Button>
                                 </div>
                               </div>
@@ -1372,7 +1574,7 @@ export function CourseBuilder() {
                       <div>
                         <p className="text-sm text-gray-600 dark:text-gray-400">Title</p>
                         <p className="font-medium text-gray-900 dark:text-white">
-                          {courseData.title || 'Untitled Course'}
+                          {courseDetails?.courseTitle || 'Untitled Course'}
                         </p>
                       </div>
                       <div>
@@ -1392,15 +1594,15 @@ export function CourseBuilder() {
                         <div
                           className="font-medium text-gray-900 dark:text-white prose max-w-none"
                           dangerouslySetInnerHTML={{
-                            __html: courseData.description || 'No description provided',
+                            __html: courseDetails?.description || 'No description provided',
                           }}
                         />
                       </div>
                       <div>
                         <p className="text-sm text-gray-600 dark:text-gray-400">Tags</p>
                         <div className="flex flex-wrap gap-2 mt-1">
-                          {courseData.tags.length > 0 ? (
-                            courseData.tags.map((tag, index) => (
+                          {courseDetails?.tags.length > 0 ? (
+                            courseDetails.tags.map((tag, index) => (
                               <span
                                 key={index}
                                 className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
@@ -1598,10 +1800,10 @@ export function CourseBuilder() {
               >
                 <CheckCircleIcon className="h-4 w-4 mr-2" />
                 {finalSaving
-                  ? isEditing
+                  ? isEditingExisting
                     ? 'Updating Course...'
                     : 'Creating Course...'
-                  : isEditing
+                  : isEditingExisting
                   ? 'Update Course'
                   : 'Create Course'}
               </Button>
@@ -1652,27 +1854,21 @@ export function CourseBuilder() {
           </label>
           <select
             value={lessonData.type}
-            onChange={e =>
-              setLessonData(prev => ({
-                ...prev,
-                type: e.target.value as any,
-                content: {
-                  videoUrl: '',
-                  textContent: '',
-                  pdfUrl: '',
-                  attachmentUrl: '',
-                  quizData: {
-                    id: '',
-                    title: '',
-                    description: '',
-                    questions: [] as QuizQuestion[],
-                    isGraded: true,
-                    passingScore: 70,
-                  },
-                  reflectionPrompt: '',
-                },
-              }))
-            }
+            onChange={e => {
+              const newType = e.target.value;
+
+              setLessonData(prev => {
+                if (prev.type === newType) {
+                  return prev; // 🚫 DO NOTHING
+                }
+
+                return {
+                  ...prev,
+                  type: newType,
+                  content: getEmptyContentForType(newType),
+                };
+              });
+            }}
             className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="video">Video</option>
@@ -2362,7 +2558,9 @@ export function CourseBuilder() {
                                       };
 
                                       // Update correct answer if it was this option
-                                      const wasCorrect = (question.correctAnswers || []).includes(option);
+                                      const wasCorrect = (question.correctAnswers || []).includes(
+                                        option
+                                      );
 
                                       newQuestions[index] = {
                                         ...newQuestions[index],
@@ -2371,7 +2569,6 @@ export function CourseBuilder() {
                                           ? [e.target.value]
                                           : question.correctAnswers,
                                       };
-
 
                                       setLessonData(prev => ({
                                         ...prev,
@@ -2537,7 +2734,9 @@ export function CourseBuilder() {
             <input
               type="checkbox"
               checked={lessonData.trackingProgress}
-              onChange={e => setLessonData(prev => ({ ...prev, trackingProgress: e.target.checked }))}
+              onChange={e =>
+                setLessonData(prev => ({ ...prev, trackingProgress: e.target.checked }))
+              }
               className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
             />
             <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
@@ -2602,16 +2801,25 @@ export function CourseBuilder() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            {isEditing ? 'Edit Course' : 'Create New Course'}
+            {isEditingExisting ? 'Edit Course' : 'Create New Course'}
           </h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            {isEditing
+            {isEditingExisting
               ? 'Update your course content and settings'
               : 'Build an engaging learning experience'}
           </p>
         </div>
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={() => navigate('/teacher/courses')}>
+          <Button variant="outline" onClick={() => {
+            if (isFormEmpty()) {
+              // If form is empty, navigate directly without confirmation
+              resetCourseBuilder();
+              navigate('/teacher/courses');
+            } else {
+              // If form has data, show confirmation modal
+              setShowCancelConfirmation(true);
+            }
+          }}>
             Cancel
           </Button>
         </div>
@@ -2743,6 +2951,53 @@ export function CourseBuilder() {
           {renderLessonForm()}
         </Modal>
       )}
+
+      {/* Delete Module Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={showDeleteModuleModal}
+        onClose={() => {
+          setShowDeleteModuleModal(false);
+          setEditingModule(null);
+        }}
+        onConfirm={handleConfirmDeleteModule}
+        title="Delete Module"
+        message={`Are you sure you want to delete the module "${editingModule?.title}"? This action cannot be undone and will also delete all lessons within this module.`}
+        confirmText="Delete Module"
+        cancelText="Cancel"
+        confirmVariant="danger"
+      />
+
+      {/* Delete Lesson Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={showDeleteLessonModal}
+        onClose={() => {
+          setShowDeleteLessonModal(false);
+          setEditingLesson(null);
+        }}
+        onConfirm={handleConfirmDeleteLesson}
+        title="Delete Lesson"
+        message={`Are you sure you want to delete the lesson "${editingLesson?.title}"? This action cannot be undone.`}
+        confirmText="Delete Lesson"
+        cancelText="Cancel"
+        confirmVariant="danger"
+      />
+
+      {/* Cancel Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={showCancelConfirmation}
+        onClose={() => {
+          setShowCancelConfirmation(false);
+        }}
+        onConfirm={async () => {
+          await resetCourseBuilder();
+          navigate('/teacher/courses');
+        }}
+        title="Confirm Cancel"
+        message="Are you sure you want to cancel? All unsaved changes will be lost."
+        confirmText="Yes, Cancel"
+        cancelText="Continue Editing"
+        confirmVariant="danger"
+      />
     </div>
   );
 }

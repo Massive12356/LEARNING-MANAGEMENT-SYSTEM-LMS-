@@ -174,7 +174,7 @@ export interface Program {
   status: ProgramStatus;
   requiresCertificate: boolean;
   organizationId?: string;
-  courseIds: string[];
+  courseGeneralIds: string[];
   requiredOrder: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -876,6 +876,13 @@ export interface PopularCourse {
   completionRate: number;
   totalContent: number;
   createdAt: string;
+}
+
+export interface EditModulePayload{
+   moduleNumber: number;    
+   title: string;
+    description: string
+  courseContentId: number[];
 }
 
 

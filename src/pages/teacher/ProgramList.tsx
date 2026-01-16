@@ -22,18 +22,15 @@ import { courseService } from '../../services/courseService';
 export function ProgramList() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const [programs, setPrograms] = useState(null);
+  const [programs, setPrograms] = useState<Program[]>([]);
   const [programsStats, setProgramsStats] = useState<programStats | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [filteredPrograms, setFilteredPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'live' | 'draft'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
 
-  useEffect(() => {
-    loadStatsData();
-  }, [user]);
-
+  
   // useEffect(() => {
   //   filterPrograms();
   // }, [programs, searchTerm, statusFilter]);
@@ -56,14 +53,32 @@ export function ProgramList() {
     }
   };
 
+  const loadPrograms = async () => {
+    if (!user?.organizationId) {
+      toast.error('You must be assigned to an organization to manage programs');
+      navigate('/teacher/dashboard');
+      return;
+    }
+    
+    try {
+      const data = await courseService.loadAllPrograms(user.organizationId);
+      setPrograms(data);
+      setFilteredPrograms(data); // Initialize filtered programs with loaded data
+    } catch (error: any) {
+      toast.error(error?.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filterPrograms = () => {
     let filtered = [...programs];
 
     // Apply search filter
-    if (searchTerm) {
+    if (searchTerm) { 
       filtered = filtered.filter(program =>
-        program.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        program.description.toLowerCase().includes(searchTerm.toLowerCase())
+        program.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        program.description?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -75,13 +90,23 @@ export function ProgramList() {
     setFilteredPrograms(filtered);
   };
 
-  const getProgramCourses = (program: Program) => {
-    return courses.filter(course => program.courseIds.includes(course.id));
-  };
+  // const getProgramCourses = (program: Program) => {
+  //   return courses.filter(course => program.courseIds?.includes(course.id));
+  // };
 
   const handleEditProgram = (programId: string) => {
     navigate(`/teacher/programs/${programId}/edit`);
   };
+
+  useEffect(() => {
+    loadStatsData();
+    loadPrograms();
+  }, [user]);
+  
+  useEffect(() => {
+    filterPrograms();
+  }, [programs, searchTerm, statusFilter]);
+
 
   return (
     <div className="space-y-8">
@@ -206,7 +231,7 @@ export function ProgramList() {
                 className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
               >
                 <option value="all">All Status</option>
-                <option value="live">Live</option>
+                <option value="published">Published</option>
                 <option value="draft">Draft</option>
               </select>
             </div>
@@ -215,22 +240,42 @@ export function ProgramList() {
       </Card>
 
       {/* Programs List */}
-      {filteredPrograms.length > 0 ? (
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <svg
+            className="animate-spin h-10 w-10 text-blue-600 dark:text-blue-400"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            ></circle>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+            ></path>
+          </svg>
+        </div>
+      ) : filteredPrograms.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredPrograms.map(program => {
-            const programCourses = getProgramCourses(program);
-            const completedCourses = programCourses.filter(c => c.status === 'live').length;
-
             return (
               <Card key={program.id}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
-                        {program.title}
+                        {program?.title ?? 'N/A'}
                       </h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
-                        {program.description}
+                        {program?.description ?? 'N/A'}
                       </p>
                     </div>
                     <div className="ml-4 flex-shrink-0">
@@ -250,7 +295,7 @@ export function ProgramList() {
                   <div className="space-y-4">
                     <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                       <BookOpenIcon className="h-4 w-4 mr-2 flex-shrink-0" />
-                      <span>{programCourses.length} courses</span>
+                      <span>{program?.courseGeneralIds?.length ?? 0} courses</span>
                     </div>
 
                     <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">

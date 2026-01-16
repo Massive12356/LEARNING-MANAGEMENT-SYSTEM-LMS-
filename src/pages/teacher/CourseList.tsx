@@ -123,15 +123,15 @@ export function CourseList() {
     setFilteredCourses(filtered);
   };
 
-  const handleDuplicateCourse = async (courseId: string) => {
-    try {
-      await mockApi.duplicateCourse(courseId);
-      toast.success('Course duplicated successfully');
-      loadCourses();
-    } catch (error) {
-      toast.error('Failed to duplicate course');
-    }
-  };
+  // const handleDuplicateCourse = async (courseId: string) => {
+  //   try {
+  //     await mockApi.duplicateCourse(courseId);
+  //     toast.success('Course duplicated successfully');
+  //     loadCourses();
+  //   } catch (error) {
+  //     toast.error('Failed to duplicate course');
+  //   }
+  // };
 
   const handleDeleteCourse = async (courseId: string) => {
     if (!confirm('Are you sure you want to delete this course? This action cannot be undone.')) {
@@ -139,11 +139,11 @@ export function CourseList() {
     }
 
     try {
-      await mockApi.deleteCourse(courseId);
+      await courseService.deleteCourse(courseId);
       toast.success('Course deleted successfully');
       loadCourses();
-    } catch (error) {
-      toast.error('Failed to delete course');
+    } catch (error:any) {
+      toast.error( error?.message ?? 'Failed to delete course');
     }
   };
 
@@ -278,26 +278,26 @@ export function CourseList() {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
-                      {course.title}
+                      {course?.title ?? 'N/A'}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-3">
-                      {course.description}
+                      {course?.description ?? 'N/A'}
                     </p>
                   </div>
                   <span
                     className={`ml-2 px-2 py-1 text-xs rounded-full ${
-                      course.status === 'live'
+                      course.status === 'published'
                         ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
                         : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
                     }`}
                   >
-                    {course.status}
+                    {course?.status ?? 'N/A'}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-4">
                   <div className="flex items-center space-x-4">
-                    <span>{course?.modulesCount} modules</span>
+                    <span>{course?.modulesCount ?? 0} modules</span>
                     {course?.requiresCertificate && (
                       <span className="flex items-center">
                         <span className="w-2 h-2 bg-yellow-400 rounded-full mr-1"></span>
@@ -345,13 +345,13 @@ export function CourseList() {
                   </div>
 
                   <div className="flex items-center space-x-1">
-                    <button
+                    {/* <button
                       onClick={() => handleDuplicateCourse(course.id)}
                       className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                       title="Duplicate course"
                     >
                       <DocumentDuplicateIcon className="h-4 w-4" />
-                    </button>
+                    </button> */}
                     <button
                       onClick={() => handleDeleteCourse(course.id)}
                       className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
