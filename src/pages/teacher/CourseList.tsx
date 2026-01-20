@@ -30,8 +30,7 @@ export function CourseList() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<
-    'all' | 'published' | 'draft' | 'archived' | 'pending'
-  >('all');
+    'all' | 'live' | 'draft' >('all');
   const [sortBy, setSortBy] = useState<'title' | 'created' | 'updated'>('updated');
   const [organization, setOrganization] = useState<Organization | null>(null);
 
@@ -217,10 +216,8 @@ export function CourseList() {
                   className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
                 >
                   <option value="all">All Status</option>
+                  <option value="draft">draft</option>
                   <option value="published">published</option>
-                  <option value="draft">Draft</option>
-                  <option value="pending">pending</option>
-                  <option value="archived">archived</option>
                 </select>
               </div>
 
@@ -286,7 +283,7 @@ export function CourseList() {
                   </div>
                   <span
                     className={`ml-2 px-2 py-1 text-xs rounded-full ${
-                      course.status === 'published'
+                      course?.status === 'published'
                         ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
                         : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
                     }`}

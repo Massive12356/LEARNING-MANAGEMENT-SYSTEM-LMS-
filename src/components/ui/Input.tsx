@@ -6,7 +6,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   helpText?: string;
 }
 
-export const Input: React.FC<InputProps> = ({
+export const Input: React.FC<InputProps> = ({ 
   label,
   error,
   helpText,

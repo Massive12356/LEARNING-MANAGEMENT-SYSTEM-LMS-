@@ -29,12 +29,6 @@ export function CourseEnrollment() {
   const [organization, setOrganization] = useState<Organization | null>(null);
 
   useEffect(() => {
-    loadCourses();
-    loadOrganization();
-    loadEnrollments();
-  }, [user]);
-
-  useEffect(() => {
     filterAndSortCourses();
   }, [availableCourses, searchTerm, statusFilter, sortBy]);
 
@@ -131,13 +125,11 @@ export function CourseEnrollment() {
     return enrolledCourses.some(enrollment => enrollment.courseId === courseId);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    loadCourses();
+    loadOrganization();
+    loadEnrollments();
+  }, [user]);
 
   return (
     <div className="space-y-8">

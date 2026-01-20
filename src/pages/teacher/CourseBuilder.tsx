@@ -5,6 +5,8 @@ import { useAuthStore } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { createSmartSanitizedChangeHandler } from '../../utils/sanitization';
+
 import { Modal } from '../../components/ui/Modal';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { RichTextEditor } from '../../components/ui/RichTextEditor';
@@ -1447,8 +1449,6 @@ export function CourseBuilder() {
                 >
                   <option value="draft">draft</option>
                   <option value="published">published</option>
-                  <option value="archived">archived</option>
-                  <option value="pending">pending</option>
                 </select>
               </div>
 
@@ -1581,12 +1581,12 @@ export function CourseBuilder() {
                         <p className="text-sm text-gray-600 dark:text-gray-400">Status</p>
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            courseData.courseStatus === 'draft'
+                            courseData.courseStatus === 'published'
                               ? 'bg-green-100 text-green-800'
                               : 'bg-yellow-100 text-yellow-800'
                           }`}
                         >
-                          {courseData.courseStatus === 'draft' ? 'Published' : 'pending'}
+                          {courseData.courseStatus === 'published' ? 'published' : 'draft'}
                         </span>
                       </div>
                       <div className="md:col-span-2">
@@ -1841,7 +1841,7 @@ export function CourseBuilder() {
           </label>
           <textarea
             value={lessonData.description}
-            onChange={e => setLessonData(prev => ({ ...prev, description: e.target.value }))}
+            onChange={createSmartSanitizedChangeHandler((e) => setLessonData(prev => ({ ...prev, description: e.target.value })), true)}
             rows={3}
             className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="Briefly describe what students will learn in this lesson"
@@ -2170,7 +2170,7 @@ export function CourseBuilder() {
               </label>
               <textarea
                 value={lessonData.content.quizData.description}
-                onChange={e =>
+                onChange={createSmartSanitizedChangeHandler((e) =>
                   setLessonData(prev => ({
                     ...prev,
                     content: {
@@ -2180,7 +2180,7 @@ export function CourseBuilder() {
                         description: e.target.value,
                       },
                     },
-                  }))
+                  })), true)
                 }
                 rows={3}
                 className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -2640,7 +2640,7 @@ export function CourseBuilder() {
                                     ? question.correctAnswers.join('\n')
                                     : ''
                                 }
-                                onChange={e => {
+                                onChange={createSmartSanitizedChangeHandler((e) => {
                                   const answers = e.target.value
                                     .split('\n')
                                     .filter(a => a.trim() !== '');
@@ -2659,7 +2659,7 @@ export function CourseBuilder() {
                                       },
                                     },
                                   }));
-                                }}
+                                }, false)}
                                 rows={3}
                                 className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 placeholder="Enter correct answers, one per line"
@@ -2674,7 +2674,7 @@ export function CourseBuilder() {
                             </label>
                             <textarea
                               value={question.explanation || ''}
-                              onChange={e => {
+                              onChange={createSmartSanitizedChangeHandler((e) => {
                                 const newQuestions = [...lessonData.content.quizData.questions];
                                 newQuestions[index] = {
                                   ...newQuestions[index],
@@ -2690,7 +2690,7 @@ export function CourseBuilder() {
                                     },
                                   },
                                 }));
-                              }}
+                              }, true)}
                               rows={2}
                               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                               placeholder="Explain why this is the correct answer..."
@@ -2713,14 +2713,14 @@ export function CourseBuilder() {
             </label>
             <textarea
               value={lessonData.content.reflectionPrompt || ''}
-              onChange={e =>
+              onChange={createSmartSanitizedChangeHandler((e) =>
                 setLessonData(prev => ({
                   ...prev,
                   content: {
                     ...prev.content,
                     reflectionPrompt: e.target.value,
                   },
-                }))
+                })), true)
               }
               rows={4}
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

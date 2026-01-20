@@ -3,6 +3,7 @@ import { Card, CardHeader, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { CheckCircleIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
 
+
 interface QuizQuestion {
   id: string;
   question: string;
@@ -211,7 +212,7 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
             <div className="space-y-2">
               <textarea
                 value={userAnswer || ''}
-                onChange={e => handleAnswerChange(question.id, e.target.value)}
+                onChange={(e) => handleAnswerChange(question.id, e.target.value)}
                 disabled={disabled || isSubmitted}
                 placeholder="Enter your answer..."
                 rows={3}

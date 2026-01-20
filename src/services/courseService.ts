@@ -7,6 +7,7 @@ import {
   DashboardAnalyticsResponse,
   EditModulePayload,
   programPayload,
+  StudentLoginHistoryResponse,
 } from '../types';
 
 class CourseService {
@@ -344,11 +345,31 @@ class CourseService {
     }
   }
 
+  async loadFullCourses(organizationId: string, page = 1, limit = 10) {
+    try {
+      const response = await apiClient.get(
+        `/organizations/${organizationId}/course-generals?${page}&${limit}`
+      );
+      console.log('[courseService LOAD_FULL_COURSES] SUCCESS RESPONSE FROM SERVER', response?.data);
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService LOAD_FULL_COURSES] ERROR RESPONSE FROM SERVER',
+        err?.message ?? err?.response?.data?.message
+      );
+      throw new Error(err?.message ?? err?.response?.data?.message);
+    }
+  }
+
   // adding program  details here too
   async loadAllPrograms(organizationId: string) {
     try {
       const response = await apiClient.get(`/programs/organization/${organizationId}`);
-      console.log('[courseService LOAD_ALL_PROGRAMS] SUCCESS RESPONSE FROM SERVER', response?.data?.data);
+      console.log(
+        '[courseService LOAD_ALL_PROGRAMS] SUCCESS RESPONSE FROM SERVER',
+        response?.data?.data
+      );
       return response?.data?.data;
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
@@ -359,6 +380,116 @@ class CourseService {
       throw new Error(err?.message ?? err?.response?.data?.message);
     }
   }
-}
 
+  async enrollInCourse(courseId: string) {
+    try {
+      const response = await apiClient.post(`/enroll/${courseId}`);
+      console.log('[courseService ENROLL_IN_COURSE] SUCCESS RESPONSE FROM SERVER', response?.data);
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService ENROLL_IN_COURSE] ERROR RESPONSE FROM SERVER',
+        err?.message ?? err?.response?.data?.message
+      );
+      throw new Error(err?.message ?? err?.response?.data?.message);
+    }
+  }
+
+  async loadEnrolledCourses() {
+    try {
+      const response = await apiClient.get(`/my-enrollments`);
+      console.log(
+        '[courseService LOAD_ENROLLED_COURSES] SUCCESS RESPONSE FROM SERVER',
+        response?.data?.enrollments
+      );
+      return response?.data?.enrollments;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService LOAD_ENROLLED_COURSES] ERROR RESPONSE FROM SERVER',
+        err?.message ?? err?.response?.data?.message
+      );
+      throw new Error(err?.message ?? err?.response?.data?.message);
+    }
+  }
+
+  async loadStudentOverviewStats() {
+    try {
+      const response = await apiClient.get('/student/overview');
+      console.log(
+        '[courseService LOAD_STUDENT_OVERVIEW_STATS] SUCCESS RESPONSE FROM SERVER:',
+        response?.data
+      );
+      return response?.data?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService LOAD_STUDENT_OVERVIEW_STATS] ERROR RESPONSE FROM SERVER:',
+        err?.message ?? err?.response?.data?.message
+      );
+      throw new Error(err?.message ?? err?.response?.data?.message);
+    }
+  }
+
+  async loadStudentLoginHistory(page = 1, limit = 10): Promise<StudentLoginHistoryResponse> {
+    try {
+      const { data } = await apiClient.get<StudentLoginHistoryResponse>(
+        '/user/access-login/history',
+        {
+          params: { page, limit },
+        }
+      );
+
+      console.log('[courseService LOAD_STUDENT_HISTORY] SUCCESS RESPONSE FROM SERVER:', data);
+
+      return data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+
+      console.log(
+        '[courseService LOAD_STUDENT_HISTORY] ERROR RESPONSE FROM SERVER:',
+        err.response?.data?.message ?? err.message
+      );
+
+      throw new Error(err.response?.data?.message ?? err.message);
+    }
+  }
+
+  async loadCertificates() {
+    try {
+      const response = await apiClient.get('/my-certificates');
+      console.log(
+        '[courseService LOAD_CERTIFICATES] SUCCESS RESPONSE FROM SERVER:',
+        response?.data?.certificates
+      );
+      return response?.data?.certificates;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService LOAD_CERTIFICATES] ERROR RESPONSE FROM SERVER:',
+        err?.message ?? err?.response?.data?.message
+      );
+      throw new Error(err?.message ?? err?.response?.data?.message);
+    }
+  }
+
+  async getCourseById(courseId: string) {
+    try {
+      const response = await apiClient.get(`/course/general/${courseId}`);
+      console.log(
+        '[courseService GET_COURSE_BY_ID] SUCCESS RESPONSE FROM SERVER:',
+        response?.data?.data
+      );
+      return response?.data?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService GET_COURSE_BY_ID] ERROR RESPONSE FROM SERVER:',
+        err?.message ?? err?.response?.data?.message
+      );
+      throw new Error(err?.message ?? err?.response?.data?.message);
+    }
+  } 
+}
 export const courseService = new CourseService();

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardContent } from '../../../components/ui/Card';
@@ -17,22 +16,92 @@ import {
   FunnelIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { courseService } from '../../../services/courseService';
+import { useAuthStore } from '../../../stores/authStore';
+
+// Define popular tags for filtering
+const popularTags = [
+  'Node.js',
+  'Express',
+  'REST API',
+  'Backend',
+  'MongoDB',
+  'JavaScript',
+  'Python',
+  'React',
+  'TypeScript',
+  'SQL'
+];
 
 export function DiscoverCoursesPage() {
+
+  const {user} = useAuthStore();
   const navigate = useNavigate();
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
+  // State variables for managing courses, loading, filtering, and pagination
+  const [courses, setCourses] = useState<any[]>([]); // Using 'any' initially since the API response structure differs from Course type
+  const [filteredCourses, setFilteredCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  // Removed category filtering - using tags for display only
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Define popular tags for display purposes only (not for filtering)
+  const popularTags = [
+    'Node.js',
+    'Express',
+    'REST API',
+    'Backend',
+    'MongoDB',
+    'JavaScript',
+    'Python',
+    'React',
+    'TypeScript',
+    'SQL'
+  ];
+  
+  // Pagination state variables
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPrevPage, setHasPrevPage] = useState(false);
 
+  // Load courses from the API when component mounts or when pagination parameters change
   useEffect(() => {
     const loadCourses = async () => {
+      if (!user?.organizationId){
+        toast.error('User organization not found');
+        setLoading(false);
+        return;
+      }
+      
+      setLoading(true);
       try {
-        const courseData = await mockApi.getCourses();
+        // Fetch courses with pagination parameters
+        const response = await courseService.loadFullCourses(user.organizationId, currentPage, itemsPerPage);
+        
+        // Extract data and pagination info from the response
+        const courseData = response.data || response; // Handle different response structures
+        const paginationInfo = response.pagination;
+        
         setCourses(courseData);
         setFilteredCourses(courseData);
+        
+        // Update pagination state if pagination info is available
+        if (paginationInfo) {
+          setTotalPages(paginationInfo.totalPages || 1);
+          setTotalItems(paginationInfo.totalItems || courseData.length);
+          setItemsPerPage(paginationInfo.itemsPerPage || 10);
+          setHasNextPage(paginationInfo.hasNextPage || false);
+          setHasPrevPage(paginationInfo.hasPrevPage || false);
+        } else {
+          // Fallback if no pagination info is provided
+          setTotalPages(1);
+          setTotalItems(courseData.length);
+          setHasNextPage(false);
+          setHasPrevPage(false);
+        }
       } catch (error) {
         console.error('Failed to load courses:', error);
         toast.error('Failed to load courses');
@@ -42,67 +111,85 @@ export function DiscoverCoursesPage() {
     };
 
     loadCourses();
-  }, []);
+  }, [user, currentPage, itemsPerPage]);
 
+  // Filter courses based on search term only
   useEffect(() => {
     let result = courses;
     
     // Apply search filter
     if (searchTerm) {
       result = result.filter(course => 
-        course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        course.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+        course.course?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        course.course?.description?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     
-    // Apply category filter
-    if (selectedCategory !== 'all') {
-      result = result.filter(course => course.tags.includes(selectedCategory));
-    }
-    
     setFilteredCourses(result);
-  }, [searchTerm, selectedCategory, courses]);
+  }, [searchTerm, courses]);
 
+  // Handle course enrollment
   const handleEnroll = async (courseId: string) => {
     try {
-      // Mock enrollment
-      toast.success('Successfully enrolled in course!');
-      navigate(`/student/course/${courseId}`);
-    } catch (error) {
-      toast.error('Failed to enroll in course');
+      // Call the enroll function from courseService
+      const response = await courseService.enrollInCourse(courseId);
+      toast.success( response?.message || 'Enrolled successfully');
+      
+      // Wait a moment to allow the user to see the success message before navigating
+      setTimeout(() => {
+        navigate(`/student/course/${courseId}`);
+      }, 1500); // Wait 1.5 seconds before navigating
+    } catch (error: any) {
+      toast.error( error.message || 'Failed to enroll in course');
     }
   };
-
-  // Get all unique tags for filter options
-  const allTags = Array.from(new Set(courses.flatMap(course => course.tags)));
   
-  // Get popular tags (most frequently used)
-  const tagCounts = courses.flatMap(course => course.tags).reduce((acc, tag) => {
-    acc[tag] = (acc[tag] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  // Handle pagination - go to next page
+  const goToNextPage = () => {
+    if (hasNextPage && currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
   
-  const popularTags = Object.entries(tagCounts)
-    .sort(([,a], [,b]) => b - a)
-    .slice(0, 5)
-    .map(([tag]) => tag);
+  // Handle pagination - go to previous page
+  const goToPreviousPage = () => {
+    if (hasPrevPage && currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+  
+  // Handle direct page navigation
+  const goToPage = (pageNumber: number) => {
+    if (pageNumber >= 1 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
+    }
+  };
+  
+  // Generate page numbers for pagination controls
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    
+    return pages;
+  };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Discover Courses
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Discover Courses</h1>
         <p className="text-gray-600 dark:text-gray-400 text-lg">
           Explore our catalog of courses and advance your skills
         </p>
@@ -120,121 +207,135 @@ export function DiscoverCoursesPage() {
               placeholder="Search courses, topics, or skills..."
               className="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
-          
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              <FunnelIcon className="h-5 w-5 mr-2" />
-              Filters
-            </button>
-          </div>
-        </div>
 
-        {/* Category Filters */}
-        {showFilters && (
-          <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
-            <h3 className="font-medium text-gray-900 dark:text-white mb-3">Categories</h3>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setSelectedCategory('all')}
-                className={`px-3 py-1.5 text-sm rounded-full font-medium ${
-                  selectedCategory === 'all'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                All Courses
-              </button>
-              {popularTags.map((tag) => (
-                <button
+          <div className="flex items-center space-x-3">
+            {/* Tags display - for visual purposes only */}
+            <div className="hidden md:flex items-center space-x-2">
+              {popularTags.slice(0, 5).map(tag => (
+                <span
                   key={tag}
-                  onClick={() => setSelectedCategory(tag)}
-                  className={`px-3 py-1.5 text-sm rounded-full font-medium ${
-                    selectedCategory === tag
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  }`}
+                  className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full"
                 >
                   {tag}
-                </button>
+                </span>
               ))}
             </div>
           </div>
-        )}
+        </div>
+
+        {/* Tags information */}
+        <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
+          <h3 className="font-medium text-gray-900 dark:text-white mb-3">Popular Topics</h3>
+          <div className="flex flex-wrap gap-2">
+            {popularTags.map(tag => (
+              <span
+                key={tag}
+                className="px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Results Summary */}
-      <div className="mb-6">
-        <p className="text-gray-600 dark:text-gray-400">
-          Showing {filteredCourses.length} of {courses.length} courses
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-gray-600 dark:text-gray-400 mb-2 sm:mb-0">
+          Showing {filteredCourses.length} of {totalItems} courses
+        </p>
+        <p className="text-gray-600 dark:text-gray-400 text-sm">
+          Page {currentPage} of {totalPages}
         </p>
       </div>
 
       {/* Course Grid */}
-      {filteredCourses.length > 0 ? (
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <svg
+            className="animate-spin h-10 w-10 text-blue-600 dark:text-blue-400"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            ></circle>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+            ></path>
+          </svg>
+        </div>
+      ) : filteredCourses.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredCourses.map((course) => (
-            <Card 
-              key={course.id} 
+          {filteredCourses.map(course => (
+            <Card
+              key={course?.id}
               className="group hover:shadow-xl transition-all duration-300 overflow-hidden rounded-xl"
             >
               <div className="relative">
                 <img
-                  src={course.coverImage || 'https://picsum.photos/400/225'}
+                  src={course?.course?.images || 'https://picsum.photos/400/225'}
                   alt={course.title}
                   className="w-full h-48 object-cover"
                 />
-                {course.tags.includes('popular') && (
-                  <div className="absolute top-3 right-3 bg-yellow-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                    POPULAR
-                  </div>
-                )}
-                {course.tags.includes('trending') && (
-                  <div className="absolute top-3 left-3 bg-purple-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                    TRENDING
-                  </div>
-                )}
+                {/* Removed tag badges - tags not available in API response */}
               </div>
-              
+
               <CardContent className="p-6">
                 <div>
-                  <h3 
+                  <h3
                     className="text-xl font-bold text-gray-900 dark:text-white line-clamp-2 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors mb-2"
                     onClick={() => navigate(`/student/course/${course.id}/details`)}
                   >
-                    {course.title}
+                    {course.course?.title || course.title}
                   </h3>
-                  <div 
+                  <div
                     className="mt-2 text-gray-600 dark:text-gray-400 line-clamp-3 cursor-pointer hover:text-gray-900 dark:hover:text-gray-300 transition-colors text-base leading-relaxed"
                     onClick={() => navigate(`/student/course/${course.id}/details`)}
                   >
-                    <RichTextDisplay content={course.description} />
+                    <RichTextDisplay content={course.course?.description || course.description} />
+
+                    <span
+                      className={`ml-2 px-2 py-1 text-xs rounded-full ${
+                        course?.settings?.courseStatus === 'published'
+                          ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                          : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
+                      }`}
+                    >
+                      {course?.settings?.courseStatus ?? 'N/A'}
+                    </span>
                   </div>
                 </div>
 
                 <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                   <div className="flex items-center">
                     <BookOpenIcon className="h-4 w-4 mr-1" />
-                    {course.modules.length} modules
+                    {(course?.modules || []).length} modules
                   </div>
-                  <div className="flex items-center">
+                  {/* <div className="flex items-center">
                     <ClockIcon className="h-4 w-4 mr-1" />
                     4 weeks
-                  </div>
+                  </div> */}
                   <div className="flex items-center">
                     <UserIcon className="h-4 w-4 mr-1" />
-                    Self-paced
+                    {course?.settings?.selfPacedLearning === true ? 'Self-paced' : 'Scheduled'}
                   </div>
                 </div>
 
                 <div className="mt-4 flex items-center">
                   <div className="flex items-center">
-                    {[1, 2, 3, 4, 5].map((star) => (
+                    {[1, 2, 3, 4, 5].map(star => (
                       <StarIcon
                         key={star}
                         className={`h-4 w-4 ${
@@ -252,13 +353,9 @@ export function DiscoverCoursesPage() {
 
                 <div className="mt-6 flex justify-between items-center">
                   <span className="text-xl font-bold text-gray-900 dark:text-white">
-                    {course.requiresCertificate ? 'Free' : 'Premium'}
+                    {course.settings?.certificateOnCompletion ? 'Certificate' : 'No Certificate'}
                   </span>
-                  <Button 
-                    variant="primary" 
-                    size="sm"
-                    onClick={() => handleEnroll(course.id)}
-                  >
+                  <Button variant="primary" size="sm" onClick={() => handleEnroll(course.id)}>
                     Enroll Now
                   </Button>
                 </div>
@@ -277,15 +374,66 @@ export function DiscoverCoursesPage() {
               Try adjusting your search or filters to find what you're looking for.
             </p>
             <div className="mt-6">
-              <Button onClick={() => {
-                setSearchTerm('');
-                setSelectedCategory('all');
-              }}>
-                Clear Filters
+              <Button
+                onClick={() => {
+                  setSearchTerm('');
+                }}
+              >
+                Clear Search
               </Button>
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="mt-12 flex flex-col items-center">
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={goToPreviousPage}
+              disabled={!hasPrevPage}
+              className={`px-4 py-2 rounded-lg ${
+                hasPrevPage
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              Previous
+            </button>
+
+            {/* Page numbers */}
+            {getPageNumbers().map(pageNumber => (
+              <button
+                key={pageNumber}
+                onClick={() => goToPage(pageNumber)}
+                className={`px-4 py-2 rounded-lg ${
+                  currentPage === pageNumber
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                {pageNumber}
+              </button>
+            ))}
+
+            <button
+              onClick={goToNextPage}
+              disabled={!hasNextPage}
+              className={`px-4 py-2 rounded-lg ${
+                hasNextPage
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              Next
+            </button>
+          </div>
+
+          <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+            Page {currentPage} of {totalPages} • Total courses: {totalItems}
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,9 +1,9 @@
 export type UserRole = 'student' | 'teacher' | 'admin' | 'superuser';
 export type UserStatus = 'active' | 'pending';
 
-export type CourseStatus = 'draft' | 'published' | 'archived' | 'pending';
+export type CourseStatus = 'draft' | 'published' ;
 export type ProgramStatus = 'draft' | 'live';
-export type OrganizationStatus = 'draft' | 'live' | 'active' | 'suspended';
+export type OrganizationStatus = 'draft' | 'published' ;
 
 export interface courseSettings {
   courseStatus: CourseStatus;
@@ -105,6 +105,7 @@ export interface OrganizationSearchQuery {
 
 export interface Course {
   id: string;
+  courseId:string
   title: string;
   description: string;
   coverImage?: string;
@@ -884,7 +885,34 @@ export interface EditModulePayload{
     description: string
   courseContentId: number[];
 }
+export interface studentOverviewStats {
+  totalEnrolledCourses: number;
+  totalCompletedCourses: number;
+  totalTimeSpent: string;
+  certificatesEarned: number;
+  averageScore: string;
+  totalLogins: number;
+  averageSessionTime: string;
+  totalDayStreak: number;
+}
 
+export type SessionStatusText = 'Session still active' | 'Session in progress';
 
+export interface StudentLoginHistorySession {
+  sessionId: number;
+  loginTime: string;
+  logoutTime: string | SessionStatusText;
+  duration: string | SessionStatusText;
+  ipAddress: string;
+  device: string;
+}
+
+export interface StudentLoginHistoryResponse {
+  message: string;
+  totalSessions: number;
+  totalPages: number;
+  currentPage: number;
+  sessions: StudentLoginHistorySession[];
+}
 
 
