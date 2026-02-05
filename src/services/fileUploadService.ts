@@ -206,7 +206,9 @@ class FileUploadService {
         break;
         
       default:
-        mockUrl = `${this.MOCK_CDNS.documents}/sample.pdf`;
+        // For documents (PDF, DOCX, etc.), create a local object URL for preview
+        // In a real implementation, this would upload to actual storage
+        mockUrl = URL.createObjectURL(file);
         publicUrl = mockUrl;
     }
 

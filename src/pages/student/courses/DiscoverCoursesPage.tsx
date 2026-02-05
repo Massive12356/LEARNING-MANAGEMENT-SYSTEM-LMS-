@@ -4,7 +4,7 @@ import { Card, CardHeader, CardContent } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { RichTextDisplay } from '../../../components/ui/RichTextEditor';
 import { mockApi } from '../../../services/mockApi';
-import { Course } from '../../../types';
+import { Course, CourseItem } from '../../../types';
 import { 
   BookOpenIcon,
   ClockIcon,
@@ -38,10 +38,13 @@ export function DiscoverCoursesPage() {
   const {user} = useAuthStore();
   const navigate = useNavigate();
   // State variables for managing courses, loading, filtering, and pagination
-  const [courses, setCourses] = useState<any[]>([]); // Using 'any' initially since the API response structure differs from Course type
-  const [filteredCourses, setFilteredCourses] = useState<any[]>([]);
+  const [courses, setCourses] = useState<CourseItem[]>([]);
+  const [filteredCourses, setFilteredCourses] = useState<CourseItem[]>([]);
+
   const [loading, setLoading] = useState(true);
+  const [enrollingCourseId, setEnrollingCourseId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [courseId, setCourseId] = useState<string | null>(null);
   // Removed category filtering - using tags for display only
   const [showFilters, setShowFilters] = useState(false);
   
@@ -67,6 +70,7 @@ export function DiscoverCoursesPage() {
   const [hasNextPage, setHasNextPage] = useState(false);
   const [hasPrevPage, setHasPrevPage] = useState(false);
 
+
   // Load courses from the API when component mounts or when pagination parameters change
   useEffect(() => {
     const loadCourses = async () => {
@@ -80,11 +84,14 @@ export function DiscoverCoursesPage() {
       try {
         // Fetch courses with pagination parameters
         const response = await courseService.loadFullCourses(user.organizationId, currentPage, itemsPerPage);
+
+        
         
         // Extract data and pagination info from the response
         const courseData = response.data || response; // Handle different response structures
         const paginationInfo = response.pagination;
         
+        setCourseId(courseData?.id || null);
         setCourses(courseData);
         setFilteredCourses(courseData);
         
@@ -113,6 +120,19 @@ export function DiscoverCoursesPage() {
     loadCourses();
   }, [user, currentPage, itemsPerPage]);
 
+  const userId = Number(user?.id);
+
+  const coursesWithEnrollment = filteredCourses.map(course => {
+    const isEnrolled = course.enrolledStudents?.some(student => student.id === userId);
+
+    return {
+      ...course,
+      isEnrolled,
+    };
+  });
+
+
+
   // Filter courses based on search term only
   useEffect(() => {
     let result = courses;
@@ -128,19 +148,22 @@ export function DiscoverCoursesPage() {
     setFilteredCourses(result);
   }, [searchTerm, courses]);
 
+
   // Handle course enrollment
   const handleEnroll = async (courseId: string) => {
     try {
+      setEnrollingCourseId(courseId);
       // Call the enroll function from courseService
       const response = await courseService.enrollInCourse(courseId);
-      toast.success( response?.message || 'Enrolled successfully');
-      
+      toast.success( response?.message || 'Enrolled successfully');      
       // Wait a moment to allow the user to see the success message before navigating
       setTimeout(() => {
         navigate(`/student/course/${courseId}`);
       }, 1500); // Wait 1.5 seconds before navigating
     } catch (error: any) {
       toast.error( error.message || 'Failed to enroll in course');
+    } finally {
+      setEnrollingCourseId(null);
     }
   };
   
@@ -183,7 +206,6 @@ export function DiscoverCoursesPage() {
     
     return pages;
   };
-
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -253,6 +275,7 @@ export function DiscoverCoursesPage() {
       </div>
 
       {/* Course Grid */}
+      {/* Course Grid */}
       {loading ? (
         <div className="flex justify-center items-center py-12">
           <svg
@@ -268,100 +291,75 @@ export function DiscoverCoursesPage() {
               r="10"
               stroke="currentColor"
               strokeWidth="4"
-            ></circle>
+            />
             <path
               className="opacity-75"
               fill="currentColor"
               d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-            ></path>
+            />
           </svg>
         </div>
       ) : filteredCourses.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredCourses.map(course => (
-            <Card
-              key={course?.id}
-              className="group hover:shadow-xl transition-all duration-300 overflow-hidden rounded-xl"
-            >
-              <div className="relative">
-                <img
-                  src={course?.course?.images || 'https://picsum.photos/400/225'}
-                  alt={course.title}
-                  className="w-full h-48 object-cover"
-                />
-                {/* Removed tag badges - tags not available in API response */}
-              </div>
+          {filteredCourses.map(course => {
+            const isEnrolled = course.enrolledStudents?.some(
+              student => student.id === Number(user?.id)
+            );
 
-              <CardContent className="p-6">
-                <div>
+            return (
+              <Card
+                key={course.id}
+                className="group hover:shadow-xl transition-all duration-300 overflow-hidden rounded-xl"
+              >
+                <div className="relative">
+                  <img
+                    src={course.course?.images || 'https://picsum.photos/400/225'}
+                    alt={course.course?.title}
+                    className="w-full h-48 object-cover"
+                  />
+                </div>
+
+                <CardContent className="p-6">
                   <h3
                     className="text-xl font-bold text-gray-900 dark:text-white line-clamp-2 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors mb-2"
                     onClick={() => navigate(`/student/course/${course.id}/details`)}
                   >
-                    {course.course?.title || course.title}
+                    {course.course?.title ?? 'N/A'}
                   </h3>
+
+                  {/* 👇 DESCRIPTION CLAMPED TO 4 LINES */}
                   <div
-                    className="mt-2 text-gray-600 dark:text-gray-400 line-clamp-3 cursor-pointer hover:text-gray-900 dark:hover:text-gray-300 transition-colors text-base leading-relaxed"
-                    onClick={() => navigate(`/student/course/${course.id}/details`)}
+                    className="mt-2 text-gray-600 dark:text-gray-400 text-sm leading-relaxed
+               overflow-hidden line-clamp-4"
                   >
-                    <RichTextDisplay content={course.course?.description || course.description} />
+                    <RichTextDisplay content={course.course?.description ?? 'N/A'} />
+                  </div>
 
-                    <span
-                      className={`ml-2 px-2 py-1 text-xs rounded-full ${
-                        course?.settings?.courseStatus === 'published'
-                          ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                          : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
-                      }`}
-                    >
-                      {course?.settings?.courseStatus ?? 'N/A'}
+                  <div className="mt-6 flex justify-between items-center">
+                    <span className="text-sm text-gray-500">
+                      {(course?.modules || [])?.length ?? 0} modules
                     </span>
-                  </div>
-                </div>
 
-                <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-                  <div className="flex items-center">
-                    <BookOpenIcon className="h-4 w-4 mr-1" />
-                    {(course?.modules || []).length} modules
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleEnroll(course.id)}
+                        loading={enrollingCourseId === course.id}
+                        disabled={isEnrolled || enrollingCourseId === course.id}
+                      >
+                        {isEnrolled
+                          ? 'Enrolled'
+                          : enrollingCourseId === course.id
+                            ? 'Enrolling...'
+                            : 'Enroll Now'}
+                      </Button>
+                    </div>
                   </div>
-                  {/* <div className="flex items-center">
-                    <ClockIcon className="h-4 w-4 mr-1" />
-                    4 weeks
-                  </div> */}
-                  <div className="flex items-center">
-                    <UserIcon className="h-4 w-4 mr-1" />
-                    {course?.settings?.selfPacedLearning === true ? 'Self-paced' : 'Scheduled'}
-                  </div>
-                </div>
-
-                <div className="mt-4 flex items-center">
-                  <div className="flex items-center">
-                    {[1, 2, 3, 4, 5].map(star => (
-                      <StarIcon
-                        key={star}
-                        className={`h-4 w-4 ${
-                          star <= 4
-                            ? 'text-yellow-400 fill-current'
-                            : 'text-gray-300 dark:text-gray-600'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
-                    4.2 (128 reviews)
-                  </span>
-                </div>
-
-                <div className="mt-6 flex justify-between items-center">
-                  <span className="text-xl font-bold text-gray-900 dark:text-white">
-                    {course.settings?.certificateOnCompletion ? 'Certificate' : 'No Certificate'}
-                  </span>
-                  <Button variant="primary" size="sm" onClick={() => handleEnroll(course.id)}>
-                    Enroll Now
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <Card>
@@ -374,13 +372,7 @@ export function DiscoverCoursesPage() {
               Try adjusting your search or filters to find what you're looking for.
             </p>
             <div className="mt-6">
-              <Button
-                onClick={() => {
-                  setSearchTerm('');
-                }}
-              >
-                Clear Search
-              </Button>
+              <Button onClick={() => setSearchTerm('')}>Clear Search</Button>
             </div>
           </CardContent>
         </Card>

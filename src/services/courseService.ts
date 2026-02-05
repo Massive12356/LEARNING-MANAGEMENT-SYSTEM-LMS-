@@ -8,6 +8,7 @@ import {
   EditModulePayload,
   programPayload,
   StudentLoginHistoryResponse,
+  SubmitQuizPayload,
 } from '../types';
 
 class CourseService {
@@ -490,6 +491,137 @@ class CourseService {
       );
       throw new Error(err?.message ?? err?.response?.data?.message);
     }
-  } 
+  }
+
+  // submitting a quiz attempt
+  async submitQuizAttempt(payload: SubmitQuizPayload) {
+    try {
+      const response = await apiClient.post(`/quiz/submit`, payload);
+      console.log(
+        '[courseService SUBMIT_QUIZ_ATTEMPT] SUCCESS RESPONSE FROM SERVER:',
+        response?.data
+      );
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService SUBMIT_QUIZ_ATTEMPT] ERROR RESPONSE FROM SERVER:',
+        err?.message ?? err?.response?.data?.message
+      );
+      throw new Error(err?.message ?? err?.response?.data?.message);
+    }
+  }
+
+  // student start a quiz attempt
+  async startQuizAttempt(contentId: string) {
+    try {
+      const response = await apiClient.post(`/quiz/start/${contentId}`);
+      console.log(
+        '[courseService START_QUIZ_ATTEMPT] SUCCESS RESPONSE FROM SERVER:',
+        response?.data?.quiz
+      );
+      return response?.data?.quiz;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService START_QUIZ_ATTEMPT] ERROR RESPONSE FROM SERVER:',
+        err?.message ?? err?.response?.data?.message
+      );
+      throw new Error(err?.message ?? err?.response?.data?.message);
+    }
+  }
+
+  // Getting results of a quiz attempt
+  async getQuizResults(contentId: string) {
+    try {
+      const response = await apiClient.get(`/quiz/results/${contentId}`);
+      console.log('[courseService GET_QUIZ_RESULTS] SUCCESS RESPONSE FROM SERVER:', response?.data);
+      return response?.data;
+    } catch (err: any) {
+      // ✅ Handle 404 gracefully, do NOT throw
+      if (err.response?.status === 404) {
+        console.log('[courseService GET_QUIZ_RESULTS] No previous results for this quiz.');
+        return null; // <-- return, do NOT throw
+      }
+
+      // Other errors: throw so interceptor can show toast
+      throw err;
+    }
+  }
+
+  // student marks a course content as Done
+  async markContentAsDone(contentId: string) {
+    try {
+      const response = await apiClient.patch(`/student/content/${contentId}/done`);
+      console.log(
+        '[courseService MARK_CONTENT_AS_DONE] SUCCESS RESPONSE FROM SERVER:',
+        response?.data
+      );
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService MARK_CONTENT_AS_DONE] ERROR RESPONSE FROM SERVER:',
+        err?.message ?? err?.response?.data?.message
+      );
+      throw new Error(err?.message ?? err?.response?.data?.message);
+    }
+  }
+
+  // Student marks a course module done
+  async markModuleAsCompleted(moduleId: string, courseId: string) {
+    try {
+      const response = await apiClient.patch(`/student/module/${moduleId}/course/${courseId}`);
+      console.log(
+        '[courseService MARK_MODULE_AS_COMPLETED] SUCCESS RESPONSE FROM SERVER:',
+        response?.data
+      );
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService MARK_MODULE_AS_COMPLETED] ERROR RESPONSE FROM SERVER:',
+        err?.message ?? err?.response?.data?.message
+      );
+      throw new Error(err?.message ?? err?.response?.data?.message);
+    }
+  }
+
+  // student marks a course as Completed
+  async markCourseAsCompleted(id: string) {
+    try {
+      const response = await apiClient.patch(`/course-general/${id}/complete`);
+      console.log(
+        '[courseService MARK_COURSE_AS_COMPLETED] SUCCESS RESPONSE FROM SERVER:',
+        response?.data
+      );
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService MARK_COURSE_AS_COMPLETED] ERROR RESPONSE FROM SERVER:',
+        err?.message ?? err?.response?.data?.message
+      );
+      throw new Error(err?.message ?? err?.response?.data?.message);
+    }
+  }
+
+  async getStudentCourseProgress(courseId: string) {
+    try {
+      const response = await apiClient.get(`/progress/${courseId}`);
+      console.log(
+        '[courseService GET_STUDENT_COURSE_PROGRESS] SUCCESS RESPONSE FROM SERVER:',
+        response?.data
+      );
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService GET_STUDENT_COURSE_PROGRESS] ERROR RESPONSE FROM SERVER:',
+        err?.message ?? err?.response?.data?.message
+      );
+      throw new Error(err?.message ?? err?.response?.data?.message);
+    }
+  }
 }
 export const courseService = new CourseService();

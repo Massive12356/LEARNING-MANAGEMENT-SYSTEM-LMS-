@@ -93,145 +93,203 @@ export const AppRoutes: React.FC = () => {
   return (
     <Routes>
       {/* Public Routes */}
-      <Route path="/login" element={
-        user ? <Navigate to={getRoleBasedRedirect()} replace /> : 
-        <AuthLayout><LoginPage /></AuthLayout>
-      } />
-      <Route path="/register" element={
-        user ? <Navigate to={getRoleBasedRedirect()} replace /> : 
-        <AuthLayout><RegisterPage /></AuthLayout>
-      } />
-      <Route path="/forgot-password" element={
-        <AuthLayout><ForgotPasswordPage /></AuthLayout>
-      } />
-      <Route path="/verify-code" element={
-        <AuthLayout><ForgotPasswordPage /></AuthLayout>
-      } />
-      <Route path="/reset-password/:token" element={
-        <AuthLayout><ResetPasswordPage /></AuthLayout>
-      } />
-      <Route path="/reset-password/verified" element={
-        <AuthLayout><ResetPasswordPage /></AuthLayout>
-      } />
-      <Route path="/verify/:credentialId" element={
-        <CertificateVerification />
-      } />
+      <Route
+        path="/login"
+        element={
+          user ? (
+            <Navigate to={getRoleBasedRedirect()} replace />
+          ) : (
+            <AuthLayout>
+              <LoginPage />
+            </AuthLayout>
+          )
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          user ? (
+            <Navigate to={getRoleBasedRedirect()} replace />
+          ) : (
+            <AuthLayout>
+              <RegisterPage />
+            </AuthLayout>
+          )
+        }
+      />
+      <Route
+        path="/forgot-password"
+        element={
+          <AuthLayout>
+            <ForgotPasswordPage />
+          </AuthLayout>
+        }
+      />
+      <Route
+        path="/verify-code"
+        element={
+          <AuthLayout>
+            <ForgotPasswordPage />
+          </AuthLayout>
+        }
+      />
+      <Route
+        path="/reset-password/:token"
+        element={
+          <AuthLayout>
+            <ResetPasswordPage />
+          </AuthLayout>
+        }
+      />
+      <Route
+        path="/reset-password/verified"
+        element={
+          <AuthLayout>
+            <ResetPasswordPage />
+          </AuthLayout>
+        }
+      />
+      <Route path="/verify/:credentialId" element={<CertificateVerification />} />
 
       {/* Onboarding */}
-      <Route path="/onboarding" element={
-        <ProtectedRoute>
-          <Onboarding />
-        </ProtectedRoute>
-      } />
+      <Route
+        path="/onboarding"
+        element={
+          <ProtectedRoute>
+            <Onboarding />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Student Routes */}
-      <Route path="/student/*" element={
-        <ProtectedRoute allowedRoles={['student']}>
-          <DashboardLayout>
-            <Routes>
-              <Route path="dashboard" element={<StudentDashboard />} />
-              <Route path="enrollment" element={<CourseEnrollment />} />
-              <Route path="course/:courseId" element={<CourseViewer />} />
-              <Route path="course-details/:courseId" element={<CourseDetails />} />
-              <Route path="program/:programId" element={<ProgramViewer />} />
-              <Route path="reports" element={<StudentReports />} />
-              <Route path="todo" element={<StudentTodoPage />} />
-              <Route path="my-courses" element={<MyCoursesPage />} />
-              <Route path="discover" element={<DiscoverCoursesPage />} />
-              <Route path="notifications" element={<NotificationList />} />
-              <Route path="settings" element={<StudentSettings />} />
-            </Routes>
-          </DashboardLayout>
-        </ProtectedRoute>
-      } />
+      <Route
+        path="/student/*"
+        element={
+          <ProtectedRoute allowedRoles={['student']}>
+            <DashboardLayout>
+              <Routes>
+                <Route path="dashboard" element={<StudentDashboard />} />
+                <Route path="enrollment" element={<CourseEnrollment />} />
+                <Route path="course/:courseId" element={<CourseViewer />} />
+                <Route path="course/:courseId/details" element={<CourseDetails />} />
+                <Route path="program/:programId" element={<ProgramViewer />} />
+                <Route path="reports" element={<StudentReports />} />
+                <Route path="todo" element={<StudentTodoPage />} />
+                <Route path="my-courses" element={<MyCoursesPage />} />
+                <Route path="discover" element={<DiscoverCoursesPage />} />
+                <Route path="notifications" element={<NotificationList />} />
+                <Route path="settings" element={<StudentSettings />} />
+              </Routes>
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
 
       {/* Teacher Routes */}
-      <Route path="/teacher/*" element={
-        <ProtectedRoute allowedRoles={['teacher', 'admin', 'superuser']}>
-          <DashboardLayout>
-            <Routes>
-              <Route path="dashboard" element={<TeacherDashboard />} />
-              <Route path="todo" element={<TeacherTodoPage />} />
-              <Route path="courses" element={<TeacherCourseList />} />
-              <Route path="courses/new" element={<CourseBuilder />} />
-              <Route path="courses/:courseId/edit" element={<CourseBuilder />} />
-              <Route path="certificates" element={<CertificateManagement />} />
-              <Route path="notifications" element={<NotificationManagement />} />
-              <Route path="notifications/list" element={<NotificationList />} />
-              <Route path="programs" element={<ProgramList />} />
-              <Route path="programs/new" element={<ProgramBuilder />} />
-              <Route path="programs/:programId/edit" element={<ProgramBuilder />} />
-              <Route path="reports" element={<TeacherReports />} />
-              <Route path="settings" element={<TeacherSettings />} />
-            </Routes>
-          </DashboardLayout>
-        </ProtectedRoute>
-      } />
+      <Route
+        path="/teacher/*"
+        element={
+          <ProtectedRoute allowedRoles={['teacher', 'admin', 'superuser']}>
+            <DashboardLayout>
+              <Routes>
+                <Route path="dashboard" element={<TeacherDashboard />} />
+                <Route path="todo" element={<TeacherTodoPage />} />
+                <Route path="courses" element={<TeacherCourseList />} />
+                <Route path="courses/new" element={<CourseBuilder />} />
+                <Route path="courses/:courseId/edit" element={<CourseBuilder />} />
+                <Route path="certificates" element={<CertificateManagement />} />
+                <Route path="notifications" element={<NotificationManagement />} />
+                <Route path="notifications/list" element={<NotificationList />} />
+                <Route path="programs" element={<ProgramList />} />
+                <Route path="programs/new" element={<ProgramBuilder />} />
+                <Route path="programs/:programId/edit" element={<ProgramBuilder />} />
+                <Route path="reports" element={<TeacherReports />} />
+                <Route path="settings" element={<TeacherSettings />} />
+              </Routes>
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
 
       {/* Admin Routes */}
-      <Route path="/admin/*" element={
-        <ProtectedRoute allowedRoles={['admin', 'superuser']}>
-          <DashboardLayout>
-            <Routes>
-              <Route path="dashboard" element={<AdminDashboard />} />
-              <Route path="users" element={<UserManagement />} />
-              <Route path="users/:userId" element={<UserDetail />} />
-              <Route path="courses" element={<AdminCourseList />} />
-              <Route path="programs" element={<AdminProgramList />} />
-              <Route path="organization" element={<OrganizationSettings />} />
-              <Route path="analytics/:orgId" element={<OrganizationAnalytics />} />
-              <Route path="email-templates" element={<EmailTemplateEditor />} />
-              <Route path="notifications" element={<NotificationManagement />} />
-              <Route path="notifications/list" element={<NotificationList />} />
-              <Route path="reports" element={<AdminReports />} />
-              <Route path="settings" element={<AdminSettings />} />
-            </Routes>
-          </DashboardLayout>
-        </ProtectedRoute>
-      } />
+      <Route
+        path="/admin/*"
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'superuser']}>
+            <DashboardLayout>
+              <Routes>
+                <Route path="dashboard" element={<AdminDashboard />} />
+                <Route path="users" element={<UserManagement />} />
+                <Route path="users/:userId" element={<UserDetail />} />
+                <Route path="courses" element={<AdminCourseList />} />
+                <Route path="programs" element={<AdminProgramList />} />
+                <Route path="organization" element={<OrganizationSettings />} />
+                <Route path="analytics/:orgId" element={<OrganizationAnalytics />} />
+                <Route path="email-templates" element={<EmailTemplateEditor />} />
+                <Route path="notifications" element={<NotificationManagement />} />
+                <Route path="notifications/list" element={<NotificationList />} />
+                <Route path="reports" element={<AdminReports />} />
+                <Route path="settings" element={<AdminSettings />} />
+              </Routes>
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
 
       {/* Superuser Routes */}
-      <Route path="/superuser/*" element={
-        <ProtectedRoute allowedRoles={['superuser']}>
-          <DashboardLayout>
-            <Routes>
-              <Route path="dashboard" element={<SuperuserDashboard />} />
-              <Route path="create-admin" element={<CreateAdmin />} />
-              <Route path="organizations" element={<OrganizationManagement />} />
-              <Route path="organization" element={<OrganizationSettings />} />
-              <Route path="users" element={<SuperuserUserManagement />} />
-              <Route path="users/:userId" element={<UserDetail />} />
-              <Route path="reports" element={<SystemReports />} />
-              <Route path="settings" element={<SystemSettings />} />
-            </Routes>
-          </DashboardLayout>
-        </ProtectedRoute>
-      } />
+      <Route
+        path="/superuser/*"
+        element={
+          <ProtectedRoute allowedRoles={['superuser']}>
+            <DashboardLayout>
+              <Routes>
+                <Route path="dashboard" element={<SuperuserDashboard />} />
+                <Route path="create-admin" element={<CreateAdmin />} />
+                <Route path="organizations" element={<OrganizationManagement />} />
+                <Route path="organization" element={<OrganizationSettings />} />
+                <Route path="users" element={<SuperuserUserManagement />} />
+                <Route path="users/:userId" element={<UserDetail />} />
+                <Route path="reports" element={<SystemReports />} />
+                <Route path="settings" element={<SystemSettings />} />
+              </Routes>
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
 
       {/* Test Routes (temporary) */}
-      <Route path="/test/notification-preferences" element={
-        <ProtectedRoute>
-          <DashboardLayout>
-            <NotificationPreferencesTest />
-          </DashboardLayout>
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/test/notification-preferences-page" element={
-        <ProtectedRoute>
-          <DashboardLayout>
-            <NotificationPreferencesTestPage />
-          </DashboardLayout>
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/test/zustand" element={
-        <ProtectedRoute>
-          <DashboardLayout>
-            <ZustandTest />
-          </DashboardLayout>
-        </ProtectedRoute>
-      } />
+      <Route
+        path="/test/notification-preferences"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <NotificationPreferencesTest />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/test/notification-preferences-page"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <NotificationPreferencesTestPage />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/test/zustand"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <ZustandTest />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
 
       {/* Root Redirect */}
       <Route path="/" element={<Navigate to={getRoleBasedRedirect()} replace />} />

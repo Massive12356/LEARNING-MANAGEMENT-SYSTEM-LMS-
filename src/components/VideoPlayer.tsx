@@ -47,12 +47,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ content, className = '
     // For YouTube videos, we need to make sure the URL is properly formatted
     let embedUrl = content.embedUrl;
     if (embedUrl.includes('youtube.com/watch')) {
-      // Convert YouTube watch URL to embed URL
       const videoId = embedUrl.split('v=')[1]?.split('&')[0];
-      if (videoId) {
-        embedUrl = `https://www.youtube.com/embed/${videoId}`;
-      }
+      if (videoId) embedUrl = `https://www.youtube.com/embed/${videoId}`;
     }
+
+    if (embedUrl.includes('youtu.be')) {
+      const videoId = embedUrl.split('/').pop();
+      embedUrl = `https://www.youtube.com/embed/${videoId}`;
+    }
+
 
     return (
       <div className={className}>

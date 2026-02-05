@@ -21,29 +21,60 @@ export function MyCoursesPage() {
   const navigate = useNavigate();
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [progressMap, setProgressMap] = useState<Record<number, number>>({});
 
-  useEffect(() => {
-    const loadEnrolledCourses = async () => {
-      if (!user) return;
+useEffect(() => {
+  const loadData = async () => {
+    if (!user) return;
 
-      try {
-        const enrollmentData = await courseService.loadEnrolledCourses();
-        console.log('ENROLLMENTS:', enrollmentData);
-        setEnrollments(enrollmentData || []);
-      } catch (error) {
-        console.error('Failed to load enrolled courses:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    try {
+      setLoading(true);
 
-    loadEnrolledCourses();
-  }, [user]);
+      // 1. Load enrollments
+      const enrollmentData = await courseService.loadEnrolledCourses();
+      setEnrollments(enrollmentData || []);
 
+      // 2. Load progress for each course
+      const progressResults = await Promise.all(
+        (enrollmentData || []).map(async (enrollment: any) => {
+          const courseId = enrollment.courseId;
 
-  const getProgress = (enrollment: any) => {
-    return enrollment?.progress ?? 0;
+          try {
+            const res = await courseService.getStudentCourseProgress(courseId);
+            return {
+              courseId,
+              progress: res?.data?.progressPercentage ?? 0,
+            };
+          } catch {
+            return { courseId, progress: 0 };
+          }
+        })
+      );
+
+      // 3. Convert to map
+      const progressObj = progressResults.reduce(
+        (acc, item) => {
+          acc[item.courseId] = item.progress;
+          return acc;
+        },
+        {} as Record<number, number>
+      );
+
+      setProgressMap(progressObj);
+    } catch (error) {
+      console.error('Failed to load courses or progress:', error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  loadData();
+}, [user]);
+
+
+
+
+
 
   const getCompletionStatus = (enrollment: any) => {
     return enrollment?.status === 'completed' ? 'completed' : 'in-progress';
@@ -71,21 +102,36 @@ export function MyCoursesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {enrollments.map((enrollment: any) => {
             const course = enrollment?.Course?.Course;
-            const progress = getProgress(enrollment);
-            const completionStatus = getCompletionStatus(enrollment);
+            const progress = progressMap[enrollment.courseId] ?? 0;
+            const isCompleted = progress === 100;
 
             return (
-              <Card key={enrollment.id} className="group hover:shadow-xl rounded-xl">
-                <div className="relative">
+              <Card
+                key={enrollment.id}
+                className={`group rounded-xl transition-all overflow-hidden
+    ${
+      isCompleted ? 'border-2 border-green-500 bg-green-50 dark:bg-green-900/20' : 'hover:shadow-xl'
+    }`}
+              >
+                <div className="relative ">
                   <img
-                    src={course?.images?.[0] || 'https://picsum.photos/400/225'}
+                    src={course?.images?.[0] ?? 'https://picsum.photos/400/225'}
                     alt={course?.courseTitle}
-                    className="w-full h-48 object-cover"
+                    className="w-full h-44 object-cover"
                   />
                 </div>
 
                 <CardContent className="p-6">
                   <h3 className="text-xl font-bold">{course?.courseTitle ?? 'Untitled Course'}</h3>
+
+                  {isCompleted && (
+                    <span
+                      className="inline-block mt-2 px-3 py-1 text-xs font-semibold
+    text-green-700 bg-green-100 rounded-full"
+                    >
+                      Completed
+                    </span>
+                  )}
 
                   <p className="mt-2 text-gray-600 line-clamp-3">
                     {course?.description ?? 'No description available'}
@@ -103,16 +149,21 @@ export function MyCoursesPage() {
 
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
-                        className="h-2 bg-blue-600 rounded-full"
+                        className={`h-2 rounded-full transition-all duration-300
+      ${isCompleted ? 'bg-green-600' : 'bg-blue-600'}
+    `}
                         style={{ width: `${progress}%` }}
                       />
                     </div>
                   </div>
 
-                  <div className="mt-6">
-                    <Link to={`/student/course/${enrollment?.courseId}`}>
-                      <Button size="sm">
-                        {completionStatus === 'completed' ? 'Review' : 'Continue Learning'}
+                  <div className="mt-6 flex items-center justify-between">
+                    <Link to={`/student/course/${enrollment.courseId}`}>
+                      <Button
+                        size="sm"
+                        className={isCompleted ? 'bg-green-600 hover:bg-green-700' : ''}
+                      >
+                        {isCompleted ? 'View Course' : 'Continue Learning'}
                       </Button>
                     </Link>
                   </div>

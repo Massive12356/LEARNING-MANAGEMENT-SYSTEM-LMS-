@@ -3,7 +3,7 @@ export type UserStatus = 'active' | 'pending';
 
 export type CourseStatus = 'draft' | 'published' ;
 export type ProgramStatus = 'draft' | 'live';
-export type OrganizationStatus = 'draft' | 'published' ;
+export type OrganizationStatus = 'active' | 'suspended' ;
 
 export interface courseSettings {
   courseStatus: CourseStatus;
@@ -822,6 +822,7 @@ export interface teacherAnalyticsStats {
 }
 
 export interface coursePerformanceAnalytics {
+  id:string;
   courseName: string;
   courseStatus: CourseStatus;
   studentCount: number;
@@ -914,5 +915,77 @@ export interface StudentLoginHistoryResponse {
   currentPage: number;
   sessions: StudentLoginHistorySession[];
 }
+
+export type QuizAnswerValue = string | string[];
+
+export interface SubmitQuizPayload {
+  submissionId: string;
+  answers: Record<string, QuizAnswerValue>;
+}
+
+
+
+interface Enrolledstudent {
+  id: number;
+  firstName: string;
+  lastName: string;
+}
+
+export interface CourseItem {
+  id: string;
+  course: {
+    title: string;
+    description: string;
+    images: string;
+  };
+  enrolledStudents: Enrolledstudent[];
+  modules?: any[];
+  settings?: {
+    courseStatus?: string;
+    selfPacedLearning?: boolean;
+    certificateOnCompletion?: boolean;
+  };
+}
+
+export interface ProgressModule {
+  id: number;
+  title: string;
+  moduleNumber: number;
+  description: string;
+}
+export interface StudentProgressRecord {
+  id: number;
+  studentId: number;
+  moduleId: number;
+  courseId: number;
+  isCompleted: boolean;
+  completedAt: string | null; // ISO date string
+  createdAt: string;
+  updatedAt: string;
+  ProgressModule: ProgressModule;
+}
+
+export interface StudentCourseProgressData {
+  courseId: number;
+  totalContent: number;
+  completedContent: number;
+  progressPercentage: number;
+  progressRecords: StudentProgressRecord[];
+}
+
+export interface StudentCourseProgressResponse {
+  message: string;
+  data: StudentCourseProgressData;
+}
+
+export interface ProgressRecord {
+  trackContentId: string | null;
+  trackModuleId: string | null;
+  trackCourseId: string | null;
+}
+
+
+
+
 
 

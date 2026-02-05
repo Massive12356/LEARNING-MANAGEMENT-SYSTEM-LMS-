@@ -572,7 +572,7 @@ export function TeacherReports() {
                     </p>
                     <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
                       <ClockIcon className="h-3 w-3 mr-1" />
-                      {activity.date.toLocaleDateString()}
+                      {activity?.date && new Date(activity.date).toLocaleDateString()}
                     </div>
                   </div>
                 </div>

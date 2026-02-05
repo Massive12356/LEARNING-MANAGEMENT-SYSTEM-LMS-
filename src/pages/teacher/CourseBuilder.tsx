@@ -5,7 +5,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { createSmartSanitizedChangeHandler } from '../../utils/sanitization';
+import { createSmartSanitizedChangeHandler, sanitizeHTML, createSanitizedEditorChangeHandler } from '../../utils/sanitization';
 
 import { Modal } from '../../components/ui/Modal';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
@@ -133,9 +133,46 @@ export function CourseBuilder() {
   const [isSavingSetting, setIsSavingSetting] = useState(false);
   const [isAddingLesson, setIsAddingLesson] = useState(false);
   const [courseSettingId, setCourseSettingId] = useState<number | null>(null);
+  
+  // Cache for storing created/updated lesson data for editing
+  const [lessonCache, setLessonCache] = useState<Record<string, Lesson>>({});
+  
+  // Cache for storing quiz questions specifically
+  const [quizQuestionsCache, setQuizQuestionsCache] = useState<Record<string, QuizQuestion[]>>({});
+  
+  // Cache for storing the raw quiz questions JSON that was sent to backend
+  const [rawQuizQuestionsCache, setRawQuizQuestionsCache] = useState<Record<string, string>>({});
+  
+  // Function to cache lesson data
+  const cacheLessonData = (lesson: Lesson) => {
+    setLessonCache(prev => ({
+      ...prev,
+      [lesson.id]: lesson
+    }));
+    console.log('Cached lesson data for ID:', lesson.id, lesson);
+  };
+  
+  // Function to cache quiz questions separately
+  const cacheQuizQuestions = (lessonId: string, questions: QuizQuestion[]) => {
+    setQuizQuestionsCache(prev => ({
+      ...prev,
+      [lessonId]: questions
+    }));
+    console.log('Cached quiz questions for lesson ID:', lessonId, questions);
+  };
+  
+  // Function to cache raw quiz questions JSON
+  const cacheRawQuizQuestions = (lessonId: string, questionsJson: string) => {
+    setRawQuizQuestionsCache(prev => ({
+      ...prev,
+      [lessonId]: questionsJson
+    }));
+    console.log('Cached raw quiz questions for lesson ID:', lessonId, questionsJson);
+  };
   const [courseModules, setCourseModules] = useState([]);
   const [moduleIds, setModuleIds] = useState([]);
   const [isLoadingModules, setIsLoadingModules] = useState(false);
+  const [isDeletingLesson, setIsDeletingLesson] = useState(false);
 
   // Load initial state from localStorage or use defaults
   const getInitialState = () => {
@@ -170,7 +207,8 @@ export function CourseBuilder() {
           content: {
             videoUrl: '',
             textContent: '',
-            pdfUrl: '',
+            pdfUrl: '',   
+            pdfUpload: null,  
             attachmentUrl: '',
             quizData: {
               id: '',
@@ -178,12 +216,15 @@ export function CourseBuilder() {
               description: '',
               questions: [],
               gradedCourse: true,
-              passingScore: 70,
+              quizPassingScore: 70,
+              duration: null,
+              maxAttempts: 1,
             },
             reflectionPrompt: '',
           },
           duration: 0,
           isRequired: true,
+          imageFile: null,
         },
       };
     }
@@ -217,6 +258,7 @@ export function CourseBuilder() {
           videoUrl: '',
           textContent: '',
           pdfUrl: '',
+          pdfUpload: null,
           attachmentUrl: '',
           quizData: {
             id: '',
@@ -224,12 +266,15 @@ export function CourseBuilder() {
             description: '',
             questions: [] as QuizQuestion[],
             gradedCourse: true,
-            passingScore: 70,
+            quizPassingScore: 70,
+            duration: null,
+            maxAttempts: 1,
           },
           reflectionPrompt: '',
         } as any,
         duration: 0,
         isRequired: true,
+        imageFile: null,
       },
     };
   };
@@ -239,6 +284,11 @@ export function CourseBuilder() {
   const [courseDetails, setCourseDetails] = useState(initialState.courseDetails);
   const [moduleData, setModuleData] = useState<any[]>(initialState.moduleData);
   const [lessonData, setLessonData] = useState(initialState.lessonData);
+  
+  // Debug lessonData changes
+  useEffect(() => {
+    console.log('lessonData updated:', lessonData);
+  }, [lessonData]);
   const isEditingExisting = !!courseId;
 
   // Save state to localStorage whenever it changes (but not for editing existing courses)
@@ -262,33 +312,33 @@ export function CourseBuilder() {
     }
   }, [courseId]);
 
-  const loadCourse = async () => {
-    if (!courseId) return;
+  // const loadCourse = async () => {
+  //   if (!courseId) return;
 
-    setLoading(true);
-    try {
-      const courseData = await mockApi.getCourseById(courseId);
-      setCourse(courseData);
-      setCourseData({
-        title: courseData.title,
-        description: courseData.description,
-        tags: courseData.tags,
-        courseStatus: courseData.courseStatus,
-        trackingProgress: courseData.trackingProgress,
-        selfPacedLearning: courseData.selfPacedLearning,
-        certificateOnCompletion: courseData.certificateOnCompletion,
-        gradedCourse: courseData.gradedCourse,
-      });
-      if (courseData.coverImage) {
-        setCoverImagePreview(courseData.coverImage);
-      }
-    } catch (error) {
-      console.error('Failed to load course:', error);
-      toast.error('Failed to load course');
-    } finally {
-      setLoading(false);
-    }
-  };
+  //   setLoading(true);
+  //   try {
+  //     const courseData = await mockApi.getCourseById(courseId);
+  //     setCourse(courseData);
+  //     setCourseData({
+  //       title: courseData.title,
+  //       description: courseData.description,
+  //       tags: courseData.tags,
+  //       courseStatus: courseData.courseStatus,
+  //       trackingProgress: courseData.trackingProgress,
+  //       selfPacedLearning: courseData.selfPacedLearning,
+  //       certificateOnCompletion: courseData.certificateOnCompletion,
+  //       gradedCourse: courseData.gradedCourse,
+  //     });
+  //     if (courseData.coverImage) {
+  //       setCoverImagePreview(courseData.coverImage);
+  //     }
+  //   } catch (error) {
+  //     console.error('Failed to load course:', error);
+  //     toast.error('Failed to load course');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const handleSaveCourseDetails = async () => {
     if (!courseDetails.courseTitle.trim()) {
@@ -431,6 +481,7 @@ export function CourseBuilder() {
       const response = await courseService.createModules(payload, selectCourseId);
       setShowModuleModal(false);
       toast.success('Module added successfully');
+      setModuleData({ title: '', description: '', moduleNumber: '' });
 
       await fetchModulesByCourseId();
     } catch (error: any) {
@@ -595,6 +646,8 @@ export function CourseBuilder() {
       formData.append('moduleNumber', String(selectedModuleNumber));
       formData.append('courseModuleId', String(selectedModuleId));
       formData.append('lessonNumber', lessonData.lessonNumber);
+      formData.append('duration', String(lessonData.duration || 0)); // Add lesson duration
+      formData.append('isRequired', String(lessonData.trackingProgress)); // Add isRequired field
       // ===== ALWAYS SEND IMAGES =====
       if (lessonData.imageFile) {
         formData.append('images', lessonData.imageFile);
@@ -632,6 +685,9 @@ export function CourseBuilder() {
 
         case 'pdf':
           formData.append('pdfUrl', lessonData.content.pdfUrl);
+          if (lessonData.content.pdfUpload instanceof File) {
+            formData.append('pdfUpload', lessonData.content.pdfUpload);
+          }
           break;
 
         case 'attachment':
@@ -643,12 +699,24 @@ export function CourseBuilder() {
           break;
 
         case 'quiz':
-          formData.append('quizQuestions', JSON.stringify(lessonData.content.quizData.questions));
+          // Add quiz questions to FormData
+          const quizQuestionsJson = JSON.stringify(lessonData.content.quizData.questions);
+          console.log('Sending quiz questions to backend:', quizQuestionsJson);
+          formData.append('quizQuestions', quizQuestionsJson);
           formData.append('quizTotalScore', String(lessonData.content.quizData.totalScore || 0));
           formData.append(
             'quizGradingPreferenceType',
             lessonData.content.quizData.gradedCourse ? 'graded' : 'raw'
           );
+          // Add quiz-specific properties that were missing
+          formData.append('quizDuration', String(lessonData.content.quizData.duration || null));
+          formData.append('quizMaxAttempts', String(lessonData.content.quizData.maxAttempts || 1));
+          formData.append('quizPassingScore', String(lessonData.content.quizData.quizPassingScore || null));
+          
+          // Cache the raw quiz questions for editing
+          if (editingLesson?.id) {
+            cacheRawQuizQuestions(editingLesson.id, quizQuestionsJson);
+          }
           break;
 
         case 'reflection':
@@ -662,8 +730,23 @@ export function CourseBuilder() {
       }
 
       const response = await courseService.createCourseContent(formData, selectCourseId);
+      console.log('CREATE LESSON RESPONSE:', response);
 
-      const createdLesson = response.content;
+      const createdLesson = response.courseContent; // Use courseContent instead of content
+      console.log('Created lesson data:', createdLesson);
+      
+      // Cache the created lesson data for future editing
+      if (createdLesson && createdLesson.id) {
+        cacheLessonData(createdLesson);
+        
+        // Also cache quiz questions if this is a quiz lesson
+        if (lessonData.type === 'quiz' && createdLesson.quizQuestions) {
+          cacheQuizQuestions(createdLesson.id, createdLesson.quizQuestions);
+          // Cache the raw questions JSON that was returned
+          const rawQuestions = JSON.stringify(createdLesson.quizQuestions);
+          cacheRawQuizQuestions(createdLesson.id, rawQuestions);
+        }
+      }
 
       toast.success('Lesson created successfully');
       await fetchModulesByCourseId();
@@ -689,7 +772,7 @@ export function CourseBuilder() {
       case 'video':
         return { videoUrl: '' };
       case 'pdf':
-        return { pdfUrl: '' };
+        return { pdfUrl: '', pdfUpload: null };
       case 'attachment':
         return { attachmentUrl: '' };
       case 'quiz':
@@ -699,7 +782,9 @@ export function CourseBuilder() {
             description: '',
             questions: [],
             gradedCourse: true,
-            passingScore: 70,
+            quizPassingScore: 70,
+            duration: null,
+            maxAttempts: 1,
           },
         };
       case 'reflection':
@@ -710,59 +795,140 @@ export function CourseBuilder() {
   };
 
   const hydrateContentByType = (lesson: Lesson) => {
+    console.log('Hydrating content for lesson type:', lesson.lessonType);
+    console.log('Full lesson object:', lesson);
+    
     switch (lesson.lessonType) {
       case 'textContent':
-        return { textContent: lesson.textContent || '' };
+        const textResult = { textContent: lesson.textContent || '' };
+        console.log('Text content result:', textResult);
+        return textResult;
 
       case 'video':
-        return { videoUrl: lesson.videoUrl || '' };
+        const videoResult = { videoUrl: lesson.videoUrl || '' };
+        console.log('Video content result:', videoResult);
+        return videoResult;
 
       case 'pdf':
-        return { pdfUrl: lesson.pdfUrl || '' };
+        const pdfResult = { pdfUrl: lesson.pdfUrl || '', pdfUpload: null };
+        console.log('PDF content result:', pdfResult);
+        return pdfResult;
 
       case 'attachment':
-        return { attachmentUrl: lesson.attachmentUrl || '' };
+        const attachmentResult = { attachmentUrl: lesson.fileAttachmentURL || lesson.attachmentUrl || '' };
+        console.log('Attachment content result:', attachmentResult);
+        return attachmentResult;
 
       case 'quiz':
-        return {
+        // Handle quiz data from the lesson object - prioritize response data
+        let questionsToUse: QuizQuestion[] = [];
+        
+        // Try raw cached questions first (from response)
+        if (lesson.id && rawQuizQuestionsCache[lesson.id]) {
+          try {
+            questionsToUse = JSON.parse(rawQuizQuestionsCache[lesson.id]);
+            console.log('Using raw cached questions:', questionsToUse);
+          } catch (e) {
+            console.error('Failed to parse cached questions:', e);
+          }
+        }
+        
+        // Fallback to lesson.quizQuestions from response data
+        if (questionsToUse.length === 0 && lesson.quizQuestions) {
+          questionsToUse = lesson.quizQuestions;
+          console.log('Using lesson.quizQuestions:', questionsToUse);
+        }
+        
+        // Final fallback to other caches
+        if (questionsToUse.length === 0) {
+          const cachedQuestions = lesson.id ? quizQuestionsCache[lesson.id] : null;
+          questionsToUse = cachedQuestions || [];
+        }
+        
+        const quizResult = {
           quizData: {
-            title: lesson.quizData?.title || '',
-            description: lesson.quizData?.description || '',
-            questions: lesson.quizData?.questions || [],
-            gradedCourse: lesson.quizData?.gradedCourse ?? true,
-            passingScore: lesson.quizData?.passingScore ?? 70,
+            title: lesson.title || '',
+            description: lesson.lessonDescription || lesson.description || '',
+            questions: questionsToUse,
+            gradedCourse: true, // Default value since not in response
+            quizPassingScore: lesson.quizPassingScore ?? 70,
+            duration: lesson.quizDuration ?? null,
+            maxAttempts: lesson.quizMaxAttempts ?? 1,
           },
         };
+        console.log('Quiz content result:', quizResult);
+        return quizResult;
 
       case 'reflection':
-        return {
+        const reflectionResult = {
           reflectionPrompt: lesson.reflectionPrompt || '',
         };
+        console.log('Reflection content result:', reflectionResult);
+        return reflectionResult;
 
       default:
+        console.log('Unknown lesson type, returning empty object');
         return {};
     }
   };
 
 
 
- const handleEditLesson = (lesson: Lesson) => {
+ const handleEditLesson = async (lesson: Lesson) => {
+   console.log('=== EDIT LESSON START ===');
+   console.log('Received lesson:', lesson);
+   console.log('Lesson type:', lesson.lessonType);
+   console.log('Lesson content:', lesson.content);
+    
+   // First set the editing lesson
    setEditingLesson(lesson);
-
+   console.log('Set editingLesson to:', lesson);
+ 
    const uiType = lesson.lessonType === 'textContent' ? 'text' : lesson.lessonType;
-
-   setLessonData({
-     lessonNumber: lesson.lessonNumber || '',
-     title: lesson.title || '',
-     description: lesson.lessonDescription || '',
+   console.log('UI Type mapped to:', uiType);
+ 
+   // Check if we have cached data for this lesson
+   const cachedLesson = lessonCache[lesson.id];
+   console.log('Cached lesson data:', cachedLesson);
+    
+   // Use cached data if available, otherwise use the passed lesson data
+   const lessonToUse = cachedLesson || lesson;
+   console.log('Using lesson data:', lessonToUse);
+ 
+   // Get the hydrated content
+   const hydratedContent = hydrateContentByType(lessonToUse);
+   console.log('Hydrated content:', hydratedContent);
+ 
+   const newLessonData = {
+     lessonNumber: lessonToUse.lessonNumber?.toString() || '',
+     title: lessonToUse.title || '',
+     description: lessonToUse.lessonDescription || lessonToUse.description || '', // Handle both field names
      type: uiType,
-     content: hydrateContentByType(lesson),
-     duration: lesson.duration || 0,
-     trackingProgress: lesson.trackingProgress ?? true,
-   });
-
-   setSelectedModuleId(lesson.moduleId);
-   setShowLessonModal(true);
+     content: hydratedContent,
+     duration: lessonToUse.videoDuration || lessonToUse.duration || 0, // Handle both field names
+     trackingProgress: lessonToUse.isRequired ?? true,
+     imageFile: null, // Reset image file for editing
+   };
+ 
+   console.log('Prepared lesson data:', newLessonData);
+ 
+   // Set the lesson data
+   setLessonData(newLessonData);
+   console.log('Set lessonData state');
+ 
+   // Set the module selection
+   setSelectedModuleId(lessonToUse.moduleId || lesson.moduleId);
+   console.log('Set selectedModuleId to:', lessonToUse.moduleId || lesson.moduleId);
+ 
+   // Open the modal after a small delay to ensure all state updates
+   setTimeout(() => {
+     console.log('About to open modal');
+     console.log('Current lessonData:', newLessonData);
+     console.log('Current editingLesson:', lesson);
+     setShowLessonModal(true);
+     console.log('Modal opened');
+     console.log('=== EDIT LESSON END ===');
+   }, 100); // Increased delay to 100ms
  };
 
 
@@ -804,10 +970,12 @@ export function CourseBuilder() {
       appendString('lessonType', backendLessonType);
       appendString('lessonDescription', lessonData.description);
 
-      appendInt('lessonNumber', lessonData.lessonNumber);
+      appendInt('lessonNumber', parseInt(lessonData.lessonNumber) || 0);
       appendInt('moduleNumber', selectedModuleNumber);
       appendInt('courseModuleId', selectedModuleId);
       appendInt('organizationId', user?.organizationId);
+      appendInt('duration', lessonData.duration); // Add lesson duration
+      formData.append('isRequired', String(lessonData.trackingProgress)); // Add isRequired field
 
       // ===== FILE UPLOAD (ONLY IF CHANGED) =====
       if (lessonData.imageFile instanceof File) {
@@ -842,6 +1010,9 @@ export function CourseBuilder() {
 
         case 'pdf':
           appendString('pdfUrl', lessonData.content.pdfUrl);
+          if (lessonData.content.pdfUpload instanceof File) {
+            formData.append('pdfUpload', lessonData.content.pdfUpload);
+          }
           break;
 
         case 'attachment':
@@ -860,6 +1031,11 @@ export function CourseBuilder() {
             'quizGradingPreferenceType',
             lessonData.content.quizData?.gradedCourse ? 'graded' : 'raw'
           );
+          
+          // Add quiz-specific properties that were missing
+          appendInt('quizDuration', lessonData.content.quizData?.duration);
+          appendInt('quizMaxAttempts', lessonData.content.quizData?.maxAttempts);
+          appendInt('quizPassingScore', lessonData.content.quizData?.quizPassingScore);
           break;
 
         case 'reflection':
@@ -873,7 +1049,21 @@ export function CourseBuilder() {
       }
 
       // ===== API CALL =====
-      await courseService.editCourseContent(formData, editingLesson.id);
+      const response = await courseService.editCourseContent(formData, editingLesson.id);
+      console.log('UPDATE LESSON RESPONSE:', response);
+      
+      // Cache the updated lesson data for future editing
+      if (response && response.id) {
+        cacheLessonData(response);
+        
+        // Also cache quiz questions if this is a quiz lesson
+        if (lessonData.type === 'quiz' && response.quizQuestions) {
+          cacheQuizQuestions(response.id, response.quizQuestions);
+          // Cache the raw questions JSON that was returned
+          const rawQuestions = JSON.stringify(response.quizQuestions);
+          cacheRawQuizQuestions(response.id, rawQuestions);
+        }
+      }
 
       toast.success('Lesson updated successfully');
 
@@ -960,19 +1150,23 @@ export function CourseBuilder() {
         videoUrl: '',
         textContent: '',
         pdfUrl: '',
+        pdfUpload: null,
         attachmentUrl: '',
         quizData: {
           id: '',
           title: '',
           description: '',
           questions: [],
-          isGraded: true,
-          passingScore: 70,
+          gradedCourse: true,
+          quizPassingScore: 70,
+          duration: null,
+          maxAttempts: 1,
         },
         reflectionPrompt: '',
       },
       duration: 0,
       isRequired: true,
+      imageFile: null,
     });
   };
 
@@ -1010,6 +1204,7 @@ export function CourseBuilder() {
         videoUrl: '',
         textContent: '',
         pdfUrl: '',
+        pdfUpload: null,
         attachmentUrl: '',
         quizData: {
           id: '',
@@ -1017,12 +1212,15 @@ export function CourseBuilder() {
           description: '',
           questions: [] as QuizQuestion[],
           gradedCourse: true,
-          passingScore: 70,
+          quizPassingScore: 70,
+          duration: null,
+          maxAttempts: 1,
         },
         reflectionPrompt: '',
       } as any,
       duration: 0,
       isRequired: true,
+      imageFile: null,
     });
 
     setCourse(null);
@@ -1142,6 +1340,7 @@ export function CourseBuilder() {
     }
     
     try {
+      setIsDeletingLesson(true);
       // Call your delete lesson API here
       await courseService.deleteLesson(editingLesson.id);
       
@@ -1166,6 +1365,7 @@ export function CourseBuilder() {
     } finally {
       setShowDeleteLessonModal(false);
       setEditingLesson(null);
+      setIsDeletingLesson(false);
     }
   };
 
@@ -1274,7 +1474,10 @@ export function CourseBuilder() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white">Course Modules</h3>
-              <Button onClick={() => setShowModuleModal(true)} disabled={isLoadingModules}>
+              <Button onClick={() => {
+                setShowModuleModal(true);
+                setModuleData({ title: '', description: '', moduleNumber: '' });
+              }} disabled={isLoadingModules}>
                 <PlusIcon className="h-4 w-4 mr-2" />
                 Add Module
               </Button>
@@ -1316,7 +1519,7 @@ export function CourseBuilder() {
                               Module {module?.moduleNumber}: {module?.title ?? 'N/A'}
                             </h4>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {module?.description ?? 'N/A'}
+                              <div dangerouslySetInnerHTML={{__html: sanitizeHTML(module?.description ?? 'N/A')}} />
                             </p>
                           </div>
                         </div>
@@ -1388,7 +1591,13 @@ export function CourseBuilder() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => handleEditLesson(lesson)}
+                                    onClick={async () => {
+                                      console.log('=== EDIT BUTTON CLICKED ===');
+                                      console.log('Lesson data being passed:', lesson);
+                                      console.log('Lesson keys:', Object.keys(lesson));
+                                      console.log('Lesson values:', lesson);
+                                      await handleEditLesson(lesson);
+                                    }}
                                   >
                                     <PencilIcon className="h-4 w-4 text-green-700" />
                                   </Button>
@@ -1581,12 +1790,12 @@ export function CourseBuilder() {
                         <p className="text-sm text-gray-600 dark:text-gray-400">Status</p>
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            courseData.courseStatus === 'published'
+                            courseData?.courseStatus === 'published'
                               ? 'bg-green-100 text-green-800'
                               : 'bg-yellow-100 text-yellow-800'
                           }`}
                         >
-                          {courseData.courseStatus === 'published' ? 'published' : 'draft'}
+                          {courseData?.courseStatus === 'published' ? 'published' : 'draft'}
                         </span>
                       </div>
                       <div className="md:col-span-2">
@@ -1594,7 +1803,7 @@ export function CourseBuilder() {
                         <div
                           className="font-medium text-gray-900 dark:text-white prose max-w-none"
                           dangerouslySetInnerHTML={{
-                            __html: courseDetails?.description || 'No description provided',
+                            __html: sanitizeHTML(courseDetails?.description || 'No description provided'),
                           }}
                         />
                       </div>
@@ -1602,7 +1811,7 @@ export function CourseBuilder() {
                         <p className="text-sm text-gray-600 dark:text-gray-400">Tags</p>
                         <div className="flex flex-wrap gap-2 mt-1">
                           {courseDetails?.tags.length > 0 ? (
-                            courseDetails.tags.map((tag, index) => (
+                            courseDetails?.tags.map((tag, index) => (
                               <span
                                 key={index}
                                 className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
@@ -1636,7 +1845,7 @@ export function CourseBuilder() {
                               Module {moduleIndex + 1}: {module?.title ?? 'N/A'}
                             </h5>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                              {module?.description || 'No description'}
+                              <div dangerouslySetInnerHTML={{__html: sanitizeHTML(module?.description || 'No description')}} />
                             </p>
                           </div>
                           <div className="p-4">
@@ -1652,7 +1861,7 @@ export function CourseBuilder() {
                                       <Icon className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
                                       <div className="flex-1 min-w-0">
                                         <p className="font-medium text-gray-900 dark:text-white truncate">
-                                          {lesson?.lessonNumber}. {lesson.title}
+                                          {lesson?.lessonNumber ?? 0}. {lesson.title ?? "N/A"}
                                         </p>
                                         <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400 mt-1">
                                           <span className="capitalize">{lesson.lessonType}</span>
@@ -1661,7 +1870,7 @@ export function CourseBuilder() {
                                               <>
                                                 <span className="font-medium text-black">•</span>
                                                 <span>
-                                                  {Math.ceil(lesson.videoDuration / 60)}min
+                                                  {Math.ceil(lesson?.videoDuration / 60)}min
                                                 </span>
                                               </>
                                             )}
@@ -1673,9 +1882,9 @@ export function CourseBuilder() {
                                           )}
                                         </div>
                                         {lesson.description && (
-                                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">
-                                            {lesson.description}
-                                          </p>
+                                          <div className="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">
+                                            <div dangerouslySetInnerHTML={{__html: sanitizeHTML(lesson.description)}} />
+                                          </div>
                                         )}
                                       </div>
                                     </div>
@@ -1817,6 +2026,11 @@ export function CourseBuilder() {
   };
 
   const renderLessonForm = () => {
+    // console.log('=== RENDER LESSON FORM ===');
+    // console.log('lessonData:', lessonData);
+    // console.log('editingLesson:', editingLesson);
+    // console.log('selectedModuleId:', selectedModuleId);
+    
     return (
       <div className="space-y-6">
         <Input
@@ -1841,12 +2055,46 @@ export function CourseBuilder() {
           </label>
           <textarea
             value={lessonData.description}
-            onChange={createSmartSanitizedChangeHandler((e) => setLessonData(prev => ({ ...prev, description: e.target.value })), true)}
+            onChange={createSmartSanitizedChangeHandler(
+              e => setLessonData(prev => ({ ...prev, description: e.target.value })),
+              true
+            )}
             rows={3}
             className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="Briefly describe what students will learn in this lesson"
           />
         </div>
+
+        {/* Module Selection (readonly when editing) */}
+        {editingLesson ? (
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Module
+            </label>
+            <div className="px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300">
+              {selectModule.find(m => m.id === selectedModuleId)?.title || 'Unknown Module'}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Select Module
+            </label>
+            <select
+              value={selectedModuleId}
+              onChange={e => setSelectedModuleId(e.target.value)}
+              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required
+            >
+              <option value="">Select a module</option>
+              {selectModule.map(module => (
+                <option key={module.id} value={module.id}>
+                  {module.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="space-y-1">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -1874,10 +2122,57 @@ export function CourseBuilder() {
             <option value="video">Video</option>
             <option value="text">Text Content</option>
             <option value="pdf">PDF Document</option>
-            <option value="attachment">File Attachment</option>
             <option value="quiz">Quiz</option>
-            <option value="reflection">Reflection</option>
+            {/* <option value="attachment">File Attachment</option> */}
+            {/* <option value="reflection">Reflection</option> */}
           </select>
+        </div>
+
+        {/* Lesson Thumbnail/Image Upload */}
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Lesson Thumbnail (Optional)
+          </label>
+          <FileUploader
+            accept="image/*"
+            maxSize={5 * 1024 * 1024} // 5MB
+            maxFiles={1}
+            legacyMode={false}
+            onUpload={async uploadResults => {
+              console.log('Thumbnail uploaded:', uploadResults[0]);
+              setLessonData(prev => ({
+                ...prev,
+                imageFile: uploadResults[0]?.originalFile || null,
+              }));
+            }}
+            dropzoneText="Upload a thumbnail image (JPG, PNG, GIF)"
+          />
+          {lessonData.imageFile && (
+            <p className="text-sm text-green-600 dark:text-green-400">
+              ✓ Thumbnail selected: {lessonData.imageFile.name}
+            </p>
+          )}
+        </div>
+
+        {/* Lesson Duration */}
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Estimated Duration (minutes)
+          </label>
+          <input
+            type="number"
+            value={lessonData.duration ?? ''}
+            onChange={e => {
+              const value = e.target.value;
+              setLessonData(prev => ({ 
+                ...prev, 
+                duration: value === '' ? 0 : parseInt(value) || 0 
+              }));
+            }}
+            min="0"
+            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Estimated time to complete this lesson"
+          />
         </div>
 
         {lessonData.type === 'video' && (
@@ -1912,10 +2207,14 @@ export function CourseBuilder() {
               </label>
               <input
                 type="number"
-                value={lessonData.videoDuration || ''}
-                onChange={e =>
-                  setLessonData(prev => ({ ...prev, videoDuration: parseInt(e.target.value) || 0 }))
-                }
+                value={lessonData.videoDuration ?? ''}
+                onChange={e => {
+                  const value = e.target.value;
+                  setLessonData(prev => ({ 
+                    ...prev, 
+                    videoDuration: value === '' ? null : parseInt(value) || 0 
+                  }));
+                }}
                 min="0"
                 className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Estimated time to complete"
@@ -2010,6 +2309,7 @@ export function CourseBuilder() {
                     content: {
                       ...prev.content,
                       pdfUrl: uploadResults[0]?.url || '',
+                      pdfUpload: uploadResults[0]?.originalFile || null,
                     },
                   }));
                 }}
@@ -2098,19 +2398,20 @@ export function CourseBuilder() {
                   type="number"
                   min="0"
                   max="100"
-                  value={lessonData.content.quizData.passingScore}
-                  onChange={e =>
+                  value={lessonData.content.quizData.quizPassingScore ?? ''}
+                  onChange={e => {
+                    const value = e.target.value;
                     setLessonData(prev => ({
                       ...prev,
                       content: {
                         ...prev.content,
                         quizData: {
                           ...prev.content.quizData,
-                          passingScore: parseInt(e.target.value) || 70,
+                          quizPassingScore: value === '' ? null : parseInt(value) || 70,
                         },
                       },
-                    }))
-                  }
+                    }));
+                  }}
                   className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -2122,19 +2423,20 @@ export function CourseBuilder() {
                 <input
                   type="number"
                   min="1"
-                  value={lessonData.content.quizData.duration || 30}
-                  onChange={e =>
+                  value={lessonData.content.quizData.duration ?? ''}
+                  onChange={e => {
+                    const value = e.target.value;
                     setLessonData(prev => ({
                       ...prev,
                       content: {
                         ...prev.content,
                         quizData: {
                           ...prev.content.quizData,
-                          duration: parseInt(e.target.value) || 30,
+                          duration: value === '' ? null : parseInt(value) || 30,
                         },
                       },
-                    }))
-                  }
+                    }));
+                  }}
                   className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -2146,19 +2448,20 @@ export function CourseBuilder() {
                 <input
                   type="number"
                   min="1"
-                  value={lessonData.content.quizData.maxAttempts || 3}
-                  onChange={e =>
+                  value={lessonData.content.quizData.maxAttempts ?? ''}
+                  onChange={e => {
+                    const value = e.target.value;
                     setLessonData(prev => ({
                       ...prev,
                       content: {
                         ...prev.content,
                         quizData: {
                           ...prev.content.quizData,
-                          maxAttempts: parseInt(e.target.value) || 3,
+                          maxAttempts: value === '' ? null : parseInt(value) || 3,
                         },
                       },
-                    }))
-                  }
+                    }));
+                  }}
                   className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -2170,18 +2473,20 @@ export function CourseBuilder() {
               </label>
               <textarea
                 value={lessonData.content.quizData.description}
-                onChange={createSmartSanitizedChangeHandler((e) =>
-                  setLessonData(prev => ({
-                    ...prev,
-                    content: {
-                      ...prev.content,
-                      quizData: {
-                        ...prev.content.quizData,
-                        description: e.target.value,
+                onChange={createSmartSanitizedChangeHandler(
+                  e =>
+                    setLessonData(prev => ({
+                      ...prev,
+                      content: {
+                        ...prev.content,
+                        quizData: {
+                          ...prev.content.quizData,
+                          description: e.target.value,
+                        },
                       },
-                    },
-                  })), true)
-                }
+                    })),
+                  true
+                )}
                 rows={3}
                 className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Describe what this quiz covers..."
@@ -2460,12 +2765,13 @@ export function CourseBuilder() {
                               <input
                                 type="number"
                                 min="1"
-                                value={question.points || 1}
+                                value={question.points ?? ''}
                                 onChange={e => {
+                                  const value = e.target.value;
                                   const newQuestions = [...lessonData.content.quizData.questions];
                                   newQuestions[index] = {
                                     ...newQuestions[index],
-                                    points: parseInt(e.target.value) || 1,
+                                    points: value === '' ? 1 : parseInt(value) || 1,
                                   };
                                   setLessonData(prev => ({
                                     ...prev,
@@ -2640,7 +2946,7 @@ export function CourseBuilder() {
                                     ? question.correctAnswers.join('\n')
                                     : ''
                                 }
-                                onChange={createSmartSanitizedChangeHandler((e) => {
+                                onChange={createSmartSanitizedChangeHandler(e => {
                                   const answers = e.target.value
                                     .split('\n')
                                     .filter(a => a.trim() !== '');
@@ -2674,7 +2980,7 @@ export function CourseBuilder() {
                             </label>
                             <textarea
                               value={question.explanation || ''}
-                              onChange={createSmartSanitizedChangeHandler((e) => {
+                              onChange={createSmartSanitizedChangeHandler(e => {
                                 const newQuestions = [...lessonData.content.quizData.questions];
                                 newQuestions[index] = {
                                   ...newQuestions[index],
@@ -2713,15 +3019,17 @@ export function CourseBuilder() {
             </label>
             <textarea
               value={lessonData.content.reflectionPrompt || ''}
-              onChange={createSmartSanitizedChangeHandler((e) =>
-                setLessonData(prev => ({
-                  ...prev,
-                  content: {
-                    ...prev.content,
-                    reflectionPrompt: e.target.value,
-                  },
-                })), true)
-              }
+              onChange={createSmartSanitizedChangeHandler(
+                e =>
+                  setLessonData(prev => ({
+                    ...prev,
+                    content: {
+                      ...prev.content,
+                      reflectionPrompt: e.target.value,
+                    },
+                  })),
+                true
+              )}
               rows={4}
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Ask students to reflect on what they've learned..."
@@ -2771,6 +3079,7 @@ export function CourseBuilder() {
                   },
                   duration: 0,
                   isRequired: true,
+                  imageFile: null,
                 });
               }}
             >
@@ -2786,8 +3095,8 @@ export function CourseBuilder() {
                   ? 'Updating...'
                   : 'Adding...'
                 : editingLesson
-                ? 'Update Lesson'
-                : 'Add Lesson'}
+                  ? 'Update Lesson'
+                  : 'Add Lesson'}
             </Button>
           </div>
         </div>
@@ -2810,16 +3119,19 @@ export function CourseBuilder() {
           </p>
         </div>
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={() => {
-            if (isFormEmpty()) {
-              // If form is empty, navigate directly without confirmation
-              resetCourseBuilder();
-              navigate('/teacher/courses');
-            } else {
-              // If form has data, show confirmation modal
-              setShowCancelConfirmation(true);
-            }
-          }}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (isFormEmpty()) {
+                // If form is empty, navigate directly without confirmation
+                resetCourseBuilder();
+                navigate('/teacher/courses');
+              } else {
+                // If form has data, show confirmation modal
+                setShowCancelConfirmation(true);
+              }
+            }}
+          >
             Cancel
           </Button>
         </div>
@@ -2878,7 +3190,9 @@ export function CourseBuilder() {
             </label>
             <RichTextEditor
               value={moduleData.description}
-              onChange={value => setModuleData(prev => ({ ...prev, description: value }))}
+              onChange={createSanitizedEditorChangeHandler(value => 
+                setModuleData(prev => ({ ...prev, description: value }))
+              )}
               placeholder="Describe what this module covers"
               minHeight="120px"
               showToolbar={false}
@@ -2929,28 +3243,29 @@ export function CourseBuilder() {
                     ? 'Updating Module...'
                     : 'Creating Module...'
                   : editingModule
-                  ? 'Update Module'
-                  : 'Add Module'}
+                    ? 'Update Module'
+                    : 'Add Module'}
               </span>
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Add Lesson Modal */}
-      {showLessonModal && (
+        {/* Add Lesson Modal */}
         <Modal
           isOpen={showLessonModal}
           onClose={() => {
+            console.log('=== MODAL CLOSING ===');
+            console.log('Current lessonData before close:', lessonData);
             setShowLessonModal(false);
             setEditingLesson(null);
+            console.log('=== MODAL CLOSED ===');
           }}
           title={editingLesson ? 'Edit Lesson' : 'Add New Lesson'}
           size="lg"
         >
           {renderLessonForm()}
         </Modal>
-      )}
 
       {/* Delete Module Confirmation Modal */}
       <ConfirmDialog
@@ -2977,7 +3292,7 @@ export function CourseBuilder() {
         onConfirm={handleConfirmDeleteLesson}
         title="Delete Lesson"
         message={`Are you sure you want to delete the lesson "${editingLesson?.title}"? This action cannot be undone.`}
-        confirmText="Delete Lesson"
+        confirmText= {isDeletingLesson ? 'Deleting...' : 'Delete Lesson'}
         cancelText="Cancel"
         confirmVariant="danger"
       />

@@ -6,6 +6,7 @@ import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { RichTextDisplay } from '../../components/ui/RichTextEditor';
 import { mockApi } from '../../services/mockApi';
+import { EnrolledStudent } from '../../types';
 import { Course, Module } from '../../types';
 import { 
   BookOpenIcon,
@@ -23,32 +24,37 @@ import {
   EnvelopeIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { courseService } from '../../services/courseService';
+import { normalizeCourseData } from '../../utils/normalizeData';
 
 export default function CourseDetails() {
   const { courseId } = useParams<{ courseId: string }>();
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const [course, setCourse] = useState<Course | null>(null);
+  const [course, setCourse] = useState<Course & { enrolledStudents?: EnrolledStudent[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set(['lesson-1', 'lesson-3']));
+  const [enrolling, setEnrolling] = useState(false);
 
-  useEffect(() => {
-    const loadCourse = async () => {
-      if (!courseId) return;
-      
-      try {
-        const courseData = await mockApi.getCourseById(courseId);
-        setCourse(courseData);
-      } catch (error) {
-        console.error('Failed to load course:', error);
-        toast.error('Failed to load course details');
-      } finally {
-        setLoading(false);
-      }
-    };
+useEffect(() => {
+  const loadCourse = async () => {
+    if (!courseId) return;
 
-    loadCourse();
-  }, [courseId]);
+    try {
+      const rawCourse = await courseService.getCourseById(courseId);
+      const normalizedCourse = normalizeCourseData(rawCourse);
+      setCourse(normalizedCourse);
+    } catch (error) {
+      console.error('Failed to load course:', error);
+      toast.error('Failed to load course details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadCourse();
+}, [courseId]);
+
 
   const getLessonIcon = (type: string) => {
     switch (type) {
@@ -71,11 +77,18 @@ export default function CourseDetails() {
 
   const handleEnroll = async () => {
     try {
-      // Mock enrollment
-      toast.success('Successfully enrolled in course!');
+      setEnrolling(true);
+      const response = await courseService.enrollInCourse(courseId);
+      toast.success(response?.message || 'Successfully enrolled in course!');
+      // Refresh the course data to update enrollment status
+      const rawCourse = await courseService.getCourseById(courseId);
+      const normalizedCourse = normalizeCourseData(rawCourse);
+      setCourse(normalizedCourse);
       navigate(`/student/course/${courseId}`);
-    } catch (error) {
-      toast.error('Failed to enroll in course');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to enroll in course');
+    } finally {
+      setEnrolling(false);
     }
   };
 
@@ -163,8 +176,14 @@ export default function CourseDetails() {
                   size="lg" 
                   onClick={handleEnroll}
                   className="flex-1 sm:flex-none"
+                  loading={enrolling}
+                  disabled={course?.enrolledStudents?.some(student => student.id === Number(user?.id)) || enrolling}
                 >
-                  Enroll Now
+                  {course?.enrolledStudents && course.enrolledStudents.some(student => student.id === Number(user?.id))
+                    ? 'Enrolled'
+                    : enrolling
+                      ? 'Enrolling...'
+                      : 'Enroll Now'}
                 </Button>
                 <Button variant="outline" size="lg" className="flex-1 sm:flex-none">
                   <EnvelopeIcon className="h-4 w-4 mr-2" />

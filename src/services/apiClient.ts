@@ -86,6 +86,11 @@ apiClient.interceptors.response.use(
         break;
 
       case 404:
+        // Ignore quiz results 404
+        if (error.config?.url?.startsWith('/quiz/results/')) {
+          console.log('Ignored 404 for quiz results');
+          break;
+        }
         toast.error('Requested resource not found.');
         break;
 
