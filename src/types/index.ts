@@ -984,6 +984,46 @@ export interface ProgressRecord {
   trackCourseId: string | null;
 }
 
+export interface StudentOverview {
+  enrolledCourses: number;
+  programs: number;
+  hoursLearned: string;
+  certificates: number;
+}
+
+export interface CertificateElementDTO {
+  certificateId: string;
+  textSource: string;
+  textColor: string | null;
+  fontSize: number;
+  width: number;
+  height: number;
+  positionX: number;
+  positionY: number;
+}
+   
+export interface courseDescription {
+  id:string;
+  courseTitle: string;
+  description: string;
+}
+
+export interface CreateCertificateTemplateDTO {
+  CourseDescription: courseDescription;
+  templateName: string;
+  courseId: string;
+  accentColor: string;
+  defaultTextColor: string;
+  borderStyle: 'Simple' | 'Modern' | 'Ornate';
+  fontFamily: string;
+  customText: string;
+  content: CertificateElementDTO[];
+
+  backgroundImage?: File;
+  logoUpload?: File;
+}
+
+
 
 
 

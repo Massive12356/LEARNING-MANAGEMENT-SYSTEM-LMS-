@@ -197,7 +197,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           { name: 'My Courses', href: '/student/my-courses', icon: BookOpenIcon },
           { name: 'Discover', href: '/student/discover', icon: MagnifyingGlassIcon },
           { name: 'Reports', href: '/student/reports', icon: ChartBarIcon },
-          { name: 'Notifications', href: '/student/notifications', icon: BellIcon },
+          // { name: 'Notifications', href: '/student/notifications', icon: BellIcon },
         ];
       case 'teacher':
         return [

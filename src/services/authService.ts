@@ -1,7 +1,6 @@
 import { AxiosError } from 'axios';
 import { LoginForm, RegisterPayload, User } from '../types';
 import apiClient from './apiClient';
-import { mockApi } from './mockApi';
 
 interface AuthTokens {
   accessToken: string;
@@ -208,6 +207,19 @@ class AuthService {
     }
   }
 
+  // userLogout
+  async userLogout(): Promise<void> {
+    try {
+      const response = await apiClient.post('/user/logout');
+      console.log('authService  USER_LOGOUT_SUCCESS:', response.data);
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.error('authService  USER_LOGOUT_ERROR:', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || 'Logout failed');
+    }
+  }
+
   // Refresh access token
   async refreshAccessToken(): Promise<AuthTokens> {
     const refreshToken = localStorage.getItem(this.REFRESH_TOKEN_KEY);
@@ -276,36 +288,46 @@ class AuthService {
 
   // Logout
   // Logout
-  logout(): void {
+  async logout(): Promise<void> {
     console.log('[AuthService] Logging out user...');
 
     try {
-      // 1️⃣ Clear all stored tokens
-      this.clearTokens();
-
-      // 2️⃣ Remove any residual auth or user data
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('authTokens');
-      localStorage.removeItem('auth-storage'); // Zustand persisted store
-      localStorage.removeItem('resetToken');
-      localStorage.removeItem('courseBuilderState');
-      localStorage.removeItem('currentCourseId');
-
-      // 3️⃣ Clear sessionStorage too
-      sessionStorage.clear();
-
-      // 4️⃣ Stop any pending refresh token timers
-      if (this.refreshTimeout) {
-        clearTimeout(this.refreshTimeout);
+      // 1️⃣ Inform backend FIRST (non-blocking)
+      try {
+        await apiClient.post('/user/logout');
+      } catch (err) {
+        console.warn('[AuthService] Backend logout failed, continuing local logout');
       }
 
-      // 5️⃣ (Optional) Inform backend if logout API exists
-      // await apiClient.post('/user/logout');
+      // 2️⃣ Stop refresh timers
+      if (this.refreshTimeout) {
+        clearTimeout(this.refreshTimeout);
+        this.refreshTimeout = undefined; // ✅ use undefined instead of null
+      }
 
-      console.log('[AuthService] All tokens and user data cleared.');
+      // 3️⃣ Clear tokens (single responsibility)
+      this.clearTokens();
+
+      // 4️⃣ Clear localStorage
+      const keysToRemove = [
+        'token',
+        'user',
+        'authTokens',
+        'auth-storage',
+        'resetToken',
+        'courseBuilderState',
+        'currentCourseId',
+      ];
+
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+
+      // 5️⃣ Clear sessionStorage
+      sessionStorage.clear();
+
+      console.log('[AuthService] Logout completed successfully.');
     } catch (error) {
-      console.error('[AuthService] Logout failed:', error);
+      // This should almost never happen now
+      console.error('[AuthService] Unexpected logout error:', error);
     }
   }
 

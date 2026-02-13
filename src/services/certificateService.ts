@@ -1,4 +1,6 @@
-import { User, Course, Program, Certificate, CertificateTemplate } from '../types';
+import { AxiosError } from 'axios';
+import { User, Course, Program, Certificate, CertificateTemplate, CertificateElementDTO, CreateCertificateTemplateDTO } from '../types';
+import apiClient from './apiClient';
 
 export interface CertificateData {
   studentName: string;
@@ -74,7 +76,7 @@ class CertificateService {
     if (this.canvas && this.ctx) {
       this.canvas.width = design.layout.width;
       this.canvas.height = design.layout.height;
-      
+
       // Set high DPI for quality
       const dpr = window.devicePixelRatio || 1;
       this.canvas.style.width = design.layout.width + 'px';
@@ -98,13 +100,15 @@ class CertificateService {
   // Get font URL from Google Fonts or other sources
   private getFontUrl(fontFamily: string): string | null {
     const fontMap: Record<string, string> = {
-      'Playfair Display': 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap',
-      'Merriweather': 'https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap',
-      'Lora': 'https://fonts.googleapis.com/css2?family=Lora:wght@400;700&display=swap',
-      'Roboto': 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap',
-      'Open Sans': 'https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap'
+      'Playfair Display':
+        'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap',
+      Merriweather:
+        'https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap',
+      Lora: 'https://fonts.googleapis.com/css2?family=Lora:wght@400;700&display=swap',
+      Roboto: 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap',
+      'Open Sans': 'https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap',
     };
-    
+
     return fontMap[fontFamily] || null;
   }
 
@@ -113,7 +117,7 @@ class CertificateService {
     if (!this.ctx || !this.canvas) return;
 
     const { width, height } = design.layout;
-    
+
     // Background color
     this.ctx.fillStyle = design.backgroundColor;
     this.ctx.fillRect(0, 0, width, height);
@@ -143,7 +147,7 @@ class CertificateService {
       const borderColor = design.borderColor || design.primaryColor;
       this.ctx.strokeStyle = borderColor;
       this.ctx.lineWidth = 4;
-      
+
       switch (design.borderStyle) {
         case 'simple':
           this.ctx.strokeRect(20, 20, width - 40, height - 40);
@@ -165,25 +169,30 @@ class CertificateService {
     const { width, height } = design.layout;
     const margin = 30;
     const borderColor = design.borderColor || design.primaryColor;
-    
+
     this.ctx.strokeStyle = borderColor;
     this.ctx.lineWidth = 2;
-    
+
     // Outer border
     this.ctx.strokeRect(margin, margin, width - 2 * margin, height - 2 * margin);
-    
+
     // Inner border
-    this.ctx.strokeRect(margin + 15, margin + 15, width - 2 * (margin + 15), height - 2 * (margin + 15));
-    
+    this.ctx.strokeRect(
+      margin + 15,
+      margin + 15,
+      width - 2 * (margin + 15),
+      height - 2 * (margin + 15)
+    );
+
     // Corner decorations
     const cornerSize = 20;
     const corners = [
       [margin + 15, margin + 15],
       [width - margin - 15, margin + 15],
       [margin + 15, height - margin - 15],
-      [width - margin - 15, height - margin - 15]
+      [width - margin - 15, height - margin - 15],
     ];
-    
+
     corners.forEach(([x, y]) => {
       this.ctx!.beginPath();
       this.ctx!.moveTo(x - cornerSize, y);
@@ -202,31 +211,31 @@ class CertificateService {
     const cornerLength = 40;
     const margin = 30;
     const borderColor = design.borderColor || design.primaryColor;
-    
+
     this.ctx.strokeStyle = borderColor;
     this.ctx.lineWidth = 3;
-    
+
     // Top-left corner
     this.ctx.beginPath();
     this.ctx.moveTo(margin, margin + cornerLength);
     this.ctx.lineTo(margin, margin);
     this.ctx.lineTo(margin + cornerLength, margin);
     this.ctx.stroke();
-    
+
     // Top-right corner
     this.ctx.beginPath();
     this.ctx.moveTo(width - margin - cornerLength, margin);
     this.ctx.lineTo(width - margin, margin);
     this.ctx.lineTo(width - margin, margin + cornerLength);
     this.ctx.stroke();
-    
+
     // Bottom-left corner
     this.ctx.beginPath();
     this.ctx.moveTo(margin, height - margin - cornerLength);
     this.ctx.lineTo(margin, height - margin);
     this.ctx.lineTo(margin + cornerLength, height - margin);
     this.ctx.stroke();
-    
+
     // Bottom-right corner
     this.ctx.beginPath();
     this.ctx.moveTo(width - margin - cornerLength, height - margin);
@@ -241,14 +250,14 @@ class CertificateService {
 
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    
-    return new Promise((resolve) => {
+
+    return new Promise(resolve => {
       img.onload = () => {
         if (!this.ctx || !design.logo) return;
 
         let x: number, y: number;
         const { width, height } = design.layout;
-        
+
         switch (design.logo.position) {
           case 'top-left':
             x = design.layout.margins.left;
@@ -270,11 +279,11 @@ class CertificateService {
             x = design.layout.margins.left;
             y = design.layout.margins.top;
         }
-        
+
         this.ctx!.drawImage(img, x, y, design.logo!.width, design.logo!.height);
         resolve();
       };
-      
+
       img.onerror = () => resolve(); // Continue even if logo fails to load
       if (design.logo?.url) {
         img.src = design.logo.url;
@@ -297,21 +306,21 @@ class CertificateService {
     this.ctx.font = `bold ${design.fontSize.title}px ${design.fontFamily}`;
     this.ctx.textAlign = 'center';
     this.ctx.fillText('CERTIFICATE OF COMPLETION', centerX, currentY);
-    
+
     currentY += 80;
 
     // Student name
     this.ctx.fillStyle = design.textColor;
     this.ctx.font = `bold ${design.fontSize.subtitle}px ${design.fontFamily}`;
     this.ctx.fillText(data.studentName, centerX, currentY);
-    
+
     currentY += 60;
 
     // Achievement text
     this.ctx.fillStyle = design.textColor;
     this.ctx.font = `${design.fontSize.body}px ${design.fontFamily}`;
     this.ctx.fillText('has successfully completed', centerX, currentY);
-    
+
     currentY += 40;
 
     // Course/Program name
@@ -319,7 +328,7 @@ class CertificateService {
     this.ctx.font = `bold ${design.fontSize.subtitle}px ${design.fontFamily}`;
     const courseName = data.courseName || data.programName || 'the course';
     this.ctx.fillText(courseName, centerX, currentY);
-    
+
     currentY += 60;
 
     // Organization and date
@@ -362,20 +371,20 @@ class CertificateService {
     if (design.signature.imageUrl) {
       const img = new Image();
       img.crossOrigin = 'anonymous';
-      
-      return new Promise((resolve) => {
+
+      return new Promise(resolve => {
         img.onload = () => {
           if (!this.ctx) return;
           this.ctx.drawImage(img, signatureX - 75, signatureY - 50, 150, 40);
           this.drawSignatureText(design, signatureX, signatureY);
           resolve();
         };
-        
+
         img.onerror = () => {
           this.drawSignatureText(design, signatureX, signatureY);
           resolve();
         };
-        
+
         img.src = design.signature!.imageUrl!;
       });
     } else {
@@ -390,30 +399,27 @@ class CertificateService {
     this.ctx.fillStyle = design.textColor;
     this.ctx.font = `${design.fontSize.footer}px ${design.fontFamily}`;
     this.ctx.textAlign = 'center';
-    
+
     // Line above signature
     this.ctx.beginPath();
     this.ctx.moveTo(x - 75, y - 10);
     this.ctx.lineTo(x + 75, y - 10);
     this.ctx.strokeStyle = design.textColor;
     this.ctx.stroke();
-    
+
     // Name
     this.ctx.fillText(design.signature.name, x, y + 10);
-    
+
     // Title
     this.ctx.fillText(design.signature.title, x, y + 30);
   }
 
   // Generate certificate
-  async generateCertificate(
-    data: CertificateData,
-    design: CertificateDesign
-  ): Promise<string> {
+  async generateCertificate(data: CertificateData, design: CertificateDesign): Promise<string> {
     try {
       // Initialize canvas
       this.initializeCanvas(design);
-      
+
       if (!this.ctx || !this.canvas) {
         throw new Error('Failed to initialize canvas');
       }
@@ -429,7 +435,7 @@ class CertificateService {
 
       // Convert to blob and return data URL
       return new Promise((resolve, reject) => {
-        this.canvas!.toBlob((blob) => {
+        this.canvas!.toBlob(blob => {
           if (blob) {
             const url = URL.createObjectURL(blob);
             resolve(url);
@@ -438,28 +444,26 @@ class CertificateService {
           }
         }, 'image/png');
       });
-
     } catch (error) {
-      throw new Error(`Certificate generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Certificate generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
   // Generate PDF certificate (mock implementation)
-  async generatePDFCertificate(
-    data: CertificateData,
-    design: CertificateDesign
-  ): Promise<Blob> {
+  async generatePDFCertificate(data: CertificateData, design: CertificateDesign): Promise<Blob> {
     // In a real implementation, you would use libraries like:
     // - jsPDF with html2canvas
     // - PDFKit
     // - Puppeteer for server-side generation
-    
+
     const imageUrl = await this.generateCertificate(data, design);
-    
+
     // Mock PDF generation - convert image to PDF
     const response = await fetch(imageUrl);
     const blob = await response.blob();
-    
+
     // In reality, you'd embed the image into a PDF document
     return blob;
   }
@@ -482,8 +486,8 @@ class CertificateService {
           orientation: 'landscape',
           width: 800,
           height: 600,
-          margins: { top: 50, right: 50, bottom: 50, left: 50 }
-        }
+          margins: { top: 50, right: 50, bottom: 50, left: 50 },
+        },
       },
       {
         id: 'elegant-gold',
@@ -500,8 +504,8 @@ class CertificateService {
           orientation: 'landscape',
           width: 800,
           height: 600,
-          margins: { top: 60, right: 60, bottom: 60, left: 60 }
-        }
+          margins: { top: 60, right: 60, bottom: 60, left: 60 },
+        },
       },
       {
         id: 'minimal-gray',
@@ -518,9 +522,9 @@ class CertificateService {
           orientation: 'landscape',
           width: 800,
           height: 600,
-          margins: { top: 40, right: 40, bottom: 40, left: 40 }
-        }
-      }
+          margins: { top: 40, right: 40, bottom: 40, left: 40 },
+        },
+      },
     ];
   }
 
@@ -559,6 +563,67 @@ class CertificateService {
 
     return errors;
   }
+
+  // create a certificate for a student based on their course completion
+  async createCourseCertificate(payload: FormData): Promise<void> {
+    try {
+      const response = await apiClient.post('/templates', payload, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      console.log("certificateService SUCCESS_RESPONSE", response?.data);
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log("certificateService ERROR_RESPONSE", err?.response?.data?.message ?? err?.message);
+      throw new Error(
+        err?.response?.data?.message ??
+          err?.message ??
+          'An error occurred while creating the certificate'
+      );
+    }
+  }
+    
+  // update an existing certificate template
+   async updateCourseCertificate(payload: FormData, id:string): Promise<void> {
+    try {
+      const response = await apiClient.put(`/templates/${id}`, payload, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      console.log("certificateService SUCCESS_RESPONSE", response?.data);
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log("certificateService ERROR_RESPONSE", err?.response?.data?.message ?? err?.message);
+      throw new Error(
+        err?.response?.data?.message ??
+          err?.message ??
+          'An error occurred while creating the certificate'
+      );
+    }
+  }
+
+// get a certificate template by its ID
+ async getCertificateTemplate(): Promise<CreateCertificateTemplateDTO[]> {
+  try {
+    const response = await apiClient.get(`/templates/teacher/my-templates`);
+    console.log("certificateService SUCCESS_RESPONSE", response?.data);
+    return response?.data?.templates;
+  } catch (error) {
+    const err = error as AxiosError<{ message?: string }>;
+    console.log("certificateService ERROR_RESPONSE", err?.response?.data?.message ?? err?.message);
+    throw new Error(
+      err?.response?.data?.message ??
+        err?.message ??
+        'An error occurred while fetching the certificate template'
+    );
+  }
+ }
 }
 
 export const certificateService = new CertificateService();

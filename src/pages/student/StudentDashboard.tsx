@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/Button';
 
 import { mockApi } from '../../services/mockApi';
 import { organizationService } from '../../services/organizationService';
-import { Course, Program, Enrollment, Certificate, Organization } from '../../types';
+import { Course, Program, Enrollment, Certificate, Organization, StudentOverview } from '../../types';
 import { 
   BookOpenIcon, 
   AcademicCapIcon,
@@ -20,6 +20,7 @@ import {
   BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { courseService } from '../../services/courseService';
 
 // Radial progress component
 const RadialProgress: React.FC<{ percentage: number; size?: number }> = ({ percentage, size = 120 }) => {
@@ -74,6 +75,7 @@ export const StudentDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [organization, setOrganization] = useState<Organization | null>(null);
+  const [studentOverview, setStudentOverview] = useState<StudentOverview | null>(null);
 
   const loadDashboardData = async () => {
     if (!user) return;
@@ -126,6 +128,16 @@ export const StudentDashboard: React.FC = () => {
     }
   };
 
+   const loadstudentOverview = async () => {
+        if (!user) return;
+    try {
+      const response = await courseService.getStudentDashOverviewStats();
+      setStudentOverview(response);
+    }catch (error:any) {
+      toast.error(error?.message ?? 'Failed to load dashboard overview stats');
+    }
+   }
+
   const loadOrganization = async () => {
     if (!user?.organizationDetails?.id) return;
     
@@ -141,6 +153,7 @@ export const StudentDashboard: React.FC = () => {
   useEffect(() => {
     loadDashboardData();
     loadOrganization();
+    loadstudentOverview();
   }, [user]);
 
   const enrolledCourses = courses.filter(course => 
@@ -207,28 +220,28 @@ export const StudentDashboard: React.FC = () => {
   const stats = [
     {
       name: 'Enrolled Courses',
-      value: enrolledCourses.length.toString(),
+      value: studentOverview?.enrolledCourses ?? 0,
       icon: BookOpenIcon,
       color: 'text-blue-600',
       bgColor: 'bg-blue-100 dark:bg-blue-900'
     },
     {
       name: 'Programs',
-      value: enrolledPrograms.length.toString(),
+      value: studentOverview?.programs ?? 0,
       icon: AcademicCapIcon,
       color: 'text-green-600',
       bgColor: 'bg-green-100 dark:bg-green-900'
     },
     {
       name: 'Hours Learned',
-      value: Math.round(enrollments.reduce((acc, e) => acc + e.timeSpent, 0) / 60).toString(),
+      value: studentOverview?.hoursLearned ?? '0',
       icon: ClockIcon,
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-100 dark:bg-yellow-900'
     },
     {
       name: 'Certificates',
-      value: certificates.length.toString(),
+      value: studentOverview?.certificates ?? 0,
       icon: TrophyIcon,
       color: 'text-purple-600',
       bgColor: 'bg-purple-100 dark:bg-purple-900'

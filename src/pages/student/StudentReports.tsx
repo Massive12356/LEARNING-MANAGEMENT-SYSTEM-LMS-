@@ -243,10 +243,10 @@ export function StudentReports() {
         <nav className="-mb-px flex space-x-8">
           {[
             { key: 'overview', label: 'Overview', icon: ChartBarIcon },
-            { key: 'courses', label: 'Courses', icon: BookOpenIcon },
-            { key: 'tests', label: 'Test Results', icon: DocumentTextIcon },
+            // { key: 'courses', label: 'Courses', icon: BookOpenIcon },
+            // { key: 'tests', label: 'Test Results', icon: DocumentTextIcon },
             { key: 'certificates', label: 'Certificates', icon: TrophyIcon },
-            { key: 'activity', label: 'Learning Activity', icon: FireIcon },
+            // { key: 'activity', label: 'Learning Activity', icon: FireIcon },
             { key: 'access', label: 'Access Logs', icon: ComputerDesktopIcon },
           ].map(({ key, label, icon: Icon }) => (
             <button

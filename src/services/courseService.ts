@@ -623,5 +623,23 @@ class CourseService {
       throw new Error(err?.message ?? err?.response?.data?.message);
     }
   }
+
+  async getStudentDashOverviewStats() {
+    try {
+      const response = await apiClient.get(`/student/dashboard`);
+      console.log(
+        '[courseService GET_STUDENT_DASH_OVERVIEW_STATS] SUCCESS RESPONSE FROM SERVER:',
+        response?.data?.data
+      );
+      return response?.data?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService GET_STUDENT_DASH_OVERVIEW_STATS] ERROR RESPONSE FROM SERVER:',
+        err?.message ?? err?.response?.data?.message
+      );
+      throw new Error(err?.message ?? err?.response?.data?.message);
+    }
+  }
 }
 export const courseService = new CourseService();
