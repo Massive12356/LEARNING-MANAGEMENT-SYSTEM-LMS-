@@ -3,17 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-
-import { mockApi } from '../../services/mockApi';
 import { organizationService } from '../../services/organizationService';
-import { Course, Program, Enrollment, Certificate, Organization, StudentOverview } from '../../types';
+import { Course, Program, Enrollment, Organization, StudentOverview, CertResponse, CertDetails, CertPagination } from '../../types';
 import { 
   BookOpenIcon, 
   AcademicCapIcon,
   ClockIcon,
   TrophyIcon,
   ChartBarIcon,
-  ArrowDownTrayIcon,
   PlayIcon,
   DocumentTextIcon,
   QuestionMarkCircleIcon,
@@ -21,6 +18,8 @@ import {
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { courseService } from '../../services/courseService';
+import { certificateService } from '../../services/certificateService';
+import { generateCertificatePDF } from '../../utils/generateCertificatePDF.tsx';
 
 // Radial progress component
 const RadialProgress: React.FC<{ percentage: number; size?: number }> = ({ percentage, size = 120 }) => {
@@ -71,62 +70,33 @@ export const StudentDashboard: React.FC = () => {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
-  const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [studentOverview, setStudentOverview] = useState<StudentOverview | null>(null);
 
-  const loadDashboardData = async () => {
-    if (!user) return;
+  const [certificates, setCertificates] = useState<CertDetails[]>([]);
+const [certPagination, setCertPagination] = useState<CertPagination | null>(null);
+const [certLoading, setCertLoading] = useState(false);
+
+
+
+  const loadCertificates = async (page = 1, limit = 10) => {
+  if (!user) return;
+  setCertLoading(true);
+
+  try {
+    const response: CertResponse = await certificateService.studentGetCertificates({ page, limit });
     
-    try {
-      const [enrollmentsData, coursesData, programsData, certificatesData] = await Promise.all([
-        mockApi.getUserEnrollments(user.id),
-        mockApi.getCourses({ 
-          status: 'live',
-          organizationId: user.id // Only get courses from user's organization
-        }),
-        mockApi.getPrograms({ 
-          status: 'live',
-          organizationId: user.id // Only get programs from user's organization
-        }),
-        mockApi.getCertificates(user.id)
-      ]);
-      
-      setEnrollments(enrollmentsData);
-      setCourses(coursesData);
-      setPrograms(programsData);
-      setCertificates(certificatesData);
-      
-      // Mock recent activity data
-      const activity = [];
-      for (const enrollment of enrollmentsData.slice(0, 3)) {
-        const course = coursesData.find(c => c.id === enrollment.courseId);
-        if (course) {
-          // Find a random lesson from the course
-          let lessonTitle = "Introduction";
-          if (course.modules.length > 0 && course.modules[0].lessons.length > 0) {
-            lessonTitle = course.modules[0].lessons[0].title;
-          }
-          
-          activity.push({
-            id: `activity-${Date.now()}-${Math.random()}`,
-            courseId: course.id,
-            courseTitle: course.title,
-            lessonTitle,
-            timestamp: new Date(Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)), // Random time within last week
-            progress: enrollment.progress || 0
-          });
-        }
-      }
-      setRecentActivity(activity);
-    } catch (error) {
-      console.error('Failed to load dashboard data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    setCertificates(response.certificates); // paginated certificates
+    setCertPagination(response.pagination); // pagination info for UI
+  } catch (error: any) {
+    console.error('Failed to load certificates:', error);
+    toast.error(error?.message ?? 'Failed to load certificates');
+  } finally {
+    setCertLoading(false);
+  }
+};
 
    const loadstudentOverview = async () => {
         if (!user) return;
@@ -151,45 +121,31 @@ export const StudentDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    loadDashboardData();
     loadOrganization();
     loadstudentOverview();
+    loadCertificates();
   }, [user]);
+
+  console.log('UsersDetails:', user);
 
   const enrolledCourses = courses.filter(course => 
     enrollments.some(enrollment => enrollment.courseId === course.id)
   );
 
-  const enrolledPrograms = programs.filter(program => 
-    enrollments.some(enrollment => enrollment.programId === program.id)
-  );
 
-  const availableCourses = courses.filter(course => 
-    !enrollments.some(enrollment => enrollment.courseId === course.id)
-  ).slice(0, 6);
 
-  const handleEnrollCourse = async (courseId: string) => {
-    try {
-      await mockApi.enrollUser(user!.id, courseId);
-      toast.success('Successfully enrolled in course!');
-      // Reload data to show the newly enrolled course
-      loadDashboardData();
-    } catch (error) {
-      console.error('Enrollment failed:', error);
-      toast.error('Failed to enroll in course');
-    }
-  };
 
   const handleDownloadCertificate = async (certificateId: string) => {
+    const cert = certificates.find(c => c.id === certificateId);
+    if (!cert) {
+      toast.error('Certificate not found');
+      return;
+    }
     try {
-      // TODO: Replace with real certificate download API
-      const certificate = certificates.find(c => c.id === certificateId);
-      if (certificate?.downloadUrl) {
-        window.open(certificate.downloadUrl, '_blank');
-        toast.success('Certificate downloaded!');
-      }
-    } catch (error) {
-      toast.error('Failed to download certificate');
+      sessionStorage.setItem(`certificate_preview_${cert.id}`, JSON.stringify(cert));
+      navigate(`/student/certificate/preview/${encodeURIComponent(cert.id)}`);
+    } catch (error: any) {
+      toast.error(error?.message ?? 'Failed to open certificate preview');
     }
   };
 
@@ -202,13 +158,6 @@ export const StudentDashboard: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
 
   const overallProgress = enrolledCourses.length > 0 
     ? enrolledCourses.reduce((acc, course) => {
@@ -262,7 +211,7 @@ export const StudentDashboard: React.FC = () => {
           {organization ? (
             <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
               <BuildingOfficeIcon className="h-4 w-4 mr-1" />
-              <span>Learning with {organization?.name}</span>
+              <span>Learning with {organization?.name ?? 'Unknown Organization'}</span>
             </div>
           ) : (
             <div className="mt-2 flex items-center text-sm text-yellow-600 dark:text-yellow-400">
@@ -377,61 +326,6 @@ export const StudentDashboard: React.FC = () => {
         </Card>
       )}
 
-      {/* Available Courses */}
-      {availableCourses.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Available Courses
-              </h2>
-              <Link to="/student/discover" className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-                View all
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {availableCourses.map((course) => (
-                <div 
-                  key={course.id} 
-                  className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
-                >
-                  <div className="aspect-w-16 aspect-h-9">
-                    <img
-                      src={course.coverImage || 'https://picsum.photos/400/225'}
-                      alt={course.title}
-                      className="w-full h-32 object-cover"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-medium text-gray-900 dark:text-white line-clamp-2">
-                      {course.title}
-                    </h3>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                      {course.description}
-                    </p>
-                    <div className="mt-4 flex items-center justify-between">
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        {course.modules.length} modules
-                      </span>
-                      <Button 
-                        size="sm" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEnrollCourse(course.id);
-                        }}
-                      >
-                        Enroll
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Recent Activity */}
       {recentActivity.length > 0 && (
@@ -483,52 +377,73 @@ export const StudentDashboard: React.FC = () => {
       )}
 
       {/* Certificates */}
-      {certificates.length > 0 && (
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Your Certificates
-            </h2>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {certificates.slice(0, 3).map((certificate) => (
-                <div 
-                  key={certificate.id} 
-                  className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
-                      <TrophyIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="font-medium text-gray-900 dark:text-white">
-                        {certificate.templateData.course || certificate.templateData.program}
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {certificate.templateData.name}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {new Date(certificate.generatedAt).toLocaleDateString()}
-                    </span>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => handleDownloadCertificate(certificate.id)}
-                    >
-                      <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
-                      Download
-                    </Button>
-                  </div>
-                </div>
-              ))}
+      {/* Certificates Section */}
+{certificates.length > 0 && (
+  <Card>
+    <CardHeader>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+          Certificates
+        </h2>
+        <span className="text-sm text-gray-500 dark:text-gray-400">
+          Total: {certPagination?.total ?? certificates.length}
+        </span>
+      </div>
+    </CardHeader>
+    <CardContent className="p-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {certificates.map((cert) => (
+          <div key={cert.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-medium text-gray-900 dark:text-white line-clamp-2">
+                {cert.certificateName}
+              </h3>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{cert.acquiredDate}</span>
             </div>
-          </CardContent>
-        </Card>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+              Issued by: {cert.organization?.name ?? 'N/A'}
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+              Course: {cert.course?.courseTitle ?? 'N/A'}
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+              Credential ID: {cert.credentialId}
+            </p>
+            <div className="mt-2 flex justify-end">
+              <Button size="sm" onClick={() => handleDownloadCertificate(cert.id)}>
+                Preview & Download
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Pagination Controls */}
+      {certPagination && certPagination.totalPages > 1 && (
+        <div className="mt-4 flex justify-center space-x-2">
+          <Button 
+            size="sm" 
+            disabled={certPagination.page === 1 || certLoading}
+            onClick={() => loadCertificates((certPagination.page ?? 1) - 1)}
+          >
+            Previous
+          </Button>
+          <span className="px-3 py-1 text-sm text-gray-700 dark:text-gray-300">
+            Page {certPagination.page} of {certPagination.totalPages}
+          </span>
+          <Button 
+            size="sm" 
+            disabled={certPagination.page === certPagination.totalPages || certLoading}
+            onClick={() => loadCertificates((certPagination.page ?? 1) + 1)}
+          >
+            Next
+          </Button>
+        </div>
       )}
+    </CardContent>
+  </Card>
+)}
+
     </div>
   );
 };

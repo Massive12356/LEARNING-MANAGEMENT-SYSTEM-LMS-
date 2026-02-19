@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { mockApi } from '../../services/mockApi';
+import { certificateService } from '../../services/certificateService';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { 
@@ -12,26 +12,20 @@ import {
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
-interface CertificateData {
-  id: string;
-  userId: string;
-  courseId?: string;
-  programId?: string;
-  templateData: {
-    name: string;
-    course?: string;
-    program?: string;
-    completionDate: string;
-    organization: string;
-    variables: Record<string, string>;
-  };
-  generatedAt: Date;
-  downloadUrl?: string;
+interface PublicCertificateData {
+  studentName: string;
+  courseTitle?: string;
+  organizationName: string;
+  issueDate: string;
+  credentialId: string;
+  status: 'valid' | 'revoked';
+  logoUrl?: string | null;
+  downloadUrl?: string | null;
 }
 
 export function CertificateVerification() {
   const { credentialId } = useParams<{ credentialId: string }>();
-  const [certificate, setCertificate] = useState<CertificateData | null>(null);
+  const [certificate, setCertificate] = useState<PublicCertificateData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -45,21 +39,12 @@ export function CertificateVerification() {
 
     try {
       setLoading(true);
-      // In a real app, this would call an API endpoint to verify the certificate
-      // For now, we'll simulate by searching through mock certificates
-      const allCertificates = await mockApi.getCertificates('user-1'); // Mock user ID
-      const foundCertificate = allCertificates.find(cert => 
-        cert.id === credentialId || cert.templateData.variables.credentialId === credentialId
-      );
-      
-      if (foundCertificate) {
-        setCertificate(foundCertificate as unknown as CertificateData);
-      } else {
-        setError('Certificate not found or invalid credential ID');
-      }
+      const data = await certificateService.verifyByCredentialId(credentialId);
+      setCertificate(data);
+      document.title = `Verify Certificate • ${data.studentName}`;
     } catch (err) {
       console.error('Failed to load certificate:', err);
-      setError('Failed to verify certificate');
+      setError('Invalid or Revoked Certificate');
     } finally {
       setLoading(false);
     }
@@ -67,11 +52,9 @@ export function CertificateVerification() {
 
   const handleDownload = async () => {
     if (!certificate?.downloadUrl) return;
-    
     try {
       setDownloading(true);
-      // In a real app, this would download the actual certificate file
-      window.open(certificate.downloadUrl, '_blank');
+      window.open(certificate.downloadUrl, '_blank', 'noopener,noreferrer');
       toast.success('Certificate downloaded!');
     } catch (err) {
       toast.error('Failed to download certificate');
@@ -95,7 +78,7 @@ export function CertificateVerification() {
           <CardContent className="text-center py-12">
             <ExclamationTriangleIcon className="h-16 w-16 mx-auto text-red-500 mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Certificate Verification Failed
+              Invalid or Revoked Certificate
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
               {error || 'The certificate could not be verified.'}
@@ -127,13 +110,29 @@ export function CertificateVerification() {
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                 Certificate Details
               </h2>
-              <CheckCircleIcon className="h-8 w-8 text-green-500" />
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${certificate.status === 'valid' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
+                {certificate.status === 'valid' ? (
+                  <>
+                    <CheckCircleIcon className="h-5 w-5 mr-1" />
+                    Valid
+                  </>
+                ) : (
+                  <>
+                    <ExclamationTriangleIcon className="h-5 w-5 mr-1" />
+                    Revoked
+                  </>
+                )}
+              </span>
             </div>
           </CardHeader>
           <CardContent>
             <div className="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border border-gray-200 dark:border-gray-700">
               <div className="text-center mb-8">
-                <TrophyIcon className="h-16 w-16 mx-auto text-yellow-500 mb-4" />
+                {certificate.logoUrl ? (
+                  <img src={certificate.logoUrl} alt="Organization Logo" className="h-16 mx-auto mb-4 object-contain" />
+                ) : (
+                  <TrophyIcon className="h-16 w-16 mx-auto text-yellow-500 mb-4" />
+                )}
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                   Certificate of Completion
                 </h3>
@@ -144,13 +143,13 @@ export function CertificateVerification() {
 
               <div className="text-center mb-8">
                 <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                  {certificate.templateData.name}
+                  {certificate.studentName}
                 </p>
                 <p className="text-gray-600 dark:text-gray-400">
                   has successfully completed the
                 </p>
                 <p className="text-xl font-semibold text-gray-900 dark:text-white mt-2">
-                  {certificate.templateData.course || certificate.templateData.program}
+                  {certificate.courseTitle}
                 </p>
               </div>
 
@@ -158,25 +157,19 @@ export function CertificateVerification() {
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                   <p className="text-sm text-gray-600 dark:text-gray-400">Organization</p>
                   <p className="font-medium text-gray-900 dark:text-white">
-                    {certificate.templateData.organization}
+                    {certificate.organizationName}
                   </p>
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                   <p className="text-sm text-gray-600 dark:text-gray-400">Completion Date</p>
                   <p className="font-medium text-gray-900 dark:text-white">
-                    {certificate.templateData.completionDate}
+                    {certificate.issueDate}
                   </p>
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                   <p className="text-sm text-gray-600 dark:text-gray-400">Credential ID</p>
                   <p className="font-mono text-sm font-medium text-gray-900 dark:text-white break-all">
-                    {credentialId}
-                  </p>
-                </div>
-                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Issued On</p>
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    {new Date(certificate.generatedAt).toLocaleDateString()}
+                    {certificate.credentialId}
                   </p>
                 </div>
               </div>
@@ -203,7 +196,7 @@ export function CertificateVerification() {
                 <span className="font-medium">Certificate Verified</span>
               </div>
               <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-                This certificate is authentic and was issued by {certificate.templateData.organization}
+                This certificate is authentic and was issued by {certificate.organizationName}
               </p>
             </div>
           </CardContent>

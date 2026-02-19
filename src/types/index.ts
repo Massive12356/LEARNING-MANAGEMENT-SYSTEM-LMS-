@@ -1026,6 +1026,106 @@ export interface CreateCertificateTemplateDTO {
 
 
 
+// Response for fetching certificates
+export interface CertResponse {
+  message: string;
+  certificates: CertDetails[];
+  pagination: CertPagination;
+}
+
+// Certificate details type
+export interface CertDetails {
+  id: string;
+  certificateName: string;
+  studentName: string;
+  acquiredDate: string;
+  credentialId: string;
+  enrollmentId: number;
+  courseId: number;
+  templateId: number | null;
+  template: CertTemplate | null;
+  organization: CertOrganization;
+  course: CertCourse;
+  courseTeacher: CertTeacher;
+  certificateTeacher: CertTeacher | null;
+  certificateOrganization: CertOrganization | null;
+  enrollment: CertEnrollment;
+}
+
+// Organization associated with a certificate
+export interface CertOrganization {
+  id: number;
+  name: string | null;
+  organizationCode: string;
+  logo: string | null;
+}
+
+// Course associated with a certificate
+export interface CertCourse {
+  id: number;
+  courseTitle: string;
+  description: string;
+  images: string[];
+}
+
+// Teacher associated with a certificate
+export interface CertTeacher {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  images?: string | null;
+}
+
+// Template for the certificate
+export interface CertTemplate {
+  id: number;
+  templateName: string;
+  courseId: number;
+  accentColor: string;
+  defaultTextColor: string;
+  borderStyle: string;
+  fontFamily: string;
+  customText: string;
+  backgroundImage: string | null;
+  logoUpload: string | null;
+  content: CertTemplateContent[];
+  teacherId: number;
+  organizationId: string;
+  createdAt: string;
+  updatedAt: string;
+  Teacher: CertTeacher;
+}
+
+// Template content for individual certificate elements
+export interface CertTemplateContent {
+  width: number;
+  height: number;
+  fontSize: number;
+  positionX: number;
+  positionY: number;
+  textColor: string;
+  textSource: string;
+  certificateId: string;
+}
+
+// Enrollment information for the certificate
+export interface CertEnrollment {
+  id: number;
+  enrollmentDate: string;
+  status: string;
+  completedDate: string;
+  createdAt: string;
+}
+
+// Pagination info
+export interface CertPagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 
 
 

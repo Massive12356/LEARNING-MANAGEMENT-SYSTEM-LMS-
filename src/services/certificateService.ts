@@ -1,5 +1,5 @@
 import { AxiosError } from 'axios';
-import { User, Course, Program, Certificate, CertificateTemplate, CertificateElementDTO, CreateCertificateTemplateDTO } from '../types';
+import { User, Course, Program, Certificate, CertificateTemplate, CertificateElementDTO, CreateCertificateTemplateDTO, CertResponse } from '../types';
 import apiClient from './apiClient';
 
 export interface CertificateData {
@@ -62,6 +62,10 @@ export interface CertificateDesign {
   backgroundUrl?: string;
 }
 
+interface GetMyCertificatesParams {
+  page?: number;
+  limit?: number;
+}
 class CertificateService {
   private canvas: HTMLCanvasElement | null = null;
   private ctx: CanvasRenderingContext2D | null = null;
@@ -624,6 +628,44 @@ class CertificateService {
     );
   }
  }
-}
+  async studentGetCertificates(params: GetMyCertificatesParams = { page: 1, limit: 10 }): Promise<CertResponse> {
+    try {
+      const { page = 1, limit = 10 } = params;
+      const response = await apiClient.get(`/my-certificates`, { params: { page, limit } });
+      console.log("certificateService SUCCESS_RESPONSE", response?.data);
 
+      return response?.data as CertResponse;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log("certificateService ERROR_RESPONSE", err?.response?.data?.message ?? err?.message);
+      throw new Error(
+        err?.response?.data?.message ?? err?.message ?? 'An error occurred while fetching certificates'
+      );
+    }
+  }
+
+  // verify a certificate by its credentialId (public endpoint)
+  async verifyByCredentialId(credentialId: string): Promise<{
+    studentName: string;
+    courseTitle?: string;
+    organizationName: string;
+    issueDate: string;
+    credentialId: string;
+    status: 'valid' | 'revoked';
+    logoUrl?: string | null;
+    downloadUrl?: string | null;
+  }> {
+    try {
+      const response = await apiClient.get(`/certificates/verify/${encodeURIComponent(credentialId)}`);
+      return response?.data?.data ?? response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      throw new Error(
+        err?.response?.data?.message ??
+          err?.message ??
+          'Failed to verify certificate'
+      );
+    }
+  }
+}
 export const certificateService = new CertificateService();

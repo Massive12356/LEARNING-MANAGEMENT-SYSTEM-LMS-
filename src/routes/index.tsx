@@ -25,6 +25,7 @@ import { CourseEnrollment } from '../pages/student/CourseEnrollment';
 import { NotificationList } from '../pages/notifications/NotificationList';
 import { MyCoursesPage } from '../pages/student/courses/MyCoursesPage';
 import { DiscoverCoursesPage } from '../pages/student/courses/DiscoverCoursesPage';
+import { CertificatePreviewPage } from '../pages/student/CertificatePreviewPage';
 
 // Teacher Pages
 import { TeacherDashboard } from '../pages/teacher/TeacherDashboard';
@@ -179,6 +180,7 @@ export const AppRoutes: React.FC = () => {
                 <Route path="discover" element={<DiscoverCoursesPage />} />
                 <Route path="notifications" element={<NotificationList />} />
                 <Route path="settings" element={<StudentSettings />} />
+                <Route path="certificate/preview/:certificateId" element={<CertificatePreviewPage />} />
               </Routes>
             </DashboardLayout>
           </ProtectedRoute>
