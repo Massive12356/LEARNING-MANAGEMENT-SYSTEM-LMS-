@@ -39,12 +39,12 @@ export const CertificatePreview: React.FC<CertificatePreviewProps> = ({
   const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (certificate?.credentialId) {
+    if (certificate?.enrollmentId) {
       setVerificationUrl(
-        `${window.location.origin}/verify/${certificate.credentialId}`
+        `${window.location.origin}/verify/${certificate.enrollmentId}`
       );
     }
-  }, [certificate?.credentialId]);
+  }, [certificate?.enrollmentId]);
 
   return (
     <div

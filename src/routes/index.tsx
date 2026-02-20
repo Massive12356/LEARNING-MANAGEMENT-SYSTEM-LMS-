@@ -11,7 +11,7 @@ import { RegisterPage } from '../pages/auth/RegisterPage';
 import { ForgotPasswordPage } from '../pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '../pages/auth/ResetPasswordPage';
 
-import { CertificateVerification } from '../pages/public/CertificateVerification';
+import { VerifyCertificatePage } from '../pages/public/VerifyCertificatePage';
 
 // Student Pages
 import { StudentDashboard } from '../pages/student/StudentDashboard';
@@ -150,7 +150,13 @@ export const AppRoutes: React.FC = () => {
           </AuthLayout>
         }
       />
-      <Route path="/verify/:credentialId" element={<CertificateVerification />} />
+      <Route
+        path="/verify"
+        element={
+          <VerifyCertificatePage />
+        }
+      />
+      <Route path="/verify/:credentialId" element={<VerifyCertificatePage />} />
 
       {/* Onboarding */}
       <Route

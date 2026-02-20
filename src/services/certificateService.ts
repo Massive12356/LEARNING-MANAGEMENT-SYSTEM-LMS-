@@ -1,6 +1,19 @@
 import { AxiosError } from 'axios';
-import { User, Course, Program, Certificate, CertificateTemplate, CertificateElementDTO, CreateCertificateTemplateDTO, CertResponse } from '../types';
+import { User, Course, Program, Certificate, CertificateTemplate, CertificateElementDTO, CreateCertificateTemplateDTO, CertResponse, CertDetails, VerifyCertificatePayload } from '../types';
 import apiClient from './apiClient';
+import axios from 'axios';
+
+// publicClient is a bare axios instance without the auth interceptor.
+// We use it for endpoints that should be accessible without a token
+// (certificate verification is a public feature). Using a separate
+// client prevents the global response interceptor from redirecting
+// to login on 401 errors.
+const publicClient = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});   
 
 export interface CertificateData {
   studentName: string;
@@ -645,21 +658,32 @@ class CertificateService {
   }
 
   // verify a certificate by its credentialId (public endpoint)
-  async verifyByCredentialId(credentialId: string): Promise<{
-    studentName: string;
-    courseTitle?: string;
-    organizationName: string;
-    issueDate: string;
-    credentialId: string;
-    status: 'valid' | 'revoked';
-    logoUrl?: string | null;
-    downloadUrl?: string | null;
-  }> {
+  async verifyByCredentialId(enrollmentId: string): Promise<CertDetails> {
     try {
-      const response = await apiClient.get(`/certificates/verify/${encodeURIComponent(credentialId)}`);
+      // use the publicClient so we don't trigger the auth interceptor
+      const response = await publicClient.get(`/my-certificates/${enrollmentId}`);
+      console.log("certificateService verifyByCredentialId SUCCESS_RESPONSE", response?.data);
       return response?.data?.data ?? response?.data;
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
+      console.log("certificateService verifyByCredentialId ERROR_RESPONSE", err?.response?.data?.message ?? err?.message);
+      throw new Error(
+        err?.response?.data?.message ??
+          err?.message ??
+          'Failed to verify certificate'
+      );
+    }
+  }
+
+   // verify credentials for a certificate (payload-based POST)
+  async verifyCredentials(payload: VerifyCertificatePayload): Promise<CertDetails> {
+    try {
+      const response = await publicClient.post(`/certificate/verify/credentialId`, payload);
+      console.log("certificateService verifyCredentials SUCCESS_RESPONSE", response?.data);
+      return response?.data?.data ?? response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log("certificateService verifyCredentials ERROR_RESPONSE", err?.response?.data ?? err?.response?.data);
       throw new Error(
         err?.response?.data?.message ??
           err?.message ??

@@ -1127,5 +1127,8 @@ export interface CertPagination {
 }
 
 
-
+export interface VerifyCertificatePayload {
+  credentialId: string;  
+}
+  
 

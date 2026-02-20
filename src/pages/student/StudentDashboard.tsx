@@ -78,6 +78,7 @@ export const StudentDashboard: React.FC = () => {
   const [certificates, setCertificates] = useState<CertDetails[]>([]);
 const [certPagination, setCertPagination] = useState<CertPagination | null>(null);
 const [certLoading, setCertLoading] = useState(false);
+const [statsLoading, setStatsLoading] = useState(false);
 
 
 
@@ -100,11 +101,14 @@ const [certLoading, setCertLoading] = useState(false);
 
    const loadstudentOverview = async () => {
         if (!user) return;
+        setStatsLoading(true);
     try {
       const response = await courseService.getStudentDashOverviewStats();
       setStudentOverview(response);
     }catch (error:any) {
       toast.error(error?.message ?? 'Failed to load dashboard overview stats');
+    } finally {
+      setStatsLoading(false);
     }
    }
 
@@ -117,6 +121,8 @@ const [certLoading, setCertLoading] = useState(false);
       setOrganization(orgData);
     } catch (error) {
       console.error('Failed to load organization:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -169,28 +175,28 @@ const [certLoading, setCertLoading] = useState(false);
   const stats = [
     {
       name: 'Enrolled Courses',
-      value: studentOverview?.enrolledCourses ?? 0,
+      value: statsLoading ? 'Loading...' : studentOverview?.enrolledCourses ?? 0,
       icon: BookOpenIcon,
       color: 'text-blue-600',
       bgColor: 'bg-blue-100 dark:bg-blue-900'
     },
     {
       name: 'Programs',
-      value: studentOverview?.programs ?? 0,
+      value: statsLoading ? 'Loading...' : studentOverview?.programs ?? 0,
       icon: AcademicCapIcon,
       color: 'text-green-600',
       bgColor: 'bg-green-100 dark:bg-green-900'
     },
     {
       name: 'Hours Learned',
-      value: studentOverview?.hoursLearned ?? '0',
+      value: statsLoading ? 'Loading...' : studentOverview?.hoursLearned ?? '0',
       icon: ClockIcon,
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-100 dark:bg-yellow-900'
     },
     {
       name: 'Certificates',
-      value: studentOverview?.certificates ?? 0,
+      value: statsLoading ? 'Loading...' : studentOverview?.certificates ?? 0,
       icon: TrophyIcon,
       color: 'text-purple-600',
       bgColor: 'bg-purple-100 dark:bg-purple-900'
@@ -208,17 +214,32 @@ const [certLoading, setCertLoading] = useState(false);
           <p className="mt-2 text-gray-600 dark:text-gray-400">
             Continue your learning journey
           </p>
-          {organization ? (
-            <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
-              <BuildingOfficeIcon className="h-4 w-4 mr-1" />
-              <span>Learning with {organization?.name ?? 'Unknown Organization'}</span>
-            </div>
-          ) : (
-            <div className="mt-2 flex items-center text-sm text-yellow-600 dark:text-yellow-400">
-              <BuildingOfficeIcon className="h-4 w-4 mr-1" />
-              <span>No organization enrollment found</span>
-            </div>
-          )}
+           {loading ? (
+                        <div className="mt-2 h-4 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded"></div>
+                      ) : organization ? (
+                        <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
+                          {organization.logo ? (
+                            <img
+                              src={organization.logo}
+                              alt={organization.name}
+                              className="w-7 h-7 object-cover mr-1 rounded-full"
+                            />
+                          ) : (
+                            <BuildingOfficeIcon className="h-4 w-4 mr-1" />
+                          )}
+                          <p>
+                            Learning With {' '}
+                            <span className="font-medium text-blue-600 dark:text-yellow-400">
+                              {organization.name}
+                            </span>
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="mt-2 flex items-center text-sm text-yellow-600 dark:text-yellow-400">
+                          <BuildingOfficeIcon className="h-4 w-4 mr-1" />
+                          <span>No organization assigned - contact your admin</span>
+                        </div>
+                      )}
         </div>
         <div className="flex space-x-3">
           <Link to="/student/discover">
@@ -246,7 +267,7 @@ const [certLoading, setCertLoading] = useState(false);
                     <Icon className={`h-6 w-6 ${stat.color}`} />
                   </div>
                   <div className="ml-4">
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    <p className={` font-semibold ${stat.value === 'Loading...' ? 'text-sm' : 'text-xl font-bold dark:text-white'}`}>
                       {stat.value}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -376,9 +397,8 @@ const [certLoading, setCertLoading] = useState(false);
         </Card>
       )}
 
-      {/* Certificates */}
       {/* Certificates Section */}
-{certificates.length > 0 && (
+{certificates.length > 0 || certLoading ? (
   <Card>
     <CardHeader>
       <div className="flex items-center justify-between">
@@ -386,63 +406,72 @@ const [certLoading, setCertLoading] = useState(false);
           Certificates
         </h2>
         <span className="text-sm text-gray-500 dark:text-gray-400">
-          Total: {certPagination?.total ?? certificates.length}
+          {certLoading ? 'Loading...' : `Total: ${certPagination?.total ?? certificates.length}`}
         </span>
       </div>
     </CardHeader>
     <CardContent className="p-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {certificates.map((cert) => (
-          <div key={cert.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-medium text-gray-900 dark:text-white line-clamp-2">
-                {cert.certificateName}
-              </h3>
-              <span className="text-xs text-gray-500 dark:text-gray-400">{cert.acquiredDate}</span>
-            </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              Issued by: {cert.organization?.name ?? 'N/A'}
-            </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              Course: {cert.course?.courseTitle ?? 'N/A'}
-            </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              Credential ID: {cert.credentialId}
-            </p>
-            <div className="mt-2 flex justify-end">
-              <Button size="sm" onClick={() => handleDownloadCertificate(cert.id)}>
-                Preview & Download
+      {certLoading ? (
+        <div className="flex flex-col items-center justify-center py-12 space-y-4">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading certificates...</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {certificates.map((cert) => (
+              <div key={cert.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium text-gray-900 dark:text-white line-clamp-2">
+                    {cert.certificateName}
+                  </h3>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{cert.acquiredDate}</span>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  Issued by: {cert.organization?.name ?? 'N/A'}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  Course: {cert.course?.courseTitle ?? 'N/A'}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  Credential ID: {cert.credentialId}
+                </p>
+                <div className="mt-2 flex justify-end">
+                  <Button size="sm" onClick={() => handleDownloadCertificate(cert.id)}>
+                    Preview & Download
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination Controls */}
+          {certPagination && certPagination.totalPages > 1 && (
+            <div className="mt-4 flex justify-center space-x-2">
+              <Button 
+                size="sm" 
+                disabled={certPagination.page === 1 || certLoading}
+                onClick={() => loadCertificates((certPagination.page ?? 1) - 1)}
+              >
+                Previous
+              </Button>
+              <span className="px-3 py-1 text-sm text-gray-700 dark:text-gray-300">
+                Page {certPagination.page} of {certPagination.totalPages}
+              </span>
+              <Button 
+                size="sm" 
+                disabled={certPagination.page === certPagination.totalPages || certLoading}
+                onClick={() => loadCertificates((certPagination.page ?? 1) + 1)}
+              >
+                Next
               </Button>
             </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Pagination Controls */}
-      {certPagination && certPagination.totalPages > 1 && (
-        <div className="mt-4 flex justify-center space-x-2">
-          <Button 
-            size="sm" 
-            disabled={certPagination.page === 1 || certLoading}
-            onClick={() => loadCertificates((certPagination.page ?? 1) - 1)}
-          >
-            Previous
-          </Button>
-          <span className="px-3 py-1 text-sm text-gray-700 dark:text-gray-300">
-            Page {certPagination.page} of {certPagination.totalPages}
-          </span>
-          <Button 
-            size="sm" 
-            disabled={certPagination.page === certPagination.totalPages || certLoading}
-            onClick={() => loadCertificates((certPagination.page ?? 1) + 1)}
-          >
-            Next
-          </Button>
-        </div>
+          )}
+        </>
       )}
     </CardContent>
   </Card>
-)}
+) : null}
 
     </div>
   );

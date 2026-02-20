@@ -27,6 +27,9 @@ async function waitForImagesToLoad(container: HTMLElement): Promise<void> {
         })
     )
   );
+  
+  // Wait for all rendering to complete
+  await new Promise((resolve) => setTimeout(resolve, 500));
 }
 
 export async function generateCertificatePDF(certificate: CertDetails): Promise<void> {
@@ -51,7 +54,7 @@ export async function generateCertificatePDF(certificate: CertDetails): Promise<
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
-      allowTaint: false,
+      allowTaint: true,
       removeContainer: true,
     });
 
