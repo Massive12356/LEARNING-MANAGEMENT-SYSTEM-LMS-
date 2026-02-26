@@ -398,80 +398,113 @@ const [statsLoading, setStatsLoading] = useState(false);
       )}
 
       {/* Certificates Section */}
-{certificates.length > 0 || certLoading ? (
-  <Card>
-    <CardHeader>
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-          Certificates
-        </h2>
+{/* Certificates Section */}
+<Card>
+  <CardHeader>
+    <div className="flex items-center justify-between">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        Certificates
+      </h2>
+      {certificates.length > 0 && (
         <span className="text-sm text-gray-500 dark:text-gray-400">
           {certLoading ? 'Loading...' : `Total: ${certPagination?.total ?? certificates.length}`}
         </span>
-      </div>
-    </CardHeader>
-    <CardContent className="p-6">
-      {certLoading ? (
-        <div className="flex flex-col items-center justify-center py-12 space-y-4">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Loading certificates...</p>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {certificates.map((cert) => (
-              <div key={cert.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-medium text-gray-900 dark:text-white line-clamp-2">
-                    {cert.certificateName}
-                  </h3>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{cert.acquiredDate}</span>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  Issued by: {cert.organization?.name ?? 'N/A'}
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  Course: {cert.course?.courseTitle ?? 'N/A'}
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  Credential ID: {cert.credentialId}
-                </p>
-                <div className="mt-2 flex justify-end">
-                  <Button size="sm" onClick={() => handleDownloadCertificate(cert.id)}>
-                    Preview & Download
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Pagination Controls */}
-          {certPagination && certPagination.totalPages > 1 && (
-            <div className="mt-4 flex justify-center space-x-2">
-              <Button 
-                size="sm" 
-                disabled={certPagination.page === 1 || certLoading}
-                onClick={() => loadCertificates((certPagination.page ?? 1) - 1)}
-              >
-                Previous
-              </Button>
-              <span className="px-3 py-1 text-sm text-gray-700 dark:text-gray-300">
-                Page {certPagination.page} of {certPagination.totalPages}
-              </span>
-              <Button 
-                size="sm" 
-                disabled={certPagination.page === certPagination.totalPages || certLoading}
-                onClick={() => loadCertificates((certPagination.page ?? 1) + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          )}
-        </>
       )}
-    </CardContent>
-  </Card>
-) : null}
+    </div>
+  </CardHeader>
+
+  <CardContent className="p-6">
+    {certLoading ? (
+      /* Loading state */
+      <div className="flex flex-col items-center justify-center py-12 space-y-4">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Loading certificates...
+        </p>
+      </div>
+    ) : certificates.length === 0 ? (
+      /* EMPTY STATE */
+      <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
+        <TrophyIcon className="h-12 w-12 text-gray-400" />
+
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          No certificates yet
+        </h3>
+
+        <p className="max-w-md text-sm text-gray-600 dark:text-gray-400">
+          You haven’t earned any certificates so far.  
+          Complete a course to gain certificates and showcase your achievements.
+        </p>
+
+        <Link to="/student/discover">
+          <Button className="mt-2">
+            Discover Courses
+          </Button>
+        </Link>
+      </div>
+    ) : (
+      /* CERTIFICATES GRID */
+      <>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {certificates.map((cert) => (
+            <div
+              key={cert.id}
+              className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-medium text-gray-900 dark:text-white line-clamp-2">
+                  {cert.certificateName}
+                </h3>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {cert.acquiredDate}
+                </span>
+              </div>
+
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                Issued by: {cert.organization?.name ?? 'N/A'}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                Course: {cert.course?.courseTitle ?? 'N/A'}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                Credential ID: {cert.credentialId}
+              </p>
+
+              <div className="mt-3 flex justify-end">
+                <Button size="sm" onClick={() => handleDownloadCertificate(cert.id)}>
+                  Preview & Download
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Pagination */}
+        {certPagination && certPagination.totalPages > 1 && (
+          <div className="mt-6 flex justify-center space-x-2">
+            <Button
+              size="sm"
+              disabled={certPagination.page === 1}
+              onClick={() => loadCertificates(certPagination.page - 1)}
+            >
+              Previous
+            </Button>
+            <span className="px-3 py-1 text-sm text-gray-700 dark:text-gray-300">
+              Page {certPagination.page} of {certPagination.totalPages}
+            </span>
+            <Button
+              size="sm"
+              disabled={certPagination.page === certPagination.totalPages}
+              onClick={() => loadCertificates(certPagination.page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        )}
+      </>
+    )}
+  </CardContent>
+</Card>
 
     </div>
   );

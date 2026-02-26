@@ -201,7 +201,7 @@ export const LoginPage: React.FC = () => {
               </Button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            {/* <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
               <div className="text-center">
                 <Link
                   to="/verify"
@@ -216,7 +216,7 @@ export const LoginPage: React.FC = () => {
                   Public verification - no account required
                 </p>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

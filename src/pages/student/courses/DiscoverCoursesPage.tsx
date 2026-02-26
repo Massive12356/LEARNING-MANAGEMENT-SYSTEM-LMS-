@@ -235,7 +235,7 @@ export function DiscoverCoursesPage() {
 
           <div className="flex items-center space-x-3">
             {/* Tags display - for visual purposes only */}
-            <div className="hidden md:flex items-center space-x-2">
+            {/* <div className="hidden md:flex items-center space-x-2">
               {popularTags.slice(0, 5).map(tag => (
                 <span
                   key={tag}
@@ -244,12 +244,12 @@ export function DiscoverCoursesPage() {
                   {tag}
                 </span>
               ))}
-            </div>
+            </div> */}
           </div>
         </div>
 
         {/* Tags information */}
-        <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
+        {/* <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
           <h3 className="font-medium text-gray-900 dark:text-white mb-3">Popular Topics</h3>
           <div className="flex flex-wrap gap-2">
             {popularTags.map(tag => (
@@ -261,7 +261,7 @@ export function DiscoverCoursesPage() {
               </span>
             ))}
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Results Summary */}
@@ -274,7 +274,6 @@ export function DiscoverCoursesPage() {
         </p>
       </div>
 
-      {/* Course Grid */}
       {/* Course Grid */}
       {loading ? (
         <div className="flex justify-center items-center py-12">
