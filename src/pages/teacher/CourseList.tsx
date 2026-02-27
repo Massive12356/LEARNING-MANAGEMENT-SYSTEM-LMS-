@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
-import { mockApi } from '../../services/mockApi';
 import { organizationService } from '../../services/organizationService';
-import { Course, Organization } from '../../types';
+import { CourseListItem, CourseResponse, Organization } from '../../types';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -18,12 +17,13 @@ import {
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../stores/authStore';
+import { courseService } from '../../services/courseService';
 
 export function CourseList() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<CourseListItem[]>([]);
+  const [filteredCourses, setFilteredCourses] = useState<CourseListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'live' | 'draft'>('all');
@@ -31,31 +31,43 @@ export function CourseList() {
   const [organization, setOrganization] = useState<Organization | null>(null);
 
   const loadCourses = useCallback(async () => {
-    if (!user?.organizationId) {
+    if (!user?.organizationDetails?.id) {
       toast.error('You must be assigned to an organization to create courses');
       navigate('/teacher/dashboard');
       return;
     }
 
     try {
-      // Load all courses for the teacher's organization (without teacher filter for demo)
-      const coursesData = await mockApi.getCourses({
-        organizationId: user.organizationId
-      });
-      setCourses(coursesData);
-    } catch (error) {
-      console.error('Failed to load courses:', error);
-      toast.error('Failed to load courses');
+      const response: CourseResponse[] = await courseService.loadAllCourses();
+
+      const mappedCourses: CourseListItem[] = response.map(item => ({
+        id: item.course.id,
+        title: item.course.title,
+        description: item.course.description,
+        tags: item.course.tags,
+        coverImage: item.course.images?.[0] ?? null,
+        status: item.settings.courseStatus,
+        modulesCount: item.modules.length,
+        programCertificate: item.settings.certificateOnCompletion,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      }));
+
+      setCourses(mappedCourses);
+    } catch (error: any) {
+      toast.error(error?.message ?? 'Failed to load courses');
     } finally {
       setLoading(false);
     }
-  }, [user?.organizationId, navigate]);
+  }, [user?.organizationDetails?.id, navigate]);
 
   const loadOrganization = useCallback(async () => {
     if (!user?.organizationDetails?.id) return;
 
     try {
-      const orgData = await organizationService.getOrganizationById(user?.organizationDetails?.id.toString());
+      const orgData = await organizationService.getOrganizationById(
+        user?.organizationDetails?.id.toString()
+      );
       setOrganization(orgData);
     } catch (error) {
       console.error('Failed to load organization:', error);
@@ -70,21 +82,22 @@ export function CourseList() {
   const filterAndSortCourses = useCallback(() => {
     let filtered = [...courses];
 
-    // Apply search filter
     if (searchTerm) {
-      filtered = filtered.filter(course =>
-        course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        course.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+      filtered = filtered.filter(
+        course =>
+          course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          course.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
-    // Apply status filter
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(course => course.status === statusFilter);
+      filtered = filtered.filter(course => {
+        if (statusFilter === 'live') return course.status === 'published';
+        return course.status === statusFilter;
+      });
     }
 
-    // Apply sorting
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'title':
@@ -105,39 +118,19 @@ export function CourseList() {
     filterAndSortCourses();
   }, [filterAndSortCourses]);
 
-  const handleDuplicateCourse = async (courseId: string) => {
-    try {
-      await mockApi.duplicateCourse(courseId);
-      toast.success('Course duplicated successfully');
-      loadCourses();
-    } catch (error) {
-      console.error('Failed to duplicate course:', error);
-      toast.error('Failed to duplicate course');
-    }
-  };
-
   const handleDeleteCourse = async (courseId: string) => {
     if (!confirm('Are you sure you want to delete this course? This action cannot be undone.')) {
       return;
     }
 
     try {
-      await mockApi.deleteCourse(courseId);
+      await courseService.deleteCourse(String(courseId));
       toast.success('Course deleted successfully');
       loadCourses();
-    } catch (error) {
-      console.error('Failed to delete course:', error);
-      toast.error('Failed to delete course');
+    } catch (error: any) {
+      toast.error(error?.message ?? 'Failed to delete course');
     }
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-10 pb-10">
@@ -247,7 +240,11 @@ export function CourseList() {
       </div>
 
       {/* Course Grid */}
-      {filteredCourses.length > 0 ? (
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+        </div>
+      ) : filteredCourses.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredCourses.map((course) => (
             <div key={course.id} className="group flex flex-col bg-white dark:bg-gray-800 rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-300 hover:-translate-y-1">
@@ -260,7 +257,7 @@ export function CourseList() {
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
 
                 <div className="absolute top-4 left-4 flex gap-2">
-                  <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full backdrop-blur-md ${course.status === 'live'
+                  <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full backdrop-blur-md ${(course.status === 'live' || course.status === 'published')
                     ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                     : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                     }`}>
@@ -296,7 +293,7 @@ export function CourseList() {
 
                 <div className="mt-auto space-y-4">
                   {/* Tags */}
-                  {course.tags.length > 0 && (
+                  {course.tags && course.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {course.tags.slice(0, 3).map((tag) => (
                         <span
@@ -317,16 +314,9 @@ export function CourseList() {
                   <div className="pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between text-sm">
                     <div className="flex items-center text-gray-500 dark:text-gray-400">
                       <BookOpenIcon className="h-4 w-4 mr-1.5" />
-                      <span className="font-medium">{course.modules.length} Modules</span>
+                      <span className="font-medium">{course.modulesCount || 0} Modules</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleDuplicateCourse(course.id)}
-                        className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                        title="Duplicate course"
-                      >
-                        <DocumentDuplicateIcon className="h-5 w-5" />
-                      </button>
                       <button
                         onClick={() => handleDeleteCourse(course.id)}
                         className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
@@ -387,7 +377,7 @@ export function CourseList() {
               </div>
               <span className="text-emerald-100 text-sm font-medium">Active</span>
             </div>
-            <div className="text-4xl font-bold mb-1">{courses.filter(c => c.status === 'live').length}</div>
+            <div className="text-4xl font-bold mb-1">{courses.filter(c => c.status === 'live' || c.status === 'published').length}</div>
             <div className="text-emerald-100 text-sm">Live Courses</div>
           </div>
 
@@ -409,7 +399,7 @@ export function CourseList() {
               </div>
               <span className="text-purple-100 text-sm font-medium">Content</span>
             </div>
-            <div className="text-4xl font-bold mb-1">{courses.reduce((acc, course) => acc + course.modules.length, 0)}</div>
+            <div className="text-4xl font-bold mb-1">{courses.reduce((acc, course) => acc + (course.modulesCount || 0), 0)}</div>
             <div className="text-purple-100 text-sm">Total Modules</div>
           </div>
         </div>

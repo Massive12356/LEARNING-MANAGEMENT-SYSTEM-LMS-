@@ -4,7 +4,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { Button } from '../../components/ui/Button';
 import { RichTextDisplay } from '../../components/ui/RichTextEditor';
 import { mockApi } from '../../services/mockApi';
-import { Course, Organization } from '../../types';
+import { teacherDashboardData, Organization } from '../../types';
 import { organizationService } from '../../services/organizationService';
 import {
   BookOpenIcon,
@@ -19,13 +19,16 @@ import {
   ArrowRightIcon
 } from '@heroicons/react/24/outline';
 import { DetailedAnalytics } from '../../components/teacher/DetailedAnalytics';
+import { courseService } from '../../services/courseService';
+import toast from 'react-hot-toast';
 
 export function TeacherDashboard() {
   const { user } = useAuthStore();
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [dashboardData, setDashboardData] = useState<teacherDashboardData | null>(null);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'analytics'>('overview');
+  const [courses, setCourses] = useState<any[]>([]);
 
   const loadOrganization = useCallback(async () => {
     if (!user?.organizationDetails?.id) return;
@@ -43,14 +46,16 @@ export function TeacherDashboard() {
       if (!user) return;
 
       try {
-        const [coursesData] = await Promise.all([
-          mockApi.getCourses({ teacherId: user.id }),
-          mockApi.getPrograms()
+        const [statsResponse, coursesData] = await Promise.all([
+          courseService.teacherDashboardStats(),
+          mockApi.getCourses({ teacherId: user.id })
         ]);
 
+        setDashboardData(statsResponse);
         setCourses(coursesData);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to load dashboard data:', error);
+        toast.error(error?.message ?? 'Failed to load Dashboard Data');
       } finally {
         setLoading(false);
       }
@@ -60,22 +65,10 @@ export function TeacherDashboard() {
     loadOrganization();
   }, [user, loadOrganization]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  const liveCourses = courses.filter(course => course.status === 'live');
-  const totalStudents = 156; // Mock data
-  const avgCompletion = 78; // Mock data
-
   const stats = [
     {
       name: 'Total Courses',
-      value: courses.length.toString(),
+      value: dashboardData?.totalCourses ?? 0,
       icon: BookOpenIcon,
       description: 'All created courses',
       className: 'bg-gradient-to-br from-blue-600 to-indigo-700',
@@ -83,7 +76,7 @@ export function TeacherDashboard() {
     },
     {
       name: 'Live Courses',
-      value: liveCourses.length.toString(),
+      value: dashboardData?.totalLiveCourses ?? 0,
       icon: EyeIcon,
       description: 'Currently active',
       className: 'bg-gradient-to-br from-emerald-500 to-teal-600',
@@ -91,7 +84,7 @@ export function TeacherDashboard() {
     },
     {
       name: 'Total Students',
-      value: totalStudents.toString(),
+      value: dashboardData?.totalStudents ?? 0,
       icon: UserGroupIcon,
       description: 'Across all courses',
       className: 'bg-gradient-to-br from-violet-600 to-purple-700',
@@ -99,7 +92,7 @@ export function TeacherDashboard() {
     },
     {
       name: 'Avg Completion',
-      value: `${avgCompletion}%`,
+      value: `${dashboardData?.averageCompletions ?? 0}%`,
       icon: ChartBarIcon,
       description: 'Student progress',
       className: 'bg-gradient-to-br from-amber-500 to-orange-600',
@@ -130,7 +123,7 @@ export function TeacherDashboard() {
                 </span>
               </h1>
               <p className="text-slate-300 text-lg max-w-xl leading-relaxed">
-                You have <span className="text-white font-semibold">{liveCourses.length} live courses</span> and <span className="text-white font-semibold">{totalStudents} active students</span> this week.
+                You have <span className="text-white font-semibold">{dashboardData?.totalLiveCourses ?? 0} live courses</span> and <span className="text-white font-semibold">{dashboardData?.totalStudents ?? 0} active students</span> this week.
               </p>
 
               {organization && (

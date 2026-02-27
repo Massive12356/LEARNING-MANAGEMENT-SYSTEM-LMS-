@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { FileUploader } from '../../components/ui/FileUploader';
 import { mockApi } from '../../services/mockApi';
-import { Program, Course } from '../../types';
+import { Program, Course, CourseListItem } from '../../types';
 import { 
   PlusIcon,
   PhotoIcon,
@@ -17,23 +17,24 @@ import {
   TrophyIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { courseService } from '../../services/courseService';
 
 export function ProgramBuilder() {
   const { programId } = useParams<{ programId: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [program, setProgram] = useState<Program | null>(null);
-  const [availableCourses, setAvailableCourses] = useState<Course[]>([]);
-  const [selectedCourses, setSelectedCourses] = useState<Course[]>([]);
+  const [availableCourses, setAvailableCourses] = useState<CourseListItem[]>([]);
+  const [selectedCourses, setSelectedCourses] = useState<CourseListItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   const [programData, setProgramData] = useState({
     title: '',
     description: '',
-    status: 'draft' as 'draft' | 'live',
-    requiresCertificate: false,
-    requiredOrder: false,
-    coverImage: ''
+    images: '',
+    programStatus: 'draft' as 'draft' | 'published' | 'archived' | 'pending',
+    requiredCourseOrder: false,
+    programCertificate: false,
   });
 
   const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
@@ -47,33 +48,23 @@ export function ProgramBuilder() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [coursesData, programData] = await Promise.all([
-        mockApi.getCourses({ status: 'live' }),
-        programId ? mockApi.getProgramById(programId) : Promise.resolve(null)
-      ]);
-
-      setAvailableCourses(coursesData);
-
-      if (programData) {
-        setProgram(programData);
-        setProgramData({
-          title: programData.title,
-          description: programData.description,
-          status: programData.status,
-          requiresCertificate: programData.requiresCertificate,
-          requiredOrder: programData.requiredOrder,
-          coverImage: programData.coverImage || ''
-        });
-
-        // Set selected courses
-        const programCourses = coursesData.filter(course => 
-          programData.courseIds.includes(course.id)
-        );
-        setSelectedCourses(programCourses);
-      }
-    } catch (error) {
-      console.error('Failed to load data:', error);
-      toast.error('Failed to load program data');
+      
+      const response = await courseService.loadAllCourses()
+      const mappedCourses: CourseListItem[] = response.map((item:any) => ({
+              id: item.id,
+              title: item.course.title,
+              description: item.course.description,
+              tags: item.course.tags,
+              coverImage: item.course.images?.[0] ?? null,
+              status: item.settings.courseStatus,
+              modulesCount: item.modules.length,
+              requiresCertificate: item.settings.certificateOnCompletion,
+              createdAt: item.createdAt,
+              updatedAt: item.updatedAt,
+            }));
+      setAvailableCourses(mappedCourses);
+      } catch (error:any) {
+      toast.error(error?.message);
     } finally {
       setLoading(false);
     }
@@ -83,8 +74,10 @@ export function ProgramBuilder() {
     if (!programData.title.trim()) {
       toast.error('Program title is required');
       return;
-    }
+    } 
 
+
+// check if no course is selected
     if (selectedCourses.length === 0) {
       toast.error('Please select at least one course');
       return;
@@ -94,8 +87,7 @@ export function ProgramBuilder() {
     try {
       const programPayload = {
         ...programData,
-        courseIds: selectedCourses.map(course => course.id),
-        organizationId: user?.organizationId
+        courseGeneralIds: selectedCourses.map(course => course.id),
       };
 
       if (isEditing && program) {
@@ -105,7 +97,7 @@ export function ProgramBuilder() {
         toast.success('Program updated successfully');
       } else {
         // Create new program
-        const newProgram = await mockApi.createProgram(programPayload);
+        const newProgram = await courseService.createProgram(programPayload);
         setProgram(newProgram);
         toast.success('Program created successfully');
         navigate('/teacher/dashboard');
@@ -118,17 +110,17 @@ export function ProgramBuilder() {
     }
   };
 
-  const handleAddCourse = (course: Course) => {
+  const handleAddCourse = (course: CourseListItem) => {
     if (!selectedCourses.find(c => c.id === course.id)) {
       setSelectedCourses([...selectedCourses, course]);
     }
   };
 
-  const handleRemoveCourse = (courseId: string) => {
+  const handleRemoveCourse = (courseId: number) => {
     setSelectedCourses(selectedCourses.filter(course => course.id !== courseId));
   };
 
-  const handleReorderCourse = (courseId: string, direction: 'up' | 'down') => {
+  const handleReorderCourse = (courseId: number, direction: 'up' | 'down') => {
     const currentIndex = selectedCourses.findIndex(course => course.id === courseId);
     if (currentIndex === -1) return;
 
@@ -151,7 +143,9 @@ export function ProgramBuilder() {
             {isEditing ? 'Edit Program' : 'Create New Program'}
           </h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            {isEditing ? 'Update your program details and course sequence' : 'Group courses into a structured learning program'}
+            {isEditing
+              ? 'Update your program details and course sequence'
+              : 'Group courses into a structured learning program'}
           </p>
         </div>
         <div className="flex items-center space-x-4">
@@ -168,15 +162,13 @@ export function ProgramBuilder() {
         {/* Program Details */}
         <Card>
           <CardHeader>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Program Details
-            </h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Program Details</h2>
           </CardHeader>
           <CardContent className="space-y-6">
             <Input
               label="Program Title"
               value={programData.title}
-              onChange={(e) => setProgramData(prev => ({ ...prev, title: e.target.value }))}
+              onChange={e => setProgramData(prev => ({ ...prev, title: e.target.value }))}
               placeholder="Enter program title"
               required
             />
@@ -187,7 +179,7 @@ export function ProgramBuilder() {
               </label>
               <textarea
                 value={programData.description}
-                onChange={(e) => setProgramData(prev => ({ ...prev, description: e.target.value }))}
+                onChange={e => setProgramData(prev => ({ ...prev, description: e.target.value }))}
                 rows={4}
                 className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Describe the learning outcomes and goals of this program"
@@ -200,9 +192,9 @@ export function ProgramBuilder() {
               </label>
               {coverImagePreview && (
                 <div className="mb-4">
-                  <img 
-                    src={coverImagePreview} 
-                    alt="Cover preview" 
+                  <img
+                    src={coverImagePreview}
+                    alt="Cover preview"
                     className="w-full h-48 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
                   />
                 </div>
@@ -212,12 +204,12 @@ export function ProgramBuilder() {
                 maxSize={5 * 1024 * 1024} // 5MB
                 maxFiles={1}
                 legacyMode={false}
-                onUpload={async (uploadResults) => {
+                onUpload={async uploadResults => {
                   // Handle image upload
                   console.log('Cover image uploaded:', uploadResults[0]);
                   // Update program data with uploaded image URL
                   if (uploadResults[0]) {
-                    setProgramData(prev => ({ ...prev, coverImage: uploadResults[0].url }));
+                    setProgramData(prev => ({ ...prev, images: uploadResults[0].url }));
                     setCoverImagePreview(uploadResults[0].url); // Set preview
                   }
                 }}
@@ -238,20 +230,29 @@ export function ProgramBuilder() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-medium text-gray-900 dark:text-white">
-                    Program Status
-                  </h4>
+                  <h4 className="font-medium text-gray-900 dark:text-white">Program Status</h4>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     Control whether students can enroll in this program
                   </p>
                 </div>
                 <select
-                  value={programData.status}
-                  onChange={(e) => setProgramData(prev => ({ ...prev, status: e.target.value as 'draft' | 'live' }))}
+                  value={programData.programStatus}
+                  onChange={e =>
+                    setProgramData(prev => ({
+                      ...prev,
+                      programStatus: e.target.value as
+                        | 'draft'
+                        | 'published'
+                        | 'archived'
+                        | 'pending',
+                    }))
+                  }
                   className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 >
                   <option value="draft">Draft</option>
-                  <option value="live">Live</option>
+                  <option value="published">published</option>
+                  <option value="archived">archived</option>
+                  <option value="pending">pending</option>
                 </select>
               </div>
 
@@ -267,8 +268,10 @@ export function ProgramBuilder() {
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={programData.requiredOrder}
-                    onChange={(e) => setProgramData(prev => ({ ...prev, requiredOrder: e.target.checked }))}
+                    checked={programData.requiredCourseOrder}
+                    onChange={e =>
+                      setProgramData(prev => ({ ...prev, requiredCourseOrder: e.target.checked }))
+                    }
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
@@ -277,9 +280,7 @@ export function ProgramBuilder() {
 
               <div className="flex items-center justify-between py-4">
                 <div>
-                  <h4 className="font-medium text-gray-900 dark:text-white">
-                    Program Certificate
-                  </h4>
+                  <h4 className="font-medium text-gray-900 dark:text-white">Program Certificate</h4>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     Award a certificate when students complete all courses
                   </p>
@@ -287,8 +288,10 @@ export function ProgramBuilder() {
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={programData.requiresCertificate}
-                    onChange={(e) => setProgramData(prev => ({ ...prev, requiresCertificate: e.target.checked }))}
+                    checked={programData.programCertificate}
+                    onChange={e =>
+                      setProgramData(prev => ({ ...prev, programCertificate: e.target.checked }))
+                    }
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
@@ -314,31 +317,32 @@ export function ProgramBuilder() {
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {availableCourses
                   .filter(course => !selectedCourses.find(c => c.id === course.id))
-                  .map((course) => (
-                    <div key={course.id} className="flex items-center space-x-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  .map(course => (
+                    <div
+                      key={course.id}
+                      className="flex items-center space-x-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    >
                       <img
-                        src={course.coverImage || 'https://picsum.photos/60/60'}
-                        alt={course.title}
+                        src={course?.coverImage ?? 'https://picsum.photos/60/60'}
+                        alt={course?.title}
                         className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
                       />
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium text-gray-900 dark:text-white truncate">
-                          {course.title}
+                          {course?.title ?? 'N/A'}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {course.modules.length} modules
+                          {course?.modulesCount ?? 0} modules
                         </p>
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={() => handleAddCourse(course)}
-                      >
+                      <Button size="sm" onClick={() => handleAddCourse(course)}>
                         <PlusIcon className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}
-                
-                {availableCourses.filter(course => !selectedCourses.find(c => c.id === course.id)).length === 0 && (
+
+                {availableCourses.filter(course => !selectedCourses.find(c => c.id === course.id))
+                  .length === 0 && (
                   <div className="text-center py-8">
                     <BookOpenIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
                     <p className="text-gray-600 dark:text-gray-400">
@@ -359,10 +363,11 @@ export function ProgramBuilder() {
                     Program Courses
                   </h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {selectedCourses.length} course{selectedCourses.length !== 1 ? 's' : ''} selected
+                    {selectedCourses?.length} course{selectedCourses?.length !== 1 ? 's' : ''}{' '}
+                    selected
                   </p>
                 </div>
-                {programData.requiredOrder && (
+                {programData?.requiredCourseOrder && (
                   <div className="flex items-center text-sm text-blue-600 dark:text-blue-400">
                     <LockClosedIcon className="h-4 w-4 mr-1" />
                     Sequential Order
@@ -371,12 +376,15 @@ export function ProgramBuilder() {
               </div>
             </CardHeader>
             <CardContent>
-              {selectedCourses.length > 0 ? (
+              {selectedCourses?.length > 0 ? (
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {selectedCourses.map((course, index) => (
-                    <div key={course.id} className="flex items-center space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div
+                      key={course.id}
+                      className="flex items-center space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
+                    >
                       <div className="flex items-center space-x-2">
-                        {programData.requiredOrder && (
+                        {programData?.requiredCourseOrder && (
                           <div className="flex flex-col space-y-1">
                             <button
                               onClick={() => handleReorderCourse(course.id, 'up')}
@@ -398,20 +406,20 @@ export function ProgramBuilder() {
                           {index + 1}
                         </div>
                       </div>
-                      
+
                       <img
                         src={course.coverImage || 'https://picsum.photos/60/60'}
                         alt={course.title}
                         className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
                       />
-                      
+
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium text-gray-900 dark:text-white truncate">
-                          {course.title}
+                          {course?.title ?? "N/A"}
                         </h3>
                         <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                          <span>{course.modules.length} modules</span>
-                          {course.requiresCertificate && (
+                          <span>{course?.modulesCount ?? 0} modules</span>
+                          {course?.programCertificate && (
                             <>
                               <span>•</span>
                               <div className="flex items-center">
@@ -422,7 +430,7 @@ export function ProgramBuilder() {
                           )}
                         </div>
                       </div>
-                      
+
                       <Button
                         variant="outline"
                         size="sm"
@@ -436,9 +444,7 @@ export function ProgramBuilder() {
               ) : (
                 <div className="text-center py-8">
                   <BookOpenIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                  <p className="text-gray-600 dark:text-gray-400">
-                    No courses selected yet
-                  </p>
+                  <p className="text-gray-600 dark:text-gray-400">No courses selected yet</p>
                   <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
                     Add courses from the available list
                   </p>
@@ -449,7 +455,7 @@ export function ProgramBuilder() {
         </div>
 
         {/* Program Summary */}
-        {selectedCourses.length > 0 && (
+        {selectedCourses?.length > 0 && (
           <Card>
             <CardHeader>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -459,36 +465,26 @@ export function ProgramBuilder() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {selectedCourses.length}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Courses
-                  </div>
+                  <div className="text-2xl font-bold text-blue-600">{selectedCourses.length}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Courses</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-green-600">
-                    {selectedCourses.reduce((acc, course) => acc + course.modules.length, 0)}
+                    {selectedCourses.reduce((acc, course) => acc + course?.modulesCount, 0)}
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Total Modules
-                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Total Modules</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-purple-600">
-                    {programData.requiredOrder ? 'Sequential' : 'Flexible'}
+                    {programData.requiredCourseOrder ? 'Sequential' : 'Flexible'}
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Learning Path
-                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Learning Path</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-yellow-600">
-                    {programData.requiresCertificate ? 'Yes' : 'No'}
+                    {programData.programCertificate ? 'Yes' : 'No'}
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Certificate
-                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Certificate</div>
                 </div>
               </div>
             </CardContent>

@@ -1,19 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
-import { 
-  QuestionMarkCircleIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  ClockIcon
-} from '@heroicons/react/24/outline';
+import { CheckCircleIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
+
 
 interface Question {
   id: string;
   question: string;
   type: 'multiple-choice' | 'short-text';
   options?: string[];
-  correctAnswer: string | string[];
+  correctAnswers: string[]; // ✅ updated
   explanation?: string;
   points?: number;
 }
@@ -24,7 +20,7 @@ interface TestRunnerProps {
   description?: string;
   questions: Question[];
   timeLimit?: number; // in minutes
-  isGraded: boolean;
+  gradedCourse: boolean;
   passingScore?: number;
   onComplete: (results: TestResults) => void;
   onExit?: () => void;
@@ -45,10 +41,10 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
   description,
   questions,
   timeLimit,
-  isGraded,
+  gradedCourse,
   passingScore = 70,
   onComplete,
-  onExit
+  onExit,
 }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -60,11 +56,10 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
   const hasAnswered = answers[currentQuestion?.id];
 
-  React.useEffect(() => {
+  useEffect(() => {
     const timer = setInterval(() => {
       setTimeSpent(Math.floor((Date.now() - startTime) / 1000));
     }, 1000);
-
     return () => clearInterval(timer);
   }, [startTime]);
 
@@ -91,7 +86,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
   };
 
   const calculateResults = (): TestResults => {
-    let correctAnswers = 0;
+    let earnedPoints = 0;
     let totalPoints = 0;
 
     questions.forEach(question => {
@@ -100,25 +95,20 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
       totalPoints += points;
 
       if (question.type === 'multiple-choice') {
-        if (userAnswer === question.correctAnswer) {
-          correctAnswers += points;
-        }
+        if (question.correctAnswers.includes(userAnswer)) earnedPoints += points;
       } else if (question.type === 'short-text') {
-        // Simple text comparison - in real app, this would be more sophisticated
-        const correct = Array.isArray(question.correctAnswer) 
-          ? question.correctAnswer.some(answer => 
-              userAnswer?.toLowerCase().includes(answer.toLowerCase())
-            )
-          : userAnswer?.toLowerCase().includes((question.correctAnswer as string).toLowerCase());
-        
-        if (correct) {
-          correctAnswers += points;
+        if (
+          question.correctAnswers.some(
+            ans => ans.toLowerCase().trim() === userAnswer?.toLowerCase().trim()
+          )
+        ) {
+          earnedPoints += points;
         }
       }
     });
 
-    const score = totalPoints > 0 ? (correctAnswers / totalPoints) * 100 : 0;
-    const passed = !isGraded || score >= passingScore;
+    const score = totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0;
+    const passed = !gradedCourse || score >= passingScore;
 
     return {
       answers,
@@ -126,7 +116,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
       totalPoints,
       passed,
       timeSpent: Math.floor((Date.now() - startTime) / 1000),
-      completedAt: new Date()
+      completedAt: new Date(),
     };
   };
 
@@ -161,7 +151,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
                       name={currentQuestion.id}
                       value={option}
                       checked={answers[currentQuestion.id] === option}
-                      onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
+                      onChange={e => handleAnswerChange(currentQuestion.id, e.target.value)}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                     />
                     <span className="text-gray-700 dark:text-gray-300">{option}</span>
@@ -173,7 +163,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
             {currentQuestion.type === 'short-text' && (
               <textarea
                 value={answers[currentQuestion.id] || ''}
-                onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
+                onChange={e => handleAnswerChange(currentQuestion.id, e.target.value)}
                 rows={4}
                 className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter your answer..."
@@ -187,36 +177,35 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
 
   const renderResults = () => {
     const results = calculateResults();
-    
+
     return (
       <div className="space-y-6">
         <div className="text-center">
-          <div className={`mx-auto flex items-center justify-center h-16 w-16 rounded-full mb-4 ${
-            results.passed 
-              ? 'bg-green-100 dark:bg-green-900' 
-              : 'bg-red-100 dark:bg-red-900'
-          }`}>
+          <div
+            className={`mx-auto flex items-center justify-center h-16 w-16 rounded-full mb-4 ${
+              results.passed ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'
+            }`}
+          >
             {results.passed ? (
               <CheckCircleIcon className="h-8 w-8 text-green-600 dark:text-green-400" />
             ) : (
               <XCircleIcon className="h-8 w-8 text-red-600 dark:text-red-400" />
             )}
           </div>
-          
+
           <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
             {results.passed ? 'Congratulations!' : 'Keep Learning!'}
           </h3>
-          
+
           <div className="space-y-2">
             <p className="text-lg text-gray-600 dark:text-gray-400">
               Your Score: <span className="font-bold">{results.score}%</span>
             </p>
-            {isGraded && (
+            {gradedCourse && (
               <p className="text-sm text-gray-500 dark:text-gray-500">
-                {results.passed 
+                {results.passed
                   ? `You passed! (Required: ${passingScore}%)`
-                  : `You need ${passingScore}% to pass. Try again!`
-                }
+                  : `You need ${passingScore}% to pass. Try again!`}
               </p>
             )}
             <p className="text-sm text-gray-500 dark:text-gray-500">
@@ -227,27 +216,22 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
 
         {/* Question Review */}
         <div className="space-y-4">
-          <h4 className="font-medium text-gray-900 dark:text-white">
-            Question Review
-          </h4>
+          <h4 className="font-medium text-gray-900 dark:text-white">Question Review</h4>
           {questions.map((question, index) => {
             const userAnswer = answers[question.id];
-            const isCorrect = question.type === 'multiple-choice' 
-              ? userAnswer === question.correctAnswer
-              : Array.isArray(question.correctAnswer)
-              ? question.correctAnswer.some(answer => 
-                  userAnswer?.toLowerCase().includes(answer.toLowerCase())
-                )
-              : userAnswer?.toLowerCase().includes((question.correctAnswer as string).toLowerCase());
+            const isCorrect = question.correctAnswers.includes(userAnswer || '');
 
             return (
-              <div key={question.id} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <div
+                key={question.id}
+                className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg"
+              >
                 <div className="flex items-start space-x-3">
-                  <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
-                    isCorrect 
-                      ? 'bg-green-100 dark:bg-green-900' 
-                      : 'bg-red-100 dark:bg-red-900'
-                  }`}>
+                  <div
+                    className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
+                      isCorrect ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'
+                    }`}
+                  >
                     {isCorrect ? (
                       <CheckCircleIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
                     ) : (
@@ -263,12 +247,8 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
                     </p>
                     {!isCorrect && (
                       <p className="text-sm text-green-600 dark:text-green-400">
-                        Correct answer: <span className="font-medium">
-                          {Array.isArray(question.correctAnswer) 
-                            ? question.correctAnswer.join(', ')
-                            : question.correctAnswer
-                          }
-                        </span>
+                        Correct answer:{' '}
+                        <span className="font-medium">{question.correctAnswers.join(', ')}</span>
                       </p>
                     )}
                     {question.explanation && (
@@ -291,13 +271,9 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {title}
-            </h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{title}</h2>
             {description && (
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {description}
-              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{description}</p>
             )}
           </div>
           <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
@@ -311,9 +287,11 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
           </div>
         </div>
       </CardHeader>
-      
+
       <CardContent>
-        {showResults ? renderResults() : (
+        {showResults ? (
+          renderResults()
+        ) : (
           <div className="space-y-8">
             {/* Progress Bar */}
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
@@ -334,17 +312,13 @@ export const TestRunner: React.FC<TestRunnerProps> = ({
               >
                 Previous
               </Button>
-              
               <div className="flex items-center space-x-3">
                 {onExit && (
                   <Button variant="outline" onClick={onExit}>
                     Exit Test
                   </Button>
                 )}
-                <Button
-                  onClick={handleNext}
-                  disabled={!hasAnswered}
-                >
+                <Button onClick={handleNext} disabled={!hasAnswered}>
                   {isLastQuestion ? 'Submit Test' : 'Next Question'}
                 </Button>
               </div>

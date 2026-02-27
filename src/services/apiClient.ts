@@ -63,7 +63,20 @@ apiClient.interceptors.response.use(
 
     // ✅ Handle specific HTTP status codes
     switch (status) {
-      case 401:
+      case 401: {
+        // If we're on the public certificate verification page or the
+        // request itself is for the verification endpoint, bail out early.
+        // those calls use a separate client now, but this is a defensive
+        // measure in case any other public request accidentally hits the
+        // auth interceptor. We also avoid showing the toast/redirect when
+        // the user is already on /verify so they stay on the same page.
+        const isVerifyPath = currentPath.startsWith('/verify');
+        const isVerifyRequest = error.config?.url?.startsWith('/my-certificates/');
+        if (isVerifyPath || isVerifyRequest) {
+          // just reject the promise, component will handle the error state
+          return Promise.reject(error);
+        }
+
         // Prevent redirect loop if already on login page
         if (currentPath !== '/login') {
           toast.error('Session expired. Please log in again.');
@@ -80,12 +93,18 @@ apiClient.interceptors.response.use(
           window.location.href = '/login';
         }
         break;
+      }
 
       case 403:
         toast.error('You don’t have permission to perform this action.');
         break;
 
       case 404:
+        // Ignore quiz results 404
+        if (error.config?.url?.startsWith('/quiz/results/')) {
+          console.log('Ignored 404 for quiz results');
+          break;
+        }
         toast.error('Requested resource not found.');
         break;
 

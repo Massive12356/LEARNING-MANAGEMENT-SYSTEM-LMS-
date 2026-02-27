@@ -3,89 +3,102 @@ import { TodoItem } from '../types';
 import { todoService } from '../services/todoService';
 import toast from 'react-hot-toast';
 
-export const useTodos = (userId: string) => {
+interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export const useTodos = (userId: string, initialPage = 1, pageSize = 10) => {
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState<Pagination>({
+    total: 0,
+    page: initialPage,
+    limit: pageSize,
+    totalPages: 1,
+  });
 
-  // Load todos on mount and when userId changes
+  // Load todos on mount or when userId/page changes
   useEffect(() => {
     if (userId) {
-      loadTodos();
+      loadTodos(pagination.page, pagination.limit);
     }
-  }, [userId]);
+  }, [userId, pagination.page, pagination.limit]);
 
-  const loadTodos = () => {
+  const loadTodos = async (page = 1, limit = 10) => {
     setLoading(true);
     try {
-      const userTodos = todoService.getTodos(userId);
-      setTodos(userTodos);
-    } catch (error) {
-      console.error('Error loading todos:', error);
-      toast.error('Failed to load todos');
+      const response = await todoService.getTodos(page, limit); // call your paginated service
+      setTodos(response.todos);
+      setPagination(response.pagination);
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to load todos');
     } finally {
       setLoading(false);
     }
   };
 
-  const addTodo = (todoData: Omit<TodoItem, 'id' | 'createdAt' | 'updatedAt' | 'userId'>) => {
-    try {
-      const newTodo = todoService.addTodo(userId, todoData);
-      setTodos(prev => [newTodo, ...prev]);
-      return newTodo;
-    } catch (error) {
-      console.error('Error adding todo:', error);
-      toast.error('Failed to add todo');
-      return null;
-    }
+  const goToPage = (page: number) => {
+    setPagination(prev => ({ ...prev, page }));
   };
 
-  const updateTodo = (todoId: string, updates: Partial<TodoItem>) => {
-    try {
-      const updatedTodo = todoService.updateTodo(todoId, updates);
-      if (updatedTodo) {
-        setTodos(prev => 
-          prev.map(todo => 
-            todo.id === todoId ? updatedTodo : todo
-          )
-        );
-        return updatedTodo;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error updating todo:', error);
-      toast.error('Failed to update todo');
-      return null;
-    }
+  const setPageSize = (limit: number) => {
+    setPagination(prev => ({ ...prev, limit }));
   };
 
-  const deleteTodo = (todoId: string) => {
-    try {
-      const success = todoService.deleteTodo(todoId);
-      if (success) {
-        setTodos(prev => prev.filter(todo => todo.id !== todoId));
-        toast.success('Todo deleted');
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Error deleting todo:', error);
-      toast.error('Failed to delete todo');
-      return false;
-    }
-  };
+ const addTodo = async (
+   todoData: Omit<TodoItem, 'id' | 'createdAt' | 'updatedAt' | 'userId'>
+ ): Promise<TodoItem | null> => {
+   try {
+     const newTodo = await todoService.addTodo(todoData);
+     await loadTodos(pagination.page, pagination.limit); // 🔄 refresh from server
+     toast.success('Todo added');
+     return newTodo;
+   } catch (error: any) {
+     toast.error(error?.message || 'Failed to add todo');
+     return null;
+   }
+ };
 
-  const getStats = () => {
-    return todoService.getTodoStats(userId);
-  };
+ const updateTodo = async (
+   todoId: string,
+   updates: Partial<TodoItem>
+ ): Promise<TodoItem | null> => {
+   try {
+     const updatedTodo = await todoService.updateTodo(todoId, updates);
+     if (updatedTodo) {
+       await loadTodos(pagination.page, pagination.limit); // 🔄 refresh
+       toast.success('Todo updated');
+       return updatedTodo;
+     }
+     return null;
+   } catch (error: any) {
+     toast.error(error?.message || 'Failed to update todo');
+     return null;
+   }
+ };
 
-  const getOverdueTodos = () => {
-    return todoService.getOverdueTodos(userId);
-  };
+ const deleteTodo = async (todoId: string): Promise<boolean> => {
+   try {
+     const success = await todoService.deleteTodo(todoId);
+     if (success) {
+       await loadTodos(pagination.page, pagination.limit); // 🔄 refresh
+       return true;
+     }
+     return false;
+   } catch (error: any) {
+     toast.error(error?.message || 'Failed to delete todo');
+     return false;
+   }
+ };
 
-  const getTodosDueToday = () => {
-    return todoService.getTodosDueToday(userId);
-  };
 
+  // Optional: your other helpers remain unchanged
+  const getStats = () => todoService.getTodoStats(userId);
+  const getOverdueTodos = () => todoService.getOverdueTodos(userId);
+  const getTodosDueToday = () => todoService.getTodosDueToday(userId);
   const exportTodos = () => {
     try {
       const todosJson = todoService.exportTodos(userId);
@@ -105,16 +118,16 @@ export const useTodos = (userId: string) => {
     }
   };
 
-  const importTodos = (file: File) => {
-    return new Promise<{ success: boolean; imported: number; errors: string[] }>((resolve) => {
+  const importTodos = (file: File) =>
+    new Promise<{ success: boolean; imported: number; errors: string[] }>(resolve => {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = e => {
         try {
           const content = e.target?.result as string;
           const result = todoService.importTodos(userId, content);
-          
+
           if (result.success) {
-            loadTodos(); // Reload todos after import
+            loadTodos(); // reload after import
             toast.success(`Imported ${result.imported} todos`);
             if (result.errors.length > 0) {
               console.warn('Import warnings:', result.errors);
@@ -122,7 +135,7 @@ export const useTodos = (userId: string) => {
           } else {
             toast.error('Failed to import todos');
           }
-          
+
           resolve(result);
         } catch (error) {
           console.error('Error importing todos:', error);
@@ -136,7 +149,6 @@ export const useTodos = (userId: string) => {
       };
       reader.readAsText(file);
     });
-  };
 
   const clearAllTodos = () => {
     try {
@@ -157,6 +169,10 @@ export const useTodos = (userId: string) => {
   return {
     todos,
     loading,
+    pagination,
+    loadTodos,
+    goToPage,
+    setPageSize,
     addTodo,
     updateTodo,
     deleteTodo,
@@ -166,6 +182,5 @@ export const useTodos = (userId: string) => {
     exportTodos,
     importTodos,
     clearAllTodos,
-    refreshTodos: loadTodos
   };
 };

@@ -1,397 +1,411 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardHeader, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
-import { CheckCircleIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { ClockIcon } from '@heroicons/react/24/outline';
+import { QuizAnswerValue } from '../types';
 
-interface QuizQuestion {
+/* =======================
+   TYPES
+======================= */
+export interface QuizQuestion {
   id: string;
   question: string;
   type: 'multiple-choice' | 'short-text';
   options?: string[];
-  correctAnswer: string | string[];
+  correctAnswers?: string[];
   explanation?: string;
   points?: number;
 }
 
-interface QuizComponentProps {
-  questions: QuizQuestion[];
-  title?: string;
-  description?: string;
-  timeLimit?: number; // in minutes
-  passingScore?: number; // percentage
-  showExplanations?: boolean;
-  onSubmit: (answers: Record<string, string>, score: number) => void;
-  onComplete?: (passed: boolean, score: number) => void;
-  disabled?: boolean;
+export interface GradingResult {
+  score: number;
+  maxScore: number;
+  correct: boolean;
+  feedback?: string;
 }
 
+export interface QuizAttemptResult {
+  attemptNumber: number;
+  startedAt: string;
+  submittedAt: string;
+  status: string;
+  timeExpired: boolean;
+  totalScore: number;
+  maxScore: number;
+  percentage: string;
+  passed: boolean;
+  gradingResults: Record<string, GradingResult>;
+}
+
+export interface QuizResultAPI {
+  message: string;
+  quizTitle: string;
+  passingScore: number;
+  maxAttempts: number;
+  attemptsUsed: number;
+  bestScore: string;
+  passed: boolean;
+  quizQuestions: QuizQuestion[];
+  results: QuizAttemptResult[];
+}
+
+/* =======================
+   PROPS
+======================= */
+export interface QuizComponentProps {
+  quizContentId: string | number;
+  submissionId?: string;
+  questions: QuizQuestion[];
+  title?: string;
+  maxAttempts?: number;
+  description?: string;
+  timeLimit?: number;
+  quizPassingScore?: number;
+  showStartButton?: boolean;
+  disabled?: boolean;
+  onStartQuiz?: () => Promise<void>;
+  onSubmit: (answers: Record<string, QuizAnswerValue>) => void | Promise<void>;
+  onComplete?: (passed: boolean, score: number) => void;
+  result?: QuizResultAPI;
+}
+
+/* =======================
+   COMPONENT
+======================= */
 export const QuizComponent: React.FC<QuizComponentProps> = ({
+  quizContentId,
   questions,
   title = 'Knowledge Check',
   description,
   timeLimit,
-  passingScore = 70,
-  showExplanations = true,
+  quizPassingScore,
+  showStartButton = false,
+  disabled = false,
+  onStartQuiz,
   onSubmit,
   onComplete,
-  disabled = false
+  result,
 }) => {
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [hasStarted, setHasStarted] = useState(false);
+  const [answers, setAnswers] = useState<Record<string, QuizAnswerValue>>({});
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [showResults, setShowResults] = useState(false);
-  const [score, setScore] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState(timeLimit ? timeLimit * 60 : 0);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [openReview, setOpenReview] = useState<Record<string, boolean>>({});
+  const submitLockRef = useRef(false);
 
-  // Timer effect
+  /* =======================
+     RESET ON QUIZ CHANGE
+  ======================= */
   useEffect(() => {
-    if (timeLimit && timeRemaining > 0 && !showResults) {
-      const timer = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 1) {
-            handleSubmit();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    setHasStarted(false);
+    setAnswers({});
+    setCurrentQuestion(0);
+    setTimeRemaining(null);
+    submitLockRef.current = false;
+    setOpenReview({});
+  }, [quizContentId]);
 
-      return () => clearInterval(timer);
+  /* =======================
+     TIMER
+  ======================= */
+  useEffect(() => {
+    if (!hasStarted || !timeLimit || submitLockRef.current || timeRemaining === null) return;
+
+    if (timeRemaining <= 0) {
+      handleSubmit(true);
+      return;
     }
-  }, [timeLimit, timeRemaining, showResults]);
 
-  const handleAnswerChange = (questionId: string, answer: string) => {
-    if (disabled || isSubmitted) return;
-    
-    setAnswers(prev => ({
-      ...prev,
-      [questionId]: answer
-    }));
+    const timer = setInterval(() => {
+      setTimeRemaining(prev => (prev !== null ? prev - 1 : prev));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [hasStarted, timeRemaining, timeLimit]);
+
+  /* =======================
+     HANDLERS
+  ======================= */
+  const handleAnswerChange = (questionId: string, answer: QuizAnswerValue) => {
+    if (disabled || submitLockRef.current) return;
+    setAnswers(prev => ({ ...prev, [questionId]: answer }));
   };
 
-  const calculateScore = (): number => {
-    let correctCount = 0;
-    const totalPoints = questions.reduce((sum, q) => sum + (q.points || 1), 0);
-    let earnedPoints = 0;
-
-    questions.forEach(question => {
-      const userAnswer = answers[question.id];
-      const points = question.points || 1;
-      
-      if (question.type === 'multiple-choice') {
-        if (userAnswer === question.correctAnswer) {
-          correctCount++;
-          earnedPoints += points;
-        }
-      } else if (question.type === 'short-text') {
-        // Simple text comparison - in production, use more sophisticated matching
-        const correctAnswers = Array.isArray(question.correctAnswer) 
-          ? question.correctAnswer 
-          : [question.correctAnswer];
-        
-        if (correctAnswers.some(correct => 
-          userAnswer?.toLowerCase().trim() === correct.toLowerCase().trim()
-        )) {
-          correctCount++;
-          earnedPoints += points;
-        }
-      }
-    });
-
-    return Math.round((earnedPoints / totalPoints) * 100);
-  };
-
-  const handleSubmit = () => {
-    if (isSubmitted) return;
-
-    const finalScore = calculateScore();
-    setScore(finalScore);
-    setShowResults(true);
-    setIsSubmitted(true);
-
-    onSubmit(answers, finalScore);
-    
-    if (onComplete) {
-      onComplete(finalScore >= passingScore, finalScore);
+  const handleStart = async () => {
+    if (!onStartQuiz || isStarting) return;
+    try {
+      setIsStarting(true);
+      await onStartQuiz();
+      setHasStarted(true);
+      if (timeLimit) setTimeRemaining(timeLimit * 60);
+    } finally {
+      setIsStarting(false);
     }
   };
 
-  const handleNextQuestion = () => {
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(prev => prev + 1);
+  const handleSubmit = async (_auto = false) => {
+    if (submitLockRef.current || isSubmitting) return;
+    submitLockRef.current = true;
+    setIsSubmitting(true);
+
+    try {
+      await onSubmit(answers);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handlePrevQuestion = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(prev => prev - 1);
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  /* =======================
+     CALL ONCOMPLETE
+  ======================= */
+  useEffect(() => {
+    if (result?.results?.[0]) {
+      const attempt = result.results[0];
+      onComplete?.(attempt.passed, attempt.totalScore);
     }
-  };
+  }, [result]);
 
-  const formatTime = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
-
-  const getQuestionResult = (question: QuizQuestion): 'correct' | 'incorrect' | 'unanswered' => {
-    const userAnswer = answers[question.id];
-    if (!userAnswer) return 'unanswered';
-    
-    if (question.type === 'multiple-choice') {
-      return userAnswer === question.correctAnswer ? 'correct' : 'incorrect';
-    } else {
-      const correctAnswers = Array.isArray(question.correctAnswer) 
-        ? question.correctAnswer 
-        : [question.correctAnswer];
-      
-      return correctAnswers.some(correct => 
-        userAnswer.toLowerCase().trim() === correct.toLowerCase().trim()
-      ) ? 'correct' : 'incorrect';
-    }
-  };
-
-  const renderQuestion = (question: QuizQuestion, index: number) => {
-    const userAnswer = answers[question.id];
-    const isCurrentQuestion = index === currentQuestion;
-    const result = showResults ? getQuestionResult(question) : null;
-
+  /* =======================
+     EMPTY QUIZ
+  ======================= */
+  if (!questions || questions.length === 0) {
     return (
-      <Card key={question.id} className={!isCurrentQuestion && !showResults ? 'hidden' : ''}>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Question {index + 1} of {questions.length}
-            </h3>
-            {showResults && (
-              <div className="flex items-center space-x-2">
-                {result === 'correct' && (
-                  <CheckCircleIcon className="h-5 w-5 text-green-500" />
-                )}
-                {result === 'incorrect' && (
-                  <XCircleIcon className="h-5 w-5 text-red-500" />
-                )}
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {question.points || 1} point{(question.points || 1) !== 1 ? 's' : ''}
-                </span>
-              </div>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <p className="text-gray-900 dark:text-white font-medium">
-              {question.question}
-            </p>
-
-            {question.type === 'multiple-choice' && question.options && (
-              <div className="space-y-2">
-                {question.options.map((option, optionIndex) => {
-                  const isSelected = userAnswer === option;
-                  const isCorrect = option === question.correctAnswer;
-                  const showCorrectAnswer = showResults && isCorrect;
-                  const showIncorrectAnswer = showResults && isSelected && !isCorrect;
-
-                  return (
-                    <label
-                      key={optionIndex}
-                      className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
-                        disabled || isSubmitted ? 'cursor-not-allowed' : 'hover:bg-gray-50 dark:hover:bg-gray-800'
-                      } ${
-                        showCorrectAnswer 
-                          ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
-                          : showIncorrectAnswer
-                          ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
-                          : isSelected
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                          : 'border-gray-300 dark:border-gray-600'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name={`question-${question.id}`}
-                        value={option}
-                        checked={isSelected}
-                        onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                        disabled={disabled || isSubmitted}
-                        className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                      />
-                      <span className="text-gray-900 dark:text-white">{option}</span>
-                      {showCorrectAnswer && (
-                        <CheckCircleIcon className="ml-auto h-5 w-5 text-green-500" />
-                      )}
-                      {showIncorrectAnswer && (
-                        <XCircleIcon className="ml-auto h-5 w-5 text-red-500" />
-                      )}
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-
-            {question.type === 'short-text' && (
-              <div className="space-y-2">
-                <textarea
-                  value={userAnswer || ''}
-                  onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                  disabled={disabled || isSubmitted}
-                  placeholder="Enter your answer..."
-                  className={`w-full p-3 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    showResults && result === 'correct' 
-                      ? 'border-green-500'
-                      : showResults && result === 'incorrect'
-                      ? 'border-red-500'
-                      : 'border-gray-300 dark:border-gray-600'
-                  }`}
-                  rows={3}
-                />
-                {showResults && result !== 'correct' && (
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    <strong>Correct answer:</strong> {
-                      Array.isArray(question.correctAnswer) 
-                        ? question.correctAnswer.join(' or ')
-                        : question.correctAnswer
-                    }
-                  </div>
-                )}
-              </div>
-            )}
-
-            {showResults && showExplanations && question.explanation && (
-              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <h4 className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-1">
-                  Explanation:
-                </h4>
-                <p className="text-sm text-blue-800 dark:text-blue-300">
-                  {question.explanation}
-                </p>
-              </div>
-            )}
-          </div>
+      <Card>
+        <CardContent className="text-center py-6">
+          <p>No quiz questions available.</p>
         </CardContent>
       </Card>
-    );
-  };
-
-  if (showResults) {
-    const passed = score >= passingScore;
-    
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white text-center">
-              Quiz Results
-            </h2>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center space-y-4">
-              <div className={`text-6xl font-bold ${passed ? 'text-green-600' : 'text-red-600'}`}>
-                {score}%
-              </div>
-              <div className="space-y-2">
-                <p className={`text-lg font-medium ${passed ? 'text-green-600' : 'text-red-600'}`}>
-                  {passed ? 'Congratulations! You passed!' : 'You did not pass this time.'}
-                </p>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Passing score: {passingScore}%
-                </p>
-              </div>
-              {!passed && (
-                <p className="text-gray-600 dark:text-gray-400">
-                  Review the explanations below and try again when ready.
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Review Questions */}
-        <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Review Your Answers
-          </h3>
-          {questions.map((question, index) => renderQuestion(question, index))}
-        </div>
-      </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Quiz Header */}
+  /* =======================
+     RESULTS VIEW
+  ======================= */
+  if (result) {
+    const attempt = result.results?.[0];
+    const gradingResults = attempt?.gradingResults ?? {};
+
+    return (
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                {title}
-              </h2>
-              {description && (
-                <p className="text-gray-600 dark:text-gray-400 mt-2">
-                  {description}
-                </p>
-              )}
-            </div>
-            {timeLimit && timeRemaining > 0 && (
-              <div className="flex items-center space-x-2 text-orange-600">
-                <ClockIcon className="h-5 w-5" />
-                <span className="font-medium">{formatTime(timeRemaining)}</span>
-              </div>
-            )}
-          </div>
+          <h2 className="text-2xl font-bold">Quiz Results</h2>
+          <p className="text-gray-600">
+            {attempt?.passed ? 'You passed this quiz 🎉' : 'You did not pass this quiz'}
+          </p>
         </CardHeader>
-        <CardContent>
+
+        <CardContent className="space-y-6">
+          {/* SUMMARY */}
+          <div className="grid grid-cols-4 gap-4 text-center">
+            <div className="p-4 border rounded">
+              <p className="text-sm text-gray-500">Score</p>
+              <p className="text-xl font-bold">
+                {attempt?.totalScore ?? 0} / {attempt?.maxScore ?? 0}
+              </p>
+            </div>
+
+            <div className="p-4 border rounded">
+              <p className="text-sm text-gray-500">Percentage</p>
+              <p className="text-xl font-bold">{attempt?.percentage ?? 0}%</p>
+            </div>
+
+            <div className="p-4 border rounded">
+              <p className="text-sm text-gray-500">Passing Score</p>
+              <p className="text-xl font-bold">
+                {result?.passingScore ?? quizPassingScore ?? '—'}%
+              </p>
+            </div>
+
+            <div
+              className={`p-4 border rounded font-bold ${
+                attempt?.passed ? 'text-green-600' : 'text-red-600'
+              }`}
+            >
+              {attempt?.passed ? 'PASSED' : 'FAILED'}
+            </div>
+          </div>
+
+          {/* PER QUESTION REVIEW */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-              <span>{questions.length} question{questions.length !== 1 ? 's' : ''}</span>
-              <span>Passing score: {passingScore}%</span>
-            </div>
-            
-            {/* Progress Bar */}
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ 
-                  width: `${((currentQuestion + 1) / questions.length) * 100}%` 
-                }}
-              />
-            </div>
+            {questions.map(q => {
+              const grading = gradingResults[q.id];
+              const userAnswer = answers[q.id];
+              const correctAnswers = q.correctAnswers ?? [];
+              const isCorrect = grading?.correct;
+
+              return (
+                <div
+                  key={q.id}
+                  className={`border rounded p-4 transition-all duration-300 ${
+                    isCorrect ? 'border-green-400 bg-green-50' : 'border-red-400 bg-red-50'
+                  }`}
+                >
+                  <div className="flex justify-between items-center">
+                    <p className="font-medium">{q.question}</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setOpenReview(prev => ({
+                          ...prev,
+                          [q.id]: !prev[q.id],
+                        }))
+                      }
+                    >
+                      {openReview[q.id] ? 'Hide Review' : 'Review'}
+                    </Button>
+                  </div>
+
+                  <p
+                    className={`mt-2 font-semibold ${
+                      isCorrect ? 'text-green-700' : 'text-red-700'
+                    }`}
+                  >
+                    {isCorrect ? '✔ Correct' : '✖ Incorrect'}
+                  </p>
+
+                  {openReview[q.id] && (
+                    <div className="mt-3 space-y-2 animate-fadeIn">
+                      <p className="text-sm">
+                        <strong>Your answer:</strong>{' '}
+                        <span className={isCorrect ? 'text-green-700' : 'text-red-700'}>
+                          {userAnswer || '—'}
+                        </span>
+                      </p>
+
+                      <p className="text-sm">
+                        <strong>Correct answer(s):</strong>{' '}
+                        <span className="text-green-700">{correctAnswers.join(', ')}</span>
+                      </p>
+
+                      {grading?.feedback && (
+                        <p className="text-sm text-gray-600">{grading.feedback}</p>
+                      )}
+
+                      {q.explanation && (
+                        <p className="text-sm text-gray-500 italic">{q.explanation}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
+    );
+  }
 
-      {/* Current Question */}
-      {renderQuestion(questions[currentQuestion], currentQuestion)}
+  /* =======================
+     START VIEW
+  ======================= */
+  if (showStartButton && !hasStarted) {
+    return (
+      <Card>
+        <CardHeader>
+          <h2 className="text-2xl font-bold">{title}</h2>
+          {description && <p>{description}</p>}
+        </CardHeader>
+        <CardContent className="flex justify-center">
+          <Button onClick={handleStart} disabled={isStarting}>
+            {isStarting ? 'Starting...' : 'Start Quiz'}
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
-      {/* Navigation */}
-      <div className="flex items-center justify-between">
+  /* =======================
+     QUIZ VIEW
+  ======================= */
+  const question = questions[currentQuestion];
+  const userAnswer = answers[question.id];
+
+  return (
+    <div>
+      <Card>
+        <CardHeader className="flex justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">{title}</h2>
+            {description && <p>{description}</p>}
+          </div>
+          {timeRemaining !== null && (
+            <div className="flex items-center text-orange-600 gap-2">
+              <ClockIcon className="h-5 w-5" />
+              {formatTime(timeRemaining)}
+            </div>
+          )}
+        </CardHeader>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          Question {currentQuestion + 1} of {questions.length}
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4">{question.question}</p>
+
+          {question.type === 'multiple-choice' &&
+            question.options?.map(option => {
+              const isSelected = userAnswer === option;
+
+              return (
+                <label
+                  key={option}
+                  className={`flex items-center gap-2 mb-2 p-2 rounded cursor-pointer transition ${
+                    isSelected ? 'bg-blue-50 border border-blue-400' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name={question.id}
+                    checked={isSelected}
+                    onChange={() => handleAnswerChange(question.id, option)}
+                  />
+                  {option}
+                </label>
+              );
+            })}
+
+          {question.type === 'short-text' && (
+            <input
+              type="text"
+              value={(userAnswer as string) || ''}
+              onChange={e => handleAnswerChange(question.id, e.target.value)}
+              className="border p-2 w-full"
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-between mt-4">
         <Button
           variant="outline"
-          onClick={handlePrevQuestion}
-          disabled={currentQuestion === 0 || disabled}
+          disabled={currentQuestion === 0}
+          onClick={() => setCurrentQuestion(p => p - 1)}
         >
           Previous
         </Button>
 
-        <div className="flex items-center space-x-4">
-          {currentQuestion < questions.length - 1 ? (
-            <Button
-              onClick={handleNextQuestion}
-              disabled={disabled}
-            >
-              Next Question
-            </Button>
-          ) : (
-            <Button
-              onClick={handleSubmit}
-              disabled={disabled || Object.keys(answers).length === 0}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              Submit Quiz
-            </Button>
-          )}
-        </div>
+        {currentQuestion < questions.length - 1 ? (
+          <Button onClick={() => setCurrentQuestion(p => p + 1)}>Next</Button>
+        ) : (
+          <Button
+            className="bg-green-600"
+            onClick={() => handleSubmit(false)}
+            disabled={Object.keys(answers).length === 0 || isSubmitting}
+          >
+            {isSubmitting ? 'Submitting...' : 'Submit Quiz'}
+          </Button>
+        )}
       </div>
     </div>
   );

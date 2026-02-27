@@ -13,7 +13,7 @@ interface TextAreaProps {
   error?: string;
 }
 
-export const TextArea: React.FC<TextAreaProps> = ({
+export const TextArea: React.FC<TextAreaProps> = ({ 
   label,
   value,
   onChange,
@@ -25,6 +25,7 @@ export const TextArea: React.FC<TextAreaProps> = ({
   helpText,
   error,
 }) => {
+  
   return (
     <div className={className}>
       {label && (

@@ -152,6 +152,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           await (onUpload as (files: UploadResult[]) => Promise<void> | void)(uploadResults);
         } else {
           // Convert files to UploadResult format without actually uploading
+          // Convert files to UploadResult format without actually uploading
           const mockResults: UploadResult[] = validFiles.map(file => ({
             id: `temp_${Date.now()}_${Math.random()}`,
             url: URL.createObjectURL(file),
@@ -159,10 +160,11 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
             filename: file.name,
             originalName: file.name,
             size: file.size,
-            type: file.type
+            type: file.type,
+            originalFile: file, // <-- REQUIRED FIX
           }));
-          
-          await (onUpload as (files: UploadResult[]) => Promise<void> | void)(mockResults);
+
+          await(onUpload as (files: UploadResult[]) => Promise<void> | void)(mockResults);
         }
       } catch (error) {
         setErrors(prev => [...prev, 'Upload failed. Please try again.']);

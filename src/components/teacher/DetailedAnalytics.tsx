@@ -1,93 +1,74 @@
 import React, { useState, useEffect } from 'react';
+import { useAuthStore } from '../../stores/authStore';
 import { mockApi } from '../../services/mockApi';
-import { 
+import {
   ChartBarIcon,
   UserGroupIcon,
   BookOpenIcon,
   ClockIcon,
-  TrophyIcon
+  TrophyIcon,
 } from '@heroicons/react/24/outline';
-
-interface AnalyticsData {
-  totalStudents: number;
-  activeStudents: number;
-  completionRate: number;
-  avgTimeSpent: number;
-  certificatesIssued: number;
-  studentEngagement: number;
-  weeklyActivity: Array<{
-    week: string;
-    enrollments: number;
-    completions: number;
-    activeUsers: number;
-  }>;
-  popularCourses: Array<{
-    courseId: string;
-    title: string;
-    enrollments: number;
-    completionRate: number;
-  }>;
-}
+import {
+  DashboardAnalyticsData,
+  DashboardAnalyticsResponse,
+  dashboardAnalyticsResponse,
+  PopularCourse,
+} from '../../types';
+import { toast } from 'react-hot-toast';
+import { courseService } from '../../services/courseService';
+import { EmptyState } from '../ui';
 
 export const DetailedAnalytics: React.FC = () => {
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const { user } = useAuthStore();
+  const [analyticsData, setAnalyticsData] = useState<DashboardAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadAnalytics();
-  }, []);
+  const [dashboardStats, setDashboardStats] = useState<dashboardAnalyticsResponse | null>(null);
+  const [popularCourses, setPopularCourses] = useState<PopularCourse[]>([]);
 
   const loadAnalytics = async () => {
     try {
       setLoading(true);
-      
-      // Mock analytics data - in a real app, this would come from an API
-      const mockData: AnalyticsData = {
-        totalStudents: 156,
-        activeStudents: 89,
-        completionRate: 78.5,
-        avgTimeSpent: 142,
-        certificatesIssued: 122,
-        studentEngagement: 85,
-        weeklyActivity: [
-          { week: 'Week 1', enrollments: 12, completions: 3, activeUsers: 45 },
-          { week: 'Week 2', enrollments: 8, completions: 5, activeUsers: 52 },
-          { week: 'Week 3', enrollments: 15, completions: 7, activeUsers: 61 },
-          { week: 'Week 4', enrollments: 10, completions: 9, activeUsers: 58 },
-        ],
-        popularCourses: [
-          { courseId: 'course-1', title: 'Complete React Development', enrollments: 67, completionRate: 82.1 },
-          { courseId: 'course-2', title: 'Advanced TypeScript', enrollments: 45, completionRate: 71.3 },
-          { courseId: 'course-3', title: 'JavaScript Fundamentals', enrollments: 89, completionRate: 92.7 },
-        ]
-      };
-
-      setAnalyticsData(mockData);
-    } catch (error) {
-      console.error('Failed to load analytics:', error);
+      const response = await courseService.loadDashStat();
+      setAnalyticsData(response);
+      return response;
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to load analytics data');
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  const loadDashStats = async () => {
+    if (!user) {
+      toast.error('Please login to continue');
+    }
 
-  if (!analyticsData) {
-    return (
-      <div className="text-center py-8">
-        <ChartBarIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-        <p className="text-gray-600 dark:text-gray-400">
-          No analytics data available
-        </p>
-      </div>
-    );
-  }
+    try {
+      const response = await courseService.loadDashboardAnalytics();
+      setDashboardStats(response);
+      return response;
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to load dashboard statistics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadPopularCourses = async () => {
+    try {
+      const response = await courseService.PopularCourses();
+      setPopularCourses(response);
+      return response;
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to load popular courses');
+    }
+  };
+
+  useEffect(() => {
+    loadAnalytics();
+    loadDashStats();
+    loadPopularCourses();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -99,12 +80,15 @@ export const DetailedAnalytics: React.FC = () => {
               <UserGroupIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Total Students
-              </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {analyticsData.totalStudents}
-              </p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Students</p>
+
+              {loading ? (
+                <div className="h-4 w-24 rounded-md bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+              ) : (
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {dashboardStats?.totalStudents ?? 0}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -118,9 +102,14 @@ export const DetailedAnalytics: React.FC = () => {
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                 Completion Rate
               </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {analyticsData.completionRate.toFixed(1)}%
-              </p>
+
+              {loading ? (
+                <div className="h-4 w-24 rounded-md bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+              ) : (
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {dashboardStats?.completionRate?.toFixed(1) ?? 0}%
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -134,9 +123,13 @@ export const DetailedAnalytics: React.FC = () => {
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                 Avg Time Spent (hrs)
               </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {Math.round(analyticsData.avgTimeSpent / 60)}
-              </p>
+              {loading ? (
+                <div className="h-4 w-24 rounded-md bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+              ) : (
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {Math.round((dashboardStats?.averageTimeSpentHours ?? 0) / 60)}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -144,40 +137,69 @@ export const DetailedAnalytics: React.FC = () => {
 
       {/* Weekly Activity Chart */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-6">
-          Weekly Activity
-        </h3>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-6">Weekly Activity</h3>
         <div className="space-y-4">
-          {analyticsData.weeklyActivity.map((week, index) => (
-            <div key={index} className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="font-medium text-gray-900 dark:text-white">{week.week}</span>
-                <span className="text-gray-600 dark:text-gray-400">
-                  {week.activeUsers} active, {week.enrollments} new, {week.completions} completed
-                </span>
-              </div>
-              <div className="flex h-8 space-x-1">
-                <div 
-                  className="bg-blue-500 rounded-l flex items-center justify-center text-xs text-white"
-                  style={{ width: `${(week.activeUsers / 100) * 100}%` }}
-                >
-                  {week.activeUsers > 10 && week.activeUsers}
-                </div>
-                <div 
-                  className="bg-green-500 flex items-center justify-center text-xs text-white"
-                  style={{ width: `${(week.enrollments / 20) * 100}%` }}
-                >
-                  {week.enrollments > 5 && week.enrollments}
-                </div>
-                <div 
-                  className="bg-purple-500 rounded-r flex items-center justify-center text-xs text-white"
-                  style={{ width: `${(week.completions / 15) * 100}%` }}
-                >
-                  {week.completions > 3 && week.completions}
-                </div>
-              </div>
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <svg
+                className="animate-spin h-10 w-10 text-blue-600 dark:text-blue-400"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                ></path>
+              </svg>
             </div>
-          ))}
+          ) : analyticsData?.dailyBreakdown.length === 0 ? (
+            <EmptyState
+              title="No  Weekly Activity Yet"
+              description="Student Weekly activities will appear here once learners start interacting with your courses."
+            />
+          ) : (
+            analyticsData?.dailyBreakdown?.map((day, index) => (
+              <div key={index} className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-gray-900 dark:text-white">{day?.date}</span>
+                  <span className="text-gray-600 dark:text-gray-400">
+                    {day?.activeUsers} active, {day?.newEnrollments} new, {day?.completions}{' '}
+                    completed
+                  </span>
+                </div>
+                <div className="flex h-8 space-x-1">
+                  <div
+                    className="bg-blue-500 rounded-l flex items-center justify-center text-xs text-white"
+                    style={{ width: `${(day?.activeUsers / 100) * 100}%` }}
+                  >
+                    {day?.activeUsers > 10 && day?.activeUsers}
+                  </div>
+                  <div
+                    className="bg-green-500 flex items-center justify-center text-xs text-white"
+                    style={{ width: `${(day?.newEnrollments / 20) * 100}%` }}
+                  >
+                    {day?.newEnrollments > 5 && day?.newEnrollments}
+                  </div>
+                  <div
+                    className="bg-purple-500 rounded-r flex items-center justify-center text-xs text-white"
+                    style={{ width: `${(day?.completions / 15) * 100}%` }}
+                  >
+                    {day?.completions > 3 && day?.completions}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
         <div className="flex items-center justify-center mt-4 space-x-4 text-xs text-gray-600 dark:text-gray-400">
           <div className="flex items-center">
@@ -197,28 +219,58 @@ export const DetailedAnalytics: React.FC = () => {
 
       {/* Popular Courses */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-6">
-          Popular Courses
-        </h3>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-6">Popular Courses</h3>
         <div className="space-y-4">
-          {analyticsData.popularCourses.map((course, index) => (
-            <div key={index} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <div className="flex-1">
-                <h4 className="font-medium text-gray-900 dark:text-white">{course.title}</h4>
-                <div className="flex items-center space-x-4 mt-1 text-sm text-gray-600 dark:text-gray-400">
-                  <span>{course.enrollments} enrolled</span>
-                  <span>•</span>
-                  <span>{course.completionRate.toFixed(1)}% completion</span>
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <svg
+                className="animate-spin h-10 w-10 text-blue-600 dark:text-blue-400"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                ></path>
+              </svg>
+            </div>
+          ) : popularCourses.length === 0 ? (
+            <EmptyState title="No Popular Courses" description="No popular courses found." />
+          ) : (
+            popularCourses.map((course, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+              >
+                <div className="flex-1">
+                  <h4 className="font-medium text-gray-900 dark:text-white">
+                    {course?.courseName ?? 'N/A'}
+                  </h4>
+                  <div className="flex items-center space-x-4 mt-1 text-sm text-gray-600 dark:text-gray-400">
+                    <span>{course?.enrolledStudents ?? 0} enrolled</span>
+                    <span>•</span>
+                    <span>{course?.completionRate.toFixed(1)}% completion</span>
+                  </div>
+                </div>
+                <div className="w-24 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full"
+                    style={{ width: `${course?.completionRate ?? 0}%` }}
+                  />
                 </div>
               </div>
-              <div className="w-24 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full" 
-                  style={{ width: `${course.completionRate}%` }}
-                />
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>

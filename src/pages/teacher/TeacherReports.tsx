@@ -1,93 +1,74 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuthStore } from '../../stores/authStore';
 import { Button } from '../../components/ui/Button';
+import { Card, CardHeader, CardContent } from '../../components/ui/Card';
+import { Input } from '../../components/ui/Input';
 import {
   ChartBarIcon,
-  ArrowDownTrayIcon,
+  UserGroupIcon,
   AcademicCapIcon,
-  UsersIcon,
-  ClockIcon,
-  TrophyIcon,
-  ArrowTrendingUpIcon,
-  ArrowUpIcon,
-  ArrowDownIcon
+  ArrowDownTrayIcon,
+  CalendarIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  Legend
-} from 'recharts';
-import { format } from 'date-fns';
-
-// Mock data for charts
-const performanceData = [
-  { name: 'Week 1', completion: 65, engagement: 45 },
-  { name: 'Week 2', completion: 72, engagement: 55 },
-  { name: 'Week 3', completion: 68, engagement: 60 },
-  { name: 'Week 4', completion: 85, engagement: 75 },
-  { name: 'Week 5', completion: 82, engagement: 70 },
-  { name: 'Week 6', completion: 90, engagement: 85 },
-];
-
-const courseDistributionData = [
-  { name: 'Web Dev', students: 120 },
-  { name: 'Data Science', students: 85 },
-  { name: 'UI/UX', students: 65 },
-  { name: 'Mobile Dev', students: 45 },
-];
+import { courseService } from '../../services/courseService';
+import toast from 'react-hot-toast';
 
 export const TeacherReports: React.FC = () => {
+  const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState('month');
-
-  const loadReportData = useCallback(async () => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setLoading(false);
-  }, []);
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [timeRange, setTimeRange] = useState('7d');
 
   useEffect(() => {
-    loadReportData();
-  }, [loadReportData]);
+    const loadAnalytics = async () => {
+      try {
+        const data = await courseService.loadTeacherAnalytics();
+        setAnalyticsData(data);
+      } catch (error: any) {
+        console.error('Failed to load analytics:', error);
+        toast.error(error?.message ?? 'Failed to load teacher analytics');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAnalytics();
+  }, []);
 
   const stats = [
     {
-      name: 'Total Students',
-      value: '315',
-      change: '+12%',
-      trend: 'up',
-      icon: UsersIcon,
-      color: 'from-blue-500 to-indigo-600'
+      name: 'Total Revenue',
+      value: `$${analyticsData?.totalRevenue || 0}`,
+      change: '+12.5%',
+      changeType: 'increase',
+      icon: ChartBarIcon,
+      className: 'bg-gradient-to-br from-blue-600 to-indigo-700'
+    },
+    {
+      name: 'Active Enrollments',
+      value: analyticsData?.activeEnrollments || 0,
+      change: '+8.2%',
+      changeType: 'increase',
+      icon: UserGroupIcon,
+      className: 'bg-gradient-to-br from-emerald-500 to-teal-600'
     },
     {
       name: 'Course Completion',
-      value: '85%',
-      change: '+5%',
-      trend: 'up',
+      value: `${analyticsData?.courseCompletionRate || 0}%`,
+      change: '+4.1%',
+      changeType: 'increase',
       icon: AcademicCapIcon,
-      color: 'from-emerald-500 to-teal-600'
+      className: 'bg-gradient-to-br from-violet-600 to-purple-700'
     },
     {
-      name: 'Avg. Engagement',
-      value: '4.2h',
-      change: '-2%',
-      trend: 'down',
-      icon: ClockIcon,
-      color: 'from-purple-500 to-fuchsia-600'
-    },
-    {
-      name: 'Certificates Issued',
-      value: '124',
-      change: '+18%',
-      trend: 'up',
-      icon: TrophyIcon,
-      color: 'from-amber-500 to-orange-600'
+      name: 'Student Satisfaction',
+      value: '4.8/5',
+      change: '+0.2',
+      changeType: 'increase',
+      icon: CalendarIcon,
+      className: 'bg-gradient-to-br from-amber-500 to-orange-600'
     }
   ];
 
@@ -100,45 +81,33 @@ export const TeacherReports: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8 pb-10">
+    <div className="space-y-10 pb-10">
       {/* Header - Taller & Bolder */}
       <div className="relative overflow-hidden rounded-3xl bg-slate-900 shadow-2xl">
         {/* Decorative Background Elements */}
-        <div className="absolute top-0 right-0 -mt-20 -mr-20 h-96 w-96 rounded-full bg-indigo-500/20 blur-3xl"></div>
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 h-96 w-96 rounded-full bg-purple-500/20 blur-3xl"></div>
         <div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-80 w-80 rounded-full bg-blue-500/20 blur-3xl"></div>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-full w-full bg-[url('/grid-pattern.svg')] opacity-10"></div>
 
         <div className="relative p-10 md:p-12">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
             <div className="space-y-4">
-              <div className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-indigo-200 text-sm font-medium">
+              <div className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-purple-200 text-sm font-medium">
                 <ChartBarIcon className="h-4 w-4 mr-2" />
-                <span>Analytics & Insights</span>
+                <span>Advanced Analytics</span>
               </div>
               <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight">
-                Reports
+                Reports & Performance
               </h1>
               <p className="text-slate-300 text-lg max-w-xl leading-relaxed">
-                Track student progress, course engagement, and performance metrics.
+                Track your course performance, student engagement, and revenue growth in real-time.
               </p>
             </div>
+
             <div className="flex flex-col sm:flex-row gap-4">
-              <select
-                value={timeRange}
-                onChange={(e) => setTimeRange(e.target.value)}
-                className="px-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-white/30"
-              >
-                <option value="week" className="text-gray-900">Last Week</option>
-                <option value="month" className="text-gray-900">Last Month</option>
-                <option value="quarter" className="text-gray-900">Last Quarter</option>
-                <option value="year" className="text-gray-900">Last Year</option>
-              </select>
-              <Button
-                variant="primary"
-                className="bg-white text-slate-900 hover:bg-gray-100 border-none shadow-lg shadow-white/10"
-              >
-                <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
-                Export Report
+              <Button className="h-14 px-8 text-lg bg-white/10 hover:bg-white/20 text-white border-white/10 backdrop-blur-md rounded-2xl">
+                <ArrowDownTrayIcon className="h-6 w-6 mr-2" />
+                Export Data
               </Button>
             </div>
           </div>
@@ -150,219 +119,148 @@ export const TeacherReports: React.FC = () => {
         {stats.map((stat) => (
           <div
             key={stat.name}
-            className={`relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br ${stat.color} shadow-lg transform hover:scale-[1.02] transition-all duration-300`}
+            className={`relative overflow-hidden rounded-3xl p-6 shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl ${stat.className}`}
           >
-            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-2xl"></div>
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
+            <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10 blur-2xl"></div>
+
+            <div className="relative flex flex-col h-full justify-between">
+              <div className="flex justify-between items-start">
+                <div className="p-3 rounded-2xl bg-white/20 backdrop-blur-sm">
                   <stat.icon className="h-6 w-6 text-white" />
                 </div>
-                <div className={`flex items-center px-2 py-1 rounded-lg text-xs font-bold bg-white/20 backdrop-blur-sm text-white`}>
-                  {stat.trend === 'up' ? (
-                    <ArrowUpIcon className="h-3 w-3 mr-1" />
-                  ) : (
-                    <ArrowDownIcon className="h-3 w-3 mr-1" />
-                  )}
-                  {stat.change}
+                <div className="text-right">
+                  <p className="text-3xl font-bold text-white tracking-tight">{stat.value}</p>
+                  <p className={`text-xs font-bold mt-1 ${stat.changeType === 'increase' ? 'text-emerald-300' : 'text-rose-300'}`}>
+                    {stat.change}
+                  </p>
                 </div>
               </div>
-              <p className="text-sm font-medium text-white/80">{stat.name}</p>
-              <h3 className="text-3xl font-bold text-white mt-1">{stat.value}</h3>
+              <div className="mt-6">
+                <p className="text-white/80 text-sm font-medium">{stat.name}</p>
+                <p className="text-white/60 text-xs mt-1">v.s previous period</p>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Engagement Chart */}
-        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-8">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                Student Engagement
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Weekly completion and engagement rates
-              </p>
-            </div>
-            <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-              <ArrowTrendingUpIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-          </div>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={performanceData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                <XAxis
-                  dataKey="name"
-                  stroke="#9CA3AF"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#9CA3AF"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `${value}%`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#fff',
-                    borderRadius: '12px',
-                    border: 'none',
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
-                  }}
-                />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="completion"
-                  name="Completion Rate"
-                  stroke="#4F46E5"
-                  strokeWidth={3}
-                  dot={{ r: 4, strokeWidth: 2 }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="engagement"
-                  name="Engagement Score"
-                  stroke="#10B981"
-                  strokeWidth={3}
-                  dot={{ r: 4, strokeWidth: 2 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Analytics Content */}
+        <div className="lg:col-span-2 space-y-8">
+          <Card className="rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <CardHeader className="p-8 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">Revenue Overview</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Monthly earnings and growth trends</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={timeRange}
+                    onChange={(e) => setTimeRange(e.target.value)}
+                    className="px-4 py-2 bg-white dark:bg-gray-900 border-0 rounded-xl text-sm font-medium shadow-sm focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="7d">Last 7 Days</option>
+                    <option value="30d">Last 30 Days</option>
+                    <option value="90d">Last 90 Days</option>
+                  </select>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-8">
+              <div className="h-80 flex items-center justify-center bg-gray-50 dark:bg-gray-900/50 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-800">
+                <div className="text-center">
+                  <ChartBarIcon className="h-12 w-12 text-gray-300 dark:text-gray-700 mx-auto mb-4" />
+                  <p className="text-gray-500 dark:text-gray-400 font-medium">Interactive Chart Integration Coming Soon</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Connecting to D3.js real-time analytics</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* Course Distribution */}
-        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-8">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                Course Enrollment
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Student distribution across top courses
-              </p>
-            </div>
-            <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
-              <UsersIcon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-            </div>
-          </div>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={courseDistributionData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" horizontal={true} vertical={false} />
-                <XAxis type="number" hide />
-                <YAxis
-                  dataKey="name"
-                  type="category"
-                  stroke="#4B5563"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  width={100}
-                />
-                <Tooltip
-                  cursor={{ fill: 'transparent' }}
-                  contentStyle={{
-                    backgroundColor: '#fff',
-                    borderRadius: '12px',
-                    border: 'none',
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
-                  }}
-                />
-                <Bar
-                  dataKey="students"
-                  name="Students"
-                  fill="#8B5CF6"
-                  radius={[0, 4, 4, 0]}
-                  barSize={32}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Activity Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-        <div className="p-8 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-              Recent Student Activity
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Latest actions and progress updates from your students
-            </p>
-          </div>
-          <Button variant="outline" className="rounded-xl">
-            View All Activity
-          </Button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-900/50">
-              <tr>
-                <th scope="col" className="px-8 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Student
-                </th>
-                <th scope="col" className="px-8 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Course
-                </th>
-                <th scope="col" className="px-8 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Action
-                </th>
-                <th scope="col" className="px-8 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Date
-                </th>
-                <th scope="col" className="px-8 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {[1, 2, 3, 4, 5].map((item) => (
-                <tr key={item} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <td className="px-8 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
-                        S{item}
+          <Card className="rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <CardHeader className="p-8 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Recent Activities</h3>
+              <Button variant="outline" size="sm" className="rounded-xl">View All</Button>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                {analyticsData?.recentActivities?.map((activity: any, index: number) => (
+                  <div key={index} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors flex items-center justify-between group">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center border border-blue-100 dark:border-blue-800/30">
+                        <UserGroupIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                       </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-semibold text-gray-900 dark:text-white">Student {item}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">student{item}@example.com</div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-900 dark:text-white">{activity.message}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{activity.time}</p>
                       </div>
                     </div>
-                  </td>
-                  <td className="px-8 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white font-medium">Advanced Web Development</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Module {item}</div>
-                  </td>
-                  <td className="px-8 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-600 dark:text-gray-300">Completed Quiz {item}</span>
-                  </td>
-                  <td className="px-8 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {format(new Date(), 'MMM dd, yyyy')}
-                  </td>
-                  <td className="px-8 py-4 whitespace-nowrap">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800">
-                      Completed
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    <ChevronRightIcon className="h-5 w-5 text-gray-300 group-hover:text-blue-500 transition-colors" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Sidebar Insights */}
+        <div className="space-y-8">
+          <Card className="rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden bg-gradient-to-br from-indigo-900 to-slate-900 text-white border-0">
+            <CardContent className="p-8">
+              <SparklesIcon className="h-10 w-10 text-yellow-400 mb-6" />
+              <h3 className="text-xl font-bold mb-3">Teaching Insight</h3>
+              <p className="text-indigo-100 leading-relaxed text-sm">
+                Your course "Advanced Web Development" has seen a 24% spike in engagement this week. Releasing a supplemental module could further increase retention.
+              </p>
+              <Button className="w-full mt-8 bg-white text-indigo-900 hover:bg-indigo-50 border-0 rounded-2xl font-bold">
+                View Recommendations
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <CardHeader className="p-8 border-b border-gray-100 dark:border-gray-700">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Top Performing Courses</h3>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                {analyticsData?.topCourses?.map((course: any, index: number) => (
+                  <div key={index} className="p-6">
+                    <div className="flex justify-between items-center mb-3">
+                      <p className="text-sm font-bold text-gray-900 dark:text-white truncate pr-4">{course.title}</p>
+                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">{course.enrolled} Enrolled</span>
+                    </div>
+                    <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-blue-500 to-indigo-600 h-full rounded-full transition-all duration-1000"
+                        style={{ width: `${(course.enrolled / (analyticsData?.activeEnrollments || 1)) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
   );
 };
+
+// Helper component for the insight icon
+const SparklesIcon = ({ className }: { className?: string }) => (
+  <svg
+    className={className}
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-7.714 2.143L11 21l-2.286-6.857L1 12l7.714-2.143L11 3z"
+    />
+  </svg>
+);

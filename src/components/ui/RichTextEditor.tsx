@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import {
   BoldIcon,
   ItalicIcon,
@@ -14,6 +15,7 @@ import {
 import { Button } from './Button';
 import { Modal } from './Modal';
 import { Input } from './Input';
+import { createSanitizedEditorChangeHandler } from '../../utils/sanitization';
 
 interface RichTextEditorProps {
   value: string;
@@ -175,7 +177,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       const newValue = editorRef.current.innerHTML;
       valueRef.current = newValue;
       skipNextInputRef.current = true;
-      onChange(newValue);
+      // Use sanitized change handler
+      const sanitizedHandler = createSanitizedEditorChangeHandler(onChange);
+      sanitizedHandler(newValue);
     }
     
     // Restore cursor position after a short delay to allow DOM updates
@@ -186,7 +190,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     if (editorRef.current && !isComposingRef.current && !skipNextInputRef.current) {
       const newValue = editorRef.current.innerHTML;
       valueRef.current = newValue;
-      onChange(newValue);
+      // Use sanitized change handler
+      const sanitizedHandler = createSanitizedEditorChangeHandler(onChange);
+      sanitizedHandler(newValue);
     }
     skipNextInputRef.current = false;
   }, [onChange]);
@@ -284,7 +290,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                   const newValue = editorRef.current.innerHTML;
                   if (newValue !== valueRef.current) {
                     valueRef.current = newValue;
-                    onChange(newValue);
+                    // Use sanitized change handler
+                    const sanitizedHandler = createSanitizedEditorChangeHandler(onChange);
+                    sanitizedHandler(newValue);
                   }
                 }
               }, 0);
@@ -314,7 +322,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               const newValue = editorRef.current.innerHTML;
               if (newValue !== valueRef.current) {
                 valueRef.current = newValue;
-                onChange(newValue);
+                // Use sanitized change handler
+                const sanitizedHandler = createSanitizedEditorChangeHandler(onChange);
+                sanitizedHandler(newValue);
               }
             }
           }, 0);
@@ -393,14 +403,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   }, [isPreview]);
 
   const cleanHTML = useCallback((html: string) => {
-    // Basic HTML sanitization - in production, use a proper sanitization library
-    return html
-      .replace(/<script[^>]*>.*?<\/script>/gi, '')
-      .replace(/<style[^>]*>.*?<\/style>/gi, '')
-      .replace(/on\w+="[^"]*"/gi, '')
-      // Remove dir attributes to prevent RTL issues
-      .replace(/\sdir="[^"]*"/gi, '')
-      .replace(/\sdir='[^']*'/gi, '');
+    // Use DOMPurify for proper HTML sanitization
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: ['p', 'ul', 'li', 'strong', 'em', 'a', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'code'],
+      ALLOWED_ATTR: ['href', 'target'],
+    });
   }, []);
 
   // Initialize editor content on mount
@@ -494,7 +501,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       const newValue = editorRef.current.innerHTML;
       valueRef.current = newValue;
       skipNextInputRef.current = true;
-      onChange(newValue);
+      // Use sanitized change handler
+      const sanitizedHandler = createSanitizedEditorChangeHandler(onChange);
+      sanitizedHandler(newValue);
     }
   }, [onChange]);
 
@@ -581,7 +590,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       const newValue = editorRef.current.innerHTML;
       valueRef.current = newValue;
       skipNextInputRef.current = true;
-      onChange(newValue);
+      // Use sanitized change handler
+      const sanitizedHandler = createSanitizedEditorChangeHandler(onChange);
+      sanitizedHandler(newValue);
     }
   }, [onChange]);
 
@@ -862,13 +873,11 @@ export const RichTextDisplay: React.FC<RichTextDisplayProps> = ({
   className = ''
 }) => {
   const cleanHTML = (html: string) => {
-    return html
-      .replace(/<script[^>]*>.*?<\/script>/gi, '')
-      .replace(/<style[^>]*>.*?<\/style>/gi, '')
-      .replace(/on\w+="[^"]*"/gi, '')
-      // Remove dir attributes to prevent RTL issues
-      .replace(/\sdir="[^"]*"/gi, '')
-      .replace(/\sdir='[^']*'/gi, '');
+    // Use DOMPurify for proper HTML sanitization
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: ['p', 'ul', 'li', 'strong', 'em', 'a', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'code'],
+      ALLOWED_ATTR: ['href', 'target'],
+    });
   };
 
   return (

@@ -1,9 +1,32 @@
 export type UserRole = 'student' | 'teacher' | 'admin' | 'superuser';
 export type UserStatus = 'active' | 'pending';
 
-export type CourseStatus = 'draft' | 'live';
+export type CourseStatus = 'draft' | 'published' ;
 export type ProgramStatus = 'draft' | 'live';
-export type OrganizationStatus = 'draft' | 'live' | 'active' | 'suspended';
+export type OrganizationStatus = 'active' | 'suspended' ;
+
+export interface courseSettings {
+  courseStatus: CourseStatus;
+  trackingProgress: boolean;
+  selfPacedLearning: boolean;
+  certificateOnCompletion: boolean;
+  gradedCourse: boolean;
+}
+
+export interface createCoursePayload {
+  programIds?: number;
+  courseId: number;
+  courseSettingsId: number;
+  courseModuleId:number[]
+}
+
+export interface teacherDashboardData{
+  totalPrograms: number;
+  totalCourses: number;
+  totalLiveCourses: number;
+  totalStudents: number;
+  averageCompletions: number
+}
 
 export interface User {
   id: string;
@@ -75,22 +98,23 @@ export interface GetOrganizationsResponse {
   totalOrganizations: number;
 }
 
-export interface organizationSearchQuery {
+export interface OrganizationSearchQuery {
   name?: string;
   organizationCode?: string;
 }
 
 export interface Course {
   id: string;
+  courseId:string
   title: string;
   description: string;
   coverImage?: string;
   tags: string[];
   status: CourseStatus;
-  isTracked: boolean;
-  allowSelfPacing: boolean;
-  requiresCertificate: boolean;
-  isGraded: boolean;
+  trackingProgress: boolean;
+  selfPacedLearning: boolean;
+  certificateOnCompletion: boolean;
+  gradedCourse: boolean;
   organizationId?: string;
   teacherId: string;
   modules: Module[];
@@ -128,6 +152,8 @@ export interface Quiz {
   questions: QuizQuestion[];
   isGraded: boolean;
   passingScore?: number;
+  duration?: number; // in minutes
+  maxAttempts?: number;
   lessonId: string;
 }
 
@@ -136,8 +162,9 @@ export interface QuizQuestion {
   question: string;
   type: 'multiple-choice' | 'short-text';
   options?: string[];
-  correctAnswer: string | string[];
+  correctAnswers: string[];
   explanation?: string;
+  points?: number
 }
 
 export interface Program {
@@ -148,7 +175,7 @@ export interface Program {
   status: ProgramStatus;
   requiresCertificate: boolean;
   organizationId?: string;
-  courseIds: string[];
+  courseGeneralIds: string[];
   requiredOrder: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -246,7 +273,7 @@ export interface ReflectionSubmission {
 }
 
 // Todo Types
-export type TodoPriority = 'low' | 'medium' | 'high';
+export type TodoPriority = 'Low Priority' | 'Medium Priority' | 'High Priority';
 export type TodoStatus = 'pending' | 'in-progress' | 'completed' | 'cancelled';
 
 export interface TodoItem {
@@ -676,3 +703,432 @@ export interface OrganizationStatsResponse{
   message: string;
   stats: OrganizationStats;
 }
+
+// types for fetching course details on teacher dashboard
+export interface CourseResponse {
+  id: number;
+  program: Program | null;
+  course: Courses;
+  settings: CourseSettings;
+  modules: CourseModule[];
+  enrollmentStats: EnrollmentStats;
+  enrolledStudents: EnrolledStudent[];
+  teacher: Teacher;
+  organization: Organization;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface CourseListItem {
+  id: number;
+  title: string;
+  description: string;
+  tags: string[];
+  coverImage: string | null;
+  status: CourseStatus;
+  modulesCount: number;
+  programCertificate: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+
+export interface Courses {
+  id: number;
+  title: string;
+  description: string; // HTML string
+  tags: string[];
+  images: string[];
+}
+
+export interface CourseSettings {
+  id: number;
+  courseStatus: CourseStatus
+  trackingProgress: boolean;
+  selfPacedLearning: boolean;
+  certificateOnCompletion: boolean;
+  gradedCourse: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CourseModule {
+  id: number;
+  moduleNumber: number;
+  title: string;
+  description: string; // HTML string
+  contents: CourseLesson[];
+  createdAt: string;
+}
+
+export interface CourseLesson {
+  id: number;
+  lessonNumber: number;
+  title: string;
+  lessonDescription: string;
+  lessonType: LessonType;
+
+  videoUrl: string | null;
+  videoDuration: number | null;
+
+  textContent: string | null;
+  pdfUrl: string | null;
+  fileAttachmentURL: string | null;
+
+  quizPassingScore: number | null;
+  quizDuration: number | null;
+  quizMaxAttempts: number | null;
+
+  reflectionPrompt: string | null;
+  images: string[];
+
+  createdAt: string;
+}
+
+export interface EnrollmentStats {
+  totalEnrollments: number;
+  completedEnrollments: number;
+  completionRate: number;
+}
+
+export interface EnrolledStudent {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  progress?: number;
+  completed?: boolean;
+}
+
+export interface Teacher {
+  id: number;
+  firstName: string;
+  lastName: string;
+  role: 'teacher' | 'admin';
+  organizationId: string;
+}
+
+export interface programStats {
+  totalPrograms: number;
+  totalLivePrograms: number;
+  programsWithCertificates: number;
+  availableCourses: number;
+}
+
+export interface teacherAnalyticsStats {
+  totalCourses: number;
+  totalStudents: number;
+  averageCompletionRate: number;
+  totalCertificatesIssued: number;
+}
+
+export interface coursePerformanceAnalytics {
+  id:string;
+  courseName: string;
+  courseStatus: CourseStatus;
+  studentCount: number;
+  completionRate: number;
+  averageScore: number;
+}
+
+export interface dashboardAnalyticsResponse {
+  totalStudents: number;
+  completionRate: number;
+  averageTimeSpentHours?: number;
+}
+
+export interface programPayload{
+  title: string
+  description: string
+  images:string
+  programStatus: CourseStatus
+  requiredCourseOrder: boolean
+  programCertificate: boolean;
+  courseGeneralIds: number[]
+}
+
+export interface AnalyticsMetrics {
+  activeUsers: number;
+  newEnrollments: number;
+  completions: number;
+}
+export interface AnalyticsSummary extends AnalyticsMetrics {}
+export interface DailyAnalyticsBreakdown extends AnalyticsMetrics {
+  date: string;
+}
+export interface AnalyticsPeriod {
+  startDate: string; 
+  endDate: string;
+}
+
+export interface DashboardAnalyticsData {
+  summary: AnalyticsSummary;
+  dailyBreakdown: DailyAnalyticsBreakdown[];
+  period: AnalyticsPeriod;
+}
+export interface DashboardAnalyticsResponse {
+  data: DashboardAnalyticsData;
+}
+
+export interface PopularCourse {
+  courseId: number;
+  courseName: string;
+  courseDescription: string;
+  courseStatus: 'draft' | 'published';
+  enrolledStudents: number;
+  completionRate: number;
+  totalContent: number;
+  createdAt: string;
+}
+
+export interface EditModulePayload{
+   moduleNumber: number;    
+   title: string;
+    description: string
+  courseContentId: number[];
+}
+export interface studentOverviewStats {
+  totalEnrolledCourses: number;
+  totalCompletedCourses: number;
+  totalTimeSpent: string;
+  certificatesEarned: number;
+  averageScore: string;
+  totalLogins: number;
+  averageSessionTime: string;
+  totalDayStreak: number;
+}
+
+export type SessionStatusText = 'Session still active' | 'Session in progress';
+
+export interface StudentLoginHistorySession {
+  sessionId: number;
+  loginTime: string;
+  logoutTime: string | SessionStatusText;
+  duration: string | SessionStatusText;
+  ipAddress: string;
+  device: string;
+}
+
+export interface StudentLoginHistoryResponse {
+  message: string;
+  totalSessions: number;
+  totalPages: number;
+  currentPage: number;
+  sessions: StudentLoginHistorySession[];
+}
+
+export type QuizAnswerValue = string | string[];
+
+export interface SubmitQuizPayload {
+  submissionId: string;
+  answers: Record<string, QuizAnswerValue>;
+}
+
+
+
+interface Enrolledstudent {
+  id: number;
+  firstName: string;
+  lastName: string;
+}
+
+export interface CourseItem {
+  id: string;
+  course: {
+    title: string;
+    description: string;
+    images: string;
+  };
+  enrolledStudents: Enrolledstudent[];
+  modules?: any[];
+  settings?: {
+    courseStatus?: string;
+    selfPacedLearning?: boolean;
+    certificateOnCompletion?: boolean;
+  };
+}
+
+export interface ProgressModule {
+  id: number;
+  title: string;
+  moduleNumber: number;
+  description: string;
+}
+export interface StudentProgressRecord {
+  id: number;
+  studentId: number;
+  moduleId: number;
+  courseId: number;
+  isCompleted: boolean;
+  completedAt: string | null; // ISO date string
+  createdAt: string;
+  updatedAt: string;
+  ProgressModule: ProgressModule;
+}
+
+export interface StudentCourseProgressData {
+  courseId: number;
+  totalContent: number;
+  completedContent: number;
+  progressPercentage: number;
+  progressRecords: StudentProgressRecord[];
+}
+
+export interface StudentCourseProgressResponse {
+  message: string;
+  data: StudentCourseProgressData;
+}
+
+export interface ProgressRecord {
+  trackContentId: string | null;
+  trackModuleId: string | null;
+  trackCourseId: string | null;
+}
+
+export interface StudentOverview {
+  enrolledCourses: number;
+  programs: number;
+  hoursLearned: string;
+  certificates: number;
+}
+
+export interface CertificateElementDTO {
+  certificateId: string;
+  textSource: string;
+  textColor: string | null;
+  fontSize: number;
+  width: number;
+  height: number;
+  positionX: number;
+  positionY: number;
+}
+   
+export interface courseDescription {
+  id:string;
+  courseTitle: string;
+  description: string;
+}
+
+export interface CreateCertificateTemplateDTO {
+  CourseDescription: courseDescription;
+  templateName: string;
+  courseId: string;
+  accentColor: string;
+  defaultTextColor: string;
+  borderStyle: 'Simple' | 'Modern' | 'Ornate';
+  fontFamily: string;
+  customText: string;
+  content: CertificateElementDTO[];
+
+  backgroundImage?: File;
+  logoUpload?: File;
+}
+
+
+
+
+// Response for fetching certificates
+export interface CertResponse {
+  message: string;
+  certificates: CertDetails[];
+  pagination: CertPagination;
+}
+
+// Certificate details type
+export interface CertDetails {
+  id: string;
+  certificateName: string;
+  studentName: string;
+  acquiredDate: string;
+  credentialId: string;
+  enrollmentId: number;
+  courseId: number;
+  templateId: number | null;
+  template: CertTemplate | null;
+  organization: CertOrganization;
+  course: CertCourse;
+  courseTeacher: CertTeacher;
+  certificateTeacher: CertTeacher | null;
+  certificateOrganization: CertOrganization | null;
+  enrollment: CertEnrollment;
+}
+
+// Organization associated with a certificate
+export interface CertOrganization {
+  id: number;
+  name: string | null;
+  organizationCode: string;
+  logo: string | null;
+}
+
+// Course associated with a certificate
+export interface CertCourse {
+  id: number;
+  courseTitle: string;
+  description: string;
+  images: string[];
+}
+
+// Teacher associated with a certificate
+export interface CertTeacher {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  images?: string | null;
+}
+
+// Template for the certificate
+export interface CertTemplate {
+  id: number;
+  templateName: string;
+  courseId: number;
+  accentColor: string;
+  defaultTextColor: string;
+  borderStyle: string;
+  fontFamily: string;
+  customText: string;
+  backgroundImage: string | null;
+  logoUpload: string | null;
+  content: CertTemplateContent[];
+  teacherId: number;
+  organizationId: string;
+  createdAt: string;
+  updatedAt: string;
+  Teacher: CertTeacher;
+}
+
+// Template content for individual certificate elements
+export interface CertTemplateContent {
+  width: number;
+  height: number;
+  fontSize: number;
+  positionX: number;
+  positionY: number;
+  textColor: string;
+  textSource: string;
+  certificateId: string;
+}
+
+// Enrollment information for the certificate
+export interface CertEnrollment {
+  id: number;
+  enrollmentDate: string;
+  status: string;
+  completedDate: string;
+  createdAt: string;
+}
+
+// Pagination info
+export interface CertPagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+
+export interface VerifyCertificatePayload {
+  credentialId: string;  
+}
+  
+

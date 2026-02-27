@@ -110,12 +110,12 @@ export function AdminDashboard() {
   const formatActivityMessage = (activity: any) => {
     switch (activity.type) {
       case 'user_registration':
-        return `${activity?.data?.firstName} ${activity?.data?.lastName} registered`;
+        return `${activity?.data?.fullName} registered with ${activity?.data?.organizationName ?? 'Unknown'} as a  ${activity?.data?.role ?? 'Unknown'}.`;
 
-      case 'course_published':
-        return `${activity?.data?.title} course was published`;
+      case 'course_creation':
+        return ` ${activity?.data?.courseTitle ?? 'Unknown'} course was published by ${activity?.data?.teacherName ?? `Unknown`}.`;
 
-      case 'user_enrollment':
+      case 'student_enrollment':
         return `${activity.data?.firstName} enrolled in ${activity.data?.courseTitle}.`;
 
       default:
