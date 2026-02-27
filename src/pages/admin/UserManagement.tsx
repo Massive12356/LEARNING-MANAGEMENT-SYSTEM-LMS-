@@ -122,13 +122,12 @@ const PendingUsersTable: React.FC<{
               </td>
               <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
                 <span
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    user.role === 'teacher'
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.role === 'teacher'
                       ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                       : user.role === 'admin'
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                  }`}
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                        : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                    }`}
                 >
                   {user.role === 'teacher' ? 'Teacher' : user.role}
                 </span>
@@ -189,9 +188,9 @@ export function UserManagement() {
   const [deletedSearchTerm, setDeletedSearchTerm] = useState('');
 
   // debounce
-  const debouncedActive = useDebounce(activeSearchTerm,500);
+  const debouncedActive = useDebounce(activeSearchTerm, 500);
   const debouncedPending = useDebounce(pendingSearchTerm, 500);
-  const debouncedSuspended = useDebounce(suspendedSearchTerm,500)
+  const debouncedSuspended = useDebounce(suspendedSearchTerm, 500)
   const debouncedDeleted = useDebounce(deletedSearchTerm, 500)
 
   const [pageSize] = useState(10);
@@ -245,119 +244,119 @@ export function UserManagement() {
     }
   }, [currentUser?.id]);
 
- const loadActiveUsers = async (page = 1, limit = 10, search?: string) => {
-   if (!currentUser?.organizationId) return;
-   setLoading(true);
+  const loadActiveUsers = async (page = 1, limit = 10, search?: string) => {
+    if (!currentUser?.organizationId) return;
+    setLoading(true);
 
-   try {
-     let response;
-     const trimmed = search?.trim();
+    try {
+      let response;
+      const trimmed = search?.trim();
 
-     if (trimmed) {
-       try {
-         const results = await adminService.adminSearchActiveUsers(
-           { name: trimmed },
-           currentUser.organizationId
-         );
+      if (trimmed) {
+        try {
+          const results = await adminService.adminSearchActiveUsers(
+            { name: trimmed },
+            currentUser.organizationId
+          );
 
-         // Normal empty response
-         if (Array.isArray(results) && results.length === 0) {
-           setUsers([]);
-           setActiveTotalPages(1);
-           setTotalActiveUsers(0);
-           setTotalOrgUsers(0);
-           toast.error('No users match your search');
-           setLoading(false);
-           return;
-         }
+          // Normal empty response
+          if (Array.isArray(results) && results.length === 0) {
+            setUsers([]);
+            setActiveTotalPages(1);
+            setTotalActiveUsers(0);
+            setTotalOrgUsers(0);
+            toast.error('No users match your search');
+            setLoading(false);
+            return;
+          }
 
-         response = {
-           users: results,
-           totalPages: 1,
-           totalActiveUsers: results.length,
-         };
-       } catch (error: any) {
-         // Backend “no result” error
-         if (error?.count === 0) {
-           setUsers([]);
-           setActiveTotalPages(1);
-           setTotalActiveUsers(0);
-           setTotalOrgUsers(0);
-           toast.error('No users match your search');
-           setLoading(false);
-           return;
-         }
+          response = {
+            users: results,
+            totalPages: 1,
+            totalActiveUsers: results.length,
+          };
+        } catch (error: any) {
+          // Backend “no result” error
+          if (error?.count === 0) {
+            setUsers([]);
+            setActiveTotalPages(1);
+            setTotalActiveUsers(0);
+            setTotalOrgUsers(0);
+            toast.error('No users match your search');
+            setLoading(false);
+            return;
+          }
 
-         throw error; // real error → global catch
-       }
-     } else {
-       // No search → regular list
-       response = await adminService.getActiveUsers(currentUser.organizationId, page, limit);
-     }
+          throw error; // real error → global catch
+        }
+      } else {
+        // No search → regular list
+        response = await adminService.getActiveUsers(currentUser.organizationId, page, limit);
+      }
 
-     // PROCESS RESULTS
-     const filtered = response?.users?.filter(u => u.role !== 'admin') ?? [];
+      // PROCESS RESULTS
+      const filtered = response?.users?.filter(u => u.role !== 'admin') ?? [];
 
-     setUsers(filtered);
-     setActiveTotalPages(response?.totalPages || 1);
-     setTotalActiveUsers(response?.totalActiveUsers ?? filtered.length);
-     setTotalOrgUsers(response?.totalUsersInOrg ?? 0);
-   } catch (err) {
-     toast.error('Failed to load users');
-   } finally {
-     setLoading(false);
-   }
- };
-
-
+      setUsers(filtered);
+      setActiveTotalPages(response?.totalPages || 1);
+      setTotalActiveUsers(response?.totalActiveUsers ?? filtered.length);
+      setTotalOrgUsers(response?.totalUsersInOrg ?? 0);
+    } catch (err) {
+      toast.error('Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
- const loadSuspendedUsers = async (page = 1, limit = 10, search?: string) => {
-   if (!currentUser?.organizationId) return;
-   setLoading(true);
-
-   try {
-     let response;
-     const trimmed = search?.trim();
-
-     if (trimmed) {
-       const results = await adminService.adminSearchSuspendedUsers(
-         { name: trimmed },
-         currentUser.organizationId
-       );
-
-       if (results.length === 0) {
-         setSuspendedUsers([]);
-         setSuspendedTotalPages(1);
-         setTotalSuspendedUsers(0);
-         toast.error('No users match your search');
-         setLoading(false);
-         return;
-       }
-
-       response = {
-         users: results,
-         totalPages: 1,
-         totalSuspendedUsers: results.length,
-       };
-     } else {
-       response = await adminService.getSuspendedUsers(currentUser.organizationId, page, limit);
-     }
-
-     const filtered = response?.users?.filter(u => u.role !== 'admin') ?? [];
-
-     setSuspendedUsers(filtered);
-     setSuspendedTotalPages(response?.totalPages || 1);
-     setTotalSuspendedUsers(response?.totalPendingUsers ?? filtered.length);
-   } catch (err) {
-     toast.error('Failed to load suspended users');
-   } finally {
-     setLoading(false);
-   }
- };
 
 
- console.log("AUTH USER", currentUser)
+  const loadSuspendedUsers = async (page = 1, limit = 10, search?: string) => {
+    if (!currentUser?.organizationId) return;
+    setLoading(true);
+
+    try {
+      let response;
+      const trimmed = search?.trim();
+
+      if (trimmed) {
+        const results = await adminService.adminSearchSuspendedUsers(
+          { name: trimmed },
+          currentUser.organizationId
+        );
+
+        if (results.length === 0) {
+          setSuspendedUsers([]);
+          setSuspendedTotalPages(1);
+          setTotalSuspendedUsers(0);
+          toast.error('No users match your search');
+          setLoading(false);
+          return;
+        }
+
+        response = {
+          users: results,
+          totalPages: 1,
+          totalSuspendedUsers: results.length,
+        };
+      } else {
+        response = await adminService.getSuspendedUsers(currentUser.organizationId, page, limit);
+      }
+
+      const filtered = response?.users?.filter(u => u.role !== 'admin') ?? [];
+
+      setSuspendedUsers(filtered);
+      setSuspendedTotalPages(response?.totalPages || 1);
+      setTotalSuspendedUsers(response?.totalPendingUsers ?? filtered.length);
+    } catch (err) {
+      toast.error('Failed to load suspended users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  console.log("AUTH USER", currentUser)
 
 
   const loadDeletedUsers = async (page = 1, limit = 10, search?: string) => {
@@ -406,50 +405,50 @@ export function UserManagement() {
 
 
 
- const loadPendingUsers = async (page = 1, limit = 10, search?: string) => {
-   if (!currentUser?.organizationId) return;
-   setLoading(true);
+  const loadPendingUsers = async (page = 1, limit = 10, search?: string) => {
+    if (!currentUser?.organizationId) return;
+    setLoading(true);
 
-   try {
-     let response;
-     const trimmed = search?.trim();
+    try {
+      let response;
+      const trimmed = search?.trim();
 
-     if (trimmed) {
-       const results = await adminService.adminSearchPendingUsers(
-         { name: trimmed },
-         currentUser.organizationId
-       );
+      if (trimmed) {
+        const results = await adminService.adminSearchPendingUsers(
+          { name: trimmed },
+          currentUser.organizationId
+        );
 
-       if (results.length === 0) {
-         setPendingUsers([]);
-         setPendingTotalPages(1);
-         setTotalPendingUsers(0);
-         toast.error('No users match your search');
-         setLoading(false);
-         return;
-       }
+        if (results.length === 0) {
+          setPendingUsers([]);
+          setPendingTotalPages(1);
+          setTotalPendingUsers(0);
+          toast.error('No users match your search');
+          setLoading(false);
+          return;
+        }
 
-       response = {
-         users: results,
-         totalPages: 1,
-         totalPendingUsers: results.length,
-       };
-     } else {
-       response = await adminService.getPendingUsers(currentUser.organizationId, page, limit);
-     }
+        response = {
+          users: results,
+          totalPages: 1,
+          totalPendingUsers: results.length,
+        };
+      } else {
+        response = await adminService.getPendingUsers(currentUser.organizationId, page, limit);
+      }
 
-     const filtered = response?.users?.filter(u => u.role !== 'admin') ?? [];
+      const filtered = response?.users?.filter(u => u.role !== 'admin') ?? [];
 
-     setPendingUsers(filtered);
-     setPendingTotalPages(response?.totalPages || 1);
-     setTotalPendingUsers(response?.totalPendingUsers ?? filtered.length);
+      setPendingUsers(filtered);
+      setPendingTotalPages(response?.totalPages || 1);
+      setTotalPendingUsers(response?.totalPendingUsers ?? filtered.length);
 
-   } catch (err) {
-     toast.error('Failed to load pending users');
-   } finally {
-     setLoading(false);
-   }
- };
+    } catch (err) {
+      toast.error('Failed to load pending users');
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
 
@@ -839,13 +838,12 @@ export function UserManagement() {
       filterable: true,
       render: role => (
         <span
-          className={`px-2 py-1 text-xs rounded-full capitalize ${
-            role === 'admin'
+          className={`px-2 py-1 text-xs rounded-full capitalize ${role === 'admin'
               ? 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200'
               : role === 'teacher'
-              ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
-              : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
-          }`}
+                ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+            }`}
         >
           {role}
         </span>
@@ -857,11 +855,10 @@ export function UserManagement() {
       filterable: true,
       render: isArchived => (
         <span
-          className={`px-2 py-1 text-xs rounded-full ${
-            isArchived
+          className={`px-2 py-1 text-xs rounded-full ${isArchived
               ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
               : 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-          }`}
+            }`}
         >
           {isArchived ? 'Archived' : 'Active'}
         </span>
@@ -885,17 +882,16 @@ export function UserManagement() {
                 size="sm"
                 onClick={() => handleSuspendUser(user)}
                 disabled={statusLoading === user.id}
-                className={`${
-                  user.isArchived
+                className={`${user.isArchived
                     ? 'text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
                     : 'text-yellow-600 border-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
-                }`}
+                  }`}
               >
                 {statusLoading === user.id
                   ? 'Pending...'
                   : user.isArchived
-                  ? 'Activate'
-                  : 'Suspend'}
+                    ? 'Activate'
+                    : 'Suspend'}
               </Button>
 
               <Button
@@ -946,16 +942,16 @@ export function UserManagement() {
   ];
 
 
-   useEffect(() => {
-   if (!currentUser?.organizationId) return;
+  useEffect(() => {
+    if (!currentUser?.organizationId) return;
 
-  //   // Load datasets once on mount
-   loadActiveUsers(1, pageSize, activeSearchTerm);
-  loadPendingUsers(1, pageSize, pendingSearchTerm);
-  loadSuspendedUsers(1, pageSize, suspendedSearchTerm);
-  loadDeletedUsers(1, pageSize, deletedSearchTerm);
-  loadOrganization();
-   }, [currentUser?.organizationId]);
+    //   // Load datasets once on mount
+    loadActiveUsers(1, pageSize, activeSearchTerm);
+    loadPendingUsers(1, pageSize, pendingSearchTerm);
+    loadSuspendedUsers(1, pageSize, suspendedSearchTerm);
+    loadDeletedUsers(1, pageSize, deletedSearchTerm);
+    loadOrganization();
+  }, [currentUser?.organizationId]);
 
   useEffect(() => {
     if (activeTab === 'active') {
@@ -1057,7 +1053,11 @@ export function UserManagement() {
           )}
         </div>
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={() => setShowBulkImportModal(true)}>
+          <Button
+            variant="ghost"
+            onClick={() => setShowBulkImportModal(true)}
+            className="bg-white text-slate-900 hover:bg-slate-50 shadow-lg shadow-black/5 border border-gray-200 rounded-xl font-semibold transition-all"
+          >
             <ArrowUpTrayIcon className="h-4 w-4 mr-2" />
             Bulk Import
           </Button>
@@ -1073,41 +1073,37 @@ export function UserManagement() {
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab('active')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'active'
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'active'
                 ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-            }`}
+              }`}
           >
             Active Users ({totalActiveUsers ?? 0})
           </button>
           <button
             onClick={() => setActiveTab('pending')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'pending'
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'pending'
                 ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-            }`}
+              }`}
           >
             Pending Signups ({totalPendingUsers})
           </button>
           <button
             onClick={() => setActiveTab('suspended')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'suspended'
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'suspended'
                 ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-            }`}
+              }`}
           >
             Suspended Users ({totalSuspendedUsers})
           </button>
           <button
             onClick={() => setActiveTab('deleted')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'deleted'
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'deleted'
                 ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-            }`}
+              }`}
           >
             Deleted Users ({totalDeletedUsers})
           </button>
@@ -1615,9 +1611,8 @@ export function UserManagement() {
         }}
         onConfirm={confirmRestoreUser}
         title="Restore User"
-        message={`Are you sure you want to restore this ${
-          activeTab === 'suspended' ? 'suspended' : 'deleted'
-        } ${userToRestore?.firstName}? They will regain access to the platform.`}
+        message={`Are you sure you want to restore this ${activeTab === 'suspended' ? 'suspended' : 'deleted'
+          } ${userToRestore?.firstName}? They will regain access to the platform.`}
         confirmText={isRestoring ? 'Restoring...' : 'Restore'}
         cancelText="Cancel"
         confirmVariant="primary"

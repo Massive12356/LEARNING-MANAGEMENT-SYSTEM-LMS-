@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Card, CardHeader, CardContent } from '../../components/ui/Card';
+import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
@@ -18,9 +17,6 @@ import {
 import {
   PlusIcon,
   MagnifyingGlassIcon,
-  FunnelIcon,
-  EyeIcon,
-  PencilIcon,
   BuildingOfficeIcon,
   UserGroupIcon,
   BookOpenIcon,
@@ -29,9 +25,11 @@ import {
   CheckCircleIcon,
   UserPlusIcon,
   ShieldCheckIcon,
-  ShieldExclamationIcon,
   ClipboardDocumentIcon,
-  TrashIcon
+  TrashIcon,
+  PencilIcon,
+  Squares2X2Icon,
+  Bars3Icon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -42,12 +40,13 @@ export function OrganizationManagement() {
   const [loading, setLoading] = useState(false);
   const [creatingAdmin, setCreatingAdmin] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAssignAdminModal, setShowAssignAdminModal] = useState(false);
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
-  const [admins, setAdmins] = useState<User[]>([]);
+
   const [showGenerateCodeModal, setShowGenerateCodeModal] = useState(false);
   const [generatedCode, setGeneratedCode] = useState<any>(null);
   const [codeGenerate, setCodeGenerate] = useState<string | null>(null);
@@ -346,25 +345,25 @@ export function OrganizationManagement() {
     setShowDeleteConfirmation(false);
   };
 
- // handle delete organization
- const handleDeleteOrganization = async (orgId: number | null) => {
-  if(!orgId){
-    toast.error('No organization selected for deletion.');
-    return;
-  }
-  setDeletingOrg(true);
-  try {
-    await organizationService.deleteOrganization(orgId);
-    toast.success('Organization deleted successfully');
-    await Promise.all([loadOrganizations(currentPage), loadActiveOrganizations()])
-    setShowDeleteConfirmation(false); // Close the modal after successful deletion
-  } catch (error: any) {
-    toast.error('Failed to delete organization');
-    console.log(error.message)
-  } finally {
-    setDeletingOrg(false);
-  }
-};
+  // handle delete organization
+  const handleDeleteOrganization = async (orgId: number | null) => {
+    if (!orgId) {
+      toast.error('No organization selected for deletion.');
+      return;
+    }
+    setDeletingOrg(true);
+    try {
+      await organizationService.deleteOrganization(orgId);
+      toast.success('Organization deleted successfully');
+      await Promise.all([loadOrganizations(currentPage), loadActiveOrganizations()])
+      setShowDeleteConfirmation(false); // Close the modal after successful deletion
+    } catch (error: any) {
+      toast.error('Failed to delete organization');
+      console.log(error.message)
+    } finally {
+      setDeletingOrg(false);
+    }
+  };
 
   // handle create admin
   const handleCreateAdmin = async (e: React.FormEvent) => {
@@ -618,162 +617,180 @@ export function OrganizationManagement() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Organization Management
-          </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Manage all organizations across the platform
-          </p>
-        </div>
-        <div className="flex items-center space-x-4">
-          <Link to="/superuser/reports">
-            <Button variant="outline">
-              <ChartBarIcon className="h-4 w-4 mr-2" />
-              System Reports
-            </Button>
-          </Link>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Create Organization
-          </Button>
+      {/* Modern Header */}
+      <div className="relative overflow-hidden rounded-3xl bg-slate-900 shadow-2xl">
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 h-96 w-96 rounded-full bg-purple-500/20 blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-80 w-80 rounded-full bg-blue-500/20 blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-full w-full bg-[url('/grid-pattern.svg')] opacity-10"></div>
+
+        <div className="relative p-10 md:p-12">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
+            <div className="space-y-4">
+              <div className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-purple-200 text-sm font-medium">
+                <BuildingOfficeIcon className="h-4 w-4 mr-2" />
+                <span>Organization Control</span>
+              </div>
+              <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight">
+                Organization Management
+              </h1>
+              <p className="text-slate-300 text-lg max-w-xl leading-relaxed">
+                Manage all registered organizations, oversee users, and configure access settings.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link to="/superuser/reports">
+                <Button variant="ghost" className="text-white hover:bg-white/10 border border-white/20">
+                  <ChartBarIcon className="h-5 w-5 mr-2" />
+                  System Reports
+                </Button>
+              </Link>
+              <Button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/20 border-none rounded-xl"
+              >
+                <PlusIcon className="h-5 w-5 mr-2" />
+                Create Organization
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardContent className="flex items-center p-6">
-            <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900">
-              <BuildingOfficeIcon className="h-6 w-6 text-blue-600" />
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
+          <div className="flex items-center">
+            <div className="p-4 rounded-2xl bg-blue-100 dark:bg-blue-900/50">
+              <BuildingOfficeIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             </div>
             <div className="ml-4">
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {orgLoading ? (
-                  <p className="text-sm text-gray-400"> Loading ...</p>
+                  <span className="text-sm text-gray-400 animate-pulse">Loading...</span>
                 ) : (
                   totalItems?.totalOrganizations ?? 0
                 )}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Total Organizations</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Organizations</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardContent className="flex items-center p-6">
-            <div className="p-3 rounded-lg bg-green-100 dark:bg-green-900">
-              <CheckCircleIcon className="h-6 w-6 text-green-600" />
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
+          <div className="flex items-center">
+            <div className="p-4 rounded-2xl bg-green-100 dark:bg-green-900/50">
+              <CheckCircleIcon className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
             <div className="ml-4">
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {orgLoading ? (
-                  <p className="text-sm text-gray-400"> Loading ...</p>
+                  <span className="text-sm text-gray-400 animate-pulse">Loading...</span>
                 ) : (
                   totalItems?.activeOrganizations ?? 0
                 )}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Active Organizations</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Active Organizations</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardContent className="flex items-center p-6">
-            <div className="p-3 rounded-lg bg-purple-100 dark:bg-purple-900">
-              <UserGroupIcon className="h-6 w-6 text-purple-600" />
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
+          <div className="flex items-center">
+            <div className="p-4 rounded-2xl bg-purple-100 dark:bg-purple-900/50">
+              <UserGroupIcon className="h-8 w-8 text-purple-600 dark:text-purple-400" />
             </div>
             <div className="ml-4">
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {userLoading ? (
-                  <p className="text-sm text-gray-400"> Loading ...</p>
+                  <span className="text-sm text-gray-400 animate-pulse">Loading...</span>
                 ) : (
                   allUsers?.totalUsers ?? 0
                 )}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Total Users</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Users</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardContent className="flex items-center p-6">
-            <div className="p-3 rounded-lg bg-yellow-100 dark:bg-yellow-900">
-              <BookOpenIcon className="h-6 w-6 text-yellow-600" />
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
+          <div className="flex items-center">
+            <div className="p-4 rounded-2xl bg-yellow-100 dark:bg-yellow-900/50">
+              <BookOpenIcon className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
             </div>
             <div className="ml-4">
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalCourses}</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Total Courses</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Courses</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col  sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative w-[50%] flex  flex-row">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search organizations by Code or Name..."
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  className="pl-10 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={handleClearSearch}
-                    className="absolute right-3 top-1 bg-blue-600 hover:bg-blue-700 text-white shadow-sm focus:ring-blue-500 px-3 py-1.5 text-sm rounded-lg  "
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <FunnelIcon className="h-4 w-4 text-gray-400" />
-                <select
-                  value={statusFilter}
-                  onChange={e => setStatusFilter(e.target.value as any)}
-                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+      <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="flex flex-col sm:flex-row gap-4 items-center">
+          <div className="flex-1 w-full text-zinc-900">
+            <div className="relative">
+              <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search organizations by Code or Name..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="pl-12 block w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+              />
+              {searchTerm && (
+                <button
+                  onClick={handleClearSearch}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 p-1.5 rounded-lg transition-colors"
                 >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="suspended">Suspended</option>
-                </select>
-              </div>
-            </div> */}
+                  <span className="sr-only">Clear</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
-        </CardContent>
-      </Card>
+
+          <div className="flex items-center bg-gray-50 dark:bg-gray-900/50 p-1 rounded-xl border border-gray-100 dark:border-gray-700">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-lg transition-all ${viewMode === 'grid'
+                ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-sm border border-gray-100 dark:border-gray-700'
+                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                }`}
+              title="Grid View"
+            >
+              <Squares2X2Icon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-lg transition-all ${viewMode === 'list'
+                ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-sm border border-gray-100 dark:border-gray-700'
+                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                }`}
+              title="List View"
+            >
+              <Bars3Icon className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Organizations Grid */}
       {loading ? (
         // 🔹 Loading Skeletons
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-6 bg-gray-300 rounded w-3/4 mb-4"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2 mb-6"></div>
-                <div className="grid grid-cols-3 gap-4 mb-4 py-2">
-                  <div className="h-4 bg-gray-300 rounded"></div>
-                  <div className="h-4 bg-gray-300 rounded"></div>
-                  <div className="h-4 bg-gray-300 rounded"></div>
-                </div>
-                <div className="flex justify-between items-center mt-4">
-                  <div className="h-8 bg-gray-300 rounded w-24"></div>
-                  <div className="h-8 bg-gray-300 rounded w-24"></div>
-                </div>
-              </CardContent>
-            </Card>
+            <div key={i} className="animate-pulse bg-white dark:bg-gray-800 rounded-3xl p-6 border border-gray-100 dark:border-gray-700 h-80">
+              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-4"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-6"></div>
+              <div className="grid grid-cols-3 gap-4 mb-4 py-2">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              </div>
+            </div>
           ))}
         </div>
       ) : (
@@ -785,25 +802,211 @@ export function OrganizationManagement() {
             if (!displayList || displayList.length === 0) {
               //  Empty State (Handles both Search and Normal Mode)
               return (
-                <Card>
-                  <CardContent className="text-center py-12">
-                    <BuildingOfficeIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                      {searchMode ? 'No organizations found' : 'No organizations yet'}
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 mb-6">
-                      {searchMode
-                        ? 'Try adjusting your search or filters.'
-                        : 'Create your first organization to get started.'}
-                    </p>
-                    {!searchMode && (
-                      <Button onClick={() => setShowCreateModal(true)}>
-                        <PlusIcon className="h-4 w-4 mr-2" />
-                        Create First Organization
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
+                <div className="bg-white dark:bg-gray-800 rounded-3xl p-12 text-center border border-gray-100 dark:border-gray-700">
+                  <div className="bg-gray-50 dark:bg-gray-900 h-24 w-24 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <BuildingOfficeIcon className="h-10 w-10 text-gray-400" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                    {searchMode ? 'No organizations found' : 'No organizations yet'}
+                  </h3>
+                  <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-md mx-auto">
+                    {searchMode
+                      ? 'Try adjusting your search terms or filters.'
+                      : 'Get started by creating your first organization managed on the platform.'}
+                  </p>
+                  {!searchMode && (
+                    <Button
+                      onClick={() => setShowCreateModal(true)}
+                      size="lg"
+                      className="rounded-xl shadow-lg shadow-blue-500/20"
+                    >
+                      <PlusIcon className="h-5 w-5 mr-2" />
+                      Create Organization
+                    </Button>
+                  )}
+                </div>
+              );
+            }
+
+            if (viewMode === 'list') {
+              return (
+                <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                      <thead className="bg-gray-50 dark:bg-gray-900/50">
+                        <tr>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Organization
+                          </th>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Stats (Users/Active)
+                          </th>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Code
+                          </th>
+                          <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                        {displayList.map((org) => {
+                          const stats = orgStats[org.id] || { registeredUsers: 0, courses: 0, totalActiveUsers: 0, maxUsers: 0 };
+                          return (
+                            <tr key={org.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div
+                                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 mr-3"
+                                    style={{
+                                      backgroundColor: org?.logo ? 'transparent' : org?.primaryColor,
+                                    }}
+                                  >
+                                    {org?.logo ? (
+                                      <img
+                                        src={org?.logo}
+                                        alt=""
+                                        className="w-8 h-8 object-cover rounded-full"
+                                      />
+                                    ) : (
+                                      <BuildingOfficeIcon className="h-5 w-5 text-white" />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <div className="text-sm font-bold text-gray-900 dark:text-white">
+                                      {org.name}
+                                    </div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                                      Created {org.createdAt ? org.createdAt.toLocaleDateString() : 'N/A'}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2.5 py-0.5 text-xs font-medium rounded-full ${org?.status === 'active'
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                  : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                                  }`}>
+                                  {org.status}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center justify-center space-x-4">
+                                  <div className="text-center">
+                                    <div className="text-sm font-bold text-gray-900 dark:text-white">
+                                      {formatNumber(stats.registeredUsers)}
+                                    </div>
+                                    <div className="text-[10px] text-gray-500 uppercase">Users</div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="text-sm font-bold text-gray-900 dark:text-white">
+                                      {formatNumber(stats.totalActiveUsers)}
+                                    </div>
+                                    <div className="text-[10px] text-gray-500 uppercase">Active</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-sm font-mono text-gray-600 dark:text-yellow-500">
+                                    {org.organizationCode ?? 'N/A'}
+                                  </span>
+                                  {org.organizationCode && (
+                                    <button
+                                      onClick={() => handleCopy(org.organizationCode!)}
+                                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                                      title="Copy Code"
+                                    >
+                                      <ClipboardDocumentIcon className="h-4 w-4 text-blue-500" />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div className="flex items-center justify-end space-x-1">
+                                  {/* Generate Code */}
+                                  <button
+                                    onClick={() => handleGenerateJoinCode(org.name)}
+                                    className="p-1.5 text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+                                    title="Generate Join Code"
+                                    disabled={codeGenerate === org.name}
+                                  >
+                                    {codeGenerate === org.name ? (
+                                      <span className="h-4 w-4 border-2 border-t-transparent border-indigo-600 rounded-full animate-spin block"></span>
+                                    ) : (
+                                      <PlusIcon className="h-4 w-4" />
+                                    )}
+                                  </button>
+
+                                  {/* Add Admin */}
+                                  {org.organizationCode && (
+                                    <button
+                                      onClick={() => openAssignAdminModal(org)}
+                                      className="p-1.5 text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/30 rounded-lg transition-colors"
+                                      title="Add Admin User"
+                                    >
+                                      <UserPlusIcon className="h-4 w-4" />
+                                    </button>
+                                  )}
+
+                                  <button
+                                    onClick={() => {
+                                      setSelectedOrgForEdit(org);
+                                      setEditOrgData({
+                                        name: org.name,
+                                        description: org.description,
+                                        status: org.status as 'active' | 'suspended',
+                                        primaryColor: org.primaryColor || '#3B82F6',
+                                        maxUsers: org.maxUsers,
+                                        expiryDay: org.expiryDay
+                                          ? new Date(org.expiryDay).toISOString().split('T')[0]
+                                          : '',
+                                      });
+                                      setShowEditModal(true);
+                                    }}
+                                    className="p-1.5 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                                    title="Edit"
+                                  >
+                                    <PencilIcon className="h-4 w-4" />
+                                  </button>
+
+                                  <button
+                                    onClick={() => openDeleteOrganizationModal(org)}
+                                    className="p-1.5 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                                    title="Delete"
+                                  >
+                                    <TrashIcon className="h-4 w-4" />
+                                  </button>
+
+                                  {org.status === 'active' ? (
+                                    <button
+                                      onClick={() => handleStatusChange(org.id, 'suspended')}
+                                      className="p-1.5 text-orange-600 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-900/30 rounded-lg transition-colors"
+                                      title="Suspend"
+                                    >
+                                      <ExclamationTriangleIcon className="h-4 w-4" />
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleStatusChange(org.id, 'active')}
+                                      className="p-1.5 text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+                                      title="Activate"
+                                    >
+                                      <CheckCircleIcon className="h-4 w-4" />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               );
             }
 
@@ -814,251 +1017,251 @@ export function OrganizationManagement() {
                   const stats = orgStats[org.id] || { users: 0, courses: 0, activeUsers: 0 };
 
                   return (
-                    <Card key={org.id} className="group hover:shadow-lg transition-shadow">
-                      <CardContent className="p-6">
-                        {/* Header */}
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-center space-x-3 min-w-0">
-                            <div
-                              className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
-                              style={{
-                                backgroundColor: org?.logo ? 'transparent' : org?.primaryColor,
-                              }}
-                            >
-                              {org?.logo ? (
-                                <img
-                                  src={org?.logo}
-                                  alt={org?.name}
-                                  className="w-9 h-9 object-cover center mr-1 rounded-full"
-                                />
-                              ) : (
-                                <BuildingOfficeIcon className="h-6 w-6 text-white" />
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
-                                {org?.name ?? 'N/A'}
-                              </h3>
-                              <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                                Created{' '}
-                                {org?.createdAt ? org?.createdAt.toLocaleDateString() : 'N/A'}
-                              </p>
-                            </div>
+                    <div key={org.id} className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-all duration-300 group">
+                      {/* Header */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center space-x-3 min-w-0">
+                          <div
+                            className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+                            style={{
+                              backgroundColor: org?.logo ? 'transparent' : org?.primaryColor,
+                            }}
+                          >
+                            {org?.logo ? (
+                              <img
+                                src={org?.logo}
+                                alt={org?.name}
+                                className="w-9 h-9 object-cover center mr-1 rounded-full"
+                              />
+                            ) : (
+                              <BuildingOfficeIcon className="h-6 w-6 text-white" />
+                            )}
                           </div>
+                          <div className="min-w-0">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                              {org?.name ?? 'N/A'}
+                            </h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                              Created{' '}
+                              {org?.createdAt ? org?.createdAt.toLocaleDateString() : 'N/A'}
+                            </p>
+                          </div>
+                        </div>
 
-                          {/* Status Badge */}
-                          <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
-                            <span
-                              className={`px-2 py-1 text-xs rounded-full whitespace-nowrap ${
-                                org?.status === 'active'
-                                  ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                                  : org.status === 'suspended'
-                                  ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
-                                  : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
+                        {/* Status Badge */}
+                        <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
+                          <span
+                            className={`px-2 py-1 text-xs rounded-full whitespace-nowrap ${org?.status === 'active'
+                              ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                              : org.status === 'suspended'
+                                ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                                : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
                               }`}
+                          >
+                            {org?.status ?? 'active'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-3 min-h-[3rem]">
+                        {org?.description ?? 'N/A'}
+                      </p>
+
+                      {/* Stats */}
+                      <div className="grid grid-cols-3 gap-4 mb-4 py-2">
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-gray-900 dark:text-white">
+                            {formatNumber(stats?.registeredUsers ?? 0)}
+                          </div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                            Users
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-gray-900 dark:text-white">
+                            {stats?.courses ?? 0}
+                          </div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                            Courses
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-gray-900 dark:text-white">
+                            {formatNumber(stats?.totalActiveUsers ?? 0)}
+                          </div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                            Active
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-gray-900 dark:text-white">
+                            {formatNumber(stats?.maxUsers ?? 0)}
+                          </div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                            MaxUsers
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedOrgForEdit(org);
+                              setEditOrgData({
+                                name: org.name,
+                                description: org.description,
+                                status: org.status as 'active' | 'suspended',
+                                primaryColor: org.primaryColor || '#3B82F6',
+                                maxUsers: org.maxUsers,
+                                expiryDay: org.expiryDay
+                                  ? new Date(org.expiryDay).toISOString().split('T')[0]
+                                  : '',
+                              });
+                              setShowEditModal(true);
+                            }}
+                          >
+                            <PencilIcon className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openDeleteOrganizationModal(org)}
+                          >
+                            <TrashIcon className="h-4 w-4 mr-1" />
+                            Delete
+                          </Button>
+
+                          {/* dynamically display admin button  */}
+                          <div className={org?.organizationCode ? 'flex' : 'hidden'}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openAssignAdminModal(org)}
                             >
-                              {org?.status ?? 'active'}
-                            </span>
+                              <UserPlusIcon className="h-4 w-4 mr-1" />
+                              Add Admin
+                            </Button>
                           </div>
                         </div>
 
-                        {/* Description */}
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-3 min-h-[3rem]">
-                          {org?.description ?? 'N/A'}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleGenerateJoinCode(org.name)}
+                          >
+                            {codeGenerate === org.name ? (
+                              <div className="flex items-center gap-2">
+                                <span className="h-4 w-4 border-2 border-t-transparent border-gray-500 rounded-full animate-spin"></span>
+                                <span>...</span>
+                              </div>
+                            ) : (
+                              <>
+                                <PlusIcon className="h-4 w-4 mr-1" />
+                                Generate Code
+                              </>
+                            )}
+                          </Button>
 
-                        {/* Stats */}
-                        <div className="grid grid-cols-3 gap-4 mb-4 py-2">
-                          <div className="text-center">
-                            <div className="text-lg font-bold text-gray-900 dark:text-white">
-                              {formatNumber(stats?.registeredUsers ?? 0)}
-                            </div>
-                            <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                              Users
-                            </div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-lg font-bold text-gray-900 dark:text-white">
-                              {stats?.courses ?? 0}
-                            </div>
-                            <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                              Courses
-                            </div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-lg font-bold text-gray-900 dark:text-white">
-                              {formatNumber(stats?.totalActiveUsers ?? 0)}
-                            </div>
-                            <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                              Active
-                            </div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-lg font-bold text-gray-900 dark:text-white">
-                              {formatNumber(stats?.maxUsers ?? 0)}
-                            </div>
-                            <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                              MaxUsers
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
-                          <div className="flex flex-wrap items-center gap-2">
+                          {org.status === 'active' ? (
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                setSelectedOrgForEdit(org);
-                                setEditOrgData({
-                                  name: org.name,
-                                  description: org.description,
-                                  status: org.status as 'active' | 'suspended',
-                                  primaryColor: org.primaryColor || '#3B82F6',
-                                  maxUsers: org.maxUsers,
-                                  expiryDay: org.expiryDay
-                                    ? new Date(org.expiryDay).toISOString().split('T')[0]
-                                    : '',
-                                });
-                                setShowEditModal(true);
-                              }}
+                              onClick={() => handleStatusChange(org.id, 'suspended')}
+                              disabled={changingStatus === org.id}
                             >
-                              <PencilIcon className="h-4 w-4 mr-1" />
-                              Edit
-                            </Button>
-
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openDeleteOrganizationModal(org)}
-                            >
-                              <TrashIcon className="h-4 w-4 mr-1" />
-                              Delete
-                            </Button>
-
-                            {/* dynamically display admin button  */}
-                            <div className={org?.organizationCode ? 'flex' : 'hidden'}>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openAssignAdminModal(org)}
-                              >
-                                <UserPlusIcon className="h-4 w-4 mr-1" />
-                                Add Admin
-                              </Button>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleGenerateJoinCode(org.name)}
-                            >
-                              {codeGenerate === org.name ? (
+                              {changingStatus === org.id ? (
                                 <div className="flex items-center gap-2">
                                   <span className="h-4 w-4 border-2 border-t-transparent border-gray-500 rounded-full animate-spin"></span>
                                   <span>...</span>
                                 </div>
                               ) : (
                                 <>
-                                  <PlusIcon className="h-4 w-4 mr-1" />
-                                  Generate Code
+                                  <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
+                                  Suspend
                                 </>
                               )}
                             </Button>
-
-                            {org.status === 'active' ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleStatusChange(org.id, 'suspended')}
-                                disabled={changingStatus === org.id}
-                              >
-                                {changingStatus === org.id ? (
-                                  <div className="flex items-center gap-2">
-                                    <span className="h-4 w-4 border-2 border-t-transparent border-gray-500 rounded-full animate-spin"></span>
-                                    <span>...</span>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
-                                    Suspend
-                                  </>
-                                )}
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleStatusChange(org.id, 'active')}
-                                disabled={changingStatus === org.id}
-                              >
-                                {changingStatus === org.id ? (
-                                  <div className="flex items-center gap-2">
-                                    <span className="h-4 w-4 border-2 border-t-transparent border-gray-500 rounded-full animate-spin"></span>
-                                    <span>...</span>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <CheckCircleIcon className="h-4 w-4 mr-1" />
-                                    Activate
-                                  </>
-                                )}
-                              </Button>
-                            )}
-                          </div>
-                          <div className="flex items-center">
-                            <p className="font-medium text-black  text-sm dark:text-yellow-500">
-                              {org?.organizationCode ?? 'N/A'}
-                            </p>
-                            <button
-                              className={`ml-1 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-gray-200 dark:hover:bg-gray-700 ${org?.organizationCode ? "flex" : "hidden"}`}
-                              onClick={() => handleCopy(org?.organizationCode ?? 'N/A')}
-                              title="Copy organization code"
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleStatusChange(org.id, 'active')}
+                              disabled={changingStatus === org.id}
                             >
-                              <ClipboardDocumentIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                            </button>
-                          </div>
+                              {changingStatus === org.id ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="h-4 w-4 border-2 border-t-transparent border-gray-500 rounded-full animate-spin"></span>
+                                  <span>...</span>
+                                </div>
+                              ) : (
+                                <>
+                                  <CheckCircleIcon className="h-4 w-4 mr-1" />
+                                  Activate
+                                </>
+                              )}
+                            </Button>
+                          )}
                         </div>
-                      </CardContent>
-                    </Card>
+                        <div className="flex items-center">
+                          <p className="font-medium text-black  text-sm dark:text-yellow-500">
+                            {org?.organizationCode ?? 'N/A'}
+                          </p>
+                          <button
+                            className={`ml-1 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-gray-200 dark:hover:bg-gray-700 ${org?.organizationCode ? "flex" : "hidden"}`}
+                            onClick={() => handleCopy(org?.organizationCode ?? 'N/A')}
+                            title="Copy organization code"
+                          >
+                            <ClipboardDocumentIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
             );
           })()}
         </>
-      )}
+      )
+      }
 
       {/* Pagination Controls */}
-      {!searchMode && totalPages > 1 && (
-        <div className="flex justify-center items-center space-x-2 mt-8">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={currentPage === 1}
-            onClick={() => SetCurrentPage(prev => Math.max(prev - 1, 1))}
-          >
-            Previous
-          </Button>
+      {
+        !searchMode && totalPages > 1 && (
+          <div className="flex justify-center items-center space-x-2 mt-8">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => SetCurrentPage(prev => Math.max(prev - 1, 1))}
+            >
+              Previous
+            </Button>
 
-          <span className="text-gray-700 dark:text-gray-300 text-sm">
-            Page {currentPage} of {totalPages}
-          </span>
+            <span className="text-gray-700 dark:text-gray-300 text-sm">
+              Page {currentPage} of {totalPages}
+            </span>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={currentPage === totalPages}
-            onClick={() => SetCurrentPage(prev => Math.min(prev + 1, totalPages))}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => SetCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            >
+              Next
+            </Button>
+          </div>
+        )
+      }
 
       {/* Create Organization Modal */}
       <Modal
@@ -1084,7 +1287,7 @@ export function OrganizationManagement() {
             <select
               value={newOrgData.status}
               onChange={e => setNewOrgData(prev => ({ ...prev, status: e.target.value }))}
-              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
             >
               <option value="active">Active</option>
               <option value="suspended">Suspended</option>
@@ -1100,7 +1303,7 @@ export function OrganizationManagement() {
               value={newOrgData.description}
               onChange={e => setNewOrgData(prev => ({ ...prev, description: e.target.value }))}
               rows={3}
-              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
               placeholder="Describe the organization's purpose"
             />
           </div>
@@ -1115,7 +1318,7 @@ export function OrganizationManagement() {
                 type="color"
                 value={newOrgData.primaryColor}
                 onChange={e => setNewOrgData(prev => ({ ...prev, primaryColor: e.target.value }))}
-                className="w-12 h-12 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer"
+                className="w-12 h-12 border border-gray-200 dark:border-gray-600 rounded-xl cursor-pointer"
               />
               <Input
                 value={newOrgData.primaryColor}
@@ -1135,7 +1338,7 @@ export function OrganizationManagement() {
               type="date"
               value={newOrgData.expiryDay}
               onChange={e => setNewOrgData(prev => ({ ...prev, expiryDay: e.target.value }))}
-              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
             />
           </div>
 
@@ -1149,7 +1352,7 @@ export function OrganizationManagement() {
               min="1"
               value={newOrgData.maxUsers}
               onChange={e => setNewOrgData(prev => ({ ...prev, maxUsers: e.target.value }))}
-              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
               placeholder="Enter max number of users"
             />
           </div>
@@ -1275,7 +1478,7 @@ export function OrganizationManagement() {
               onChange={e =>
                 setEditOrgData(prev => ({ ...prev, maxUsers: Number(e.target.value) }))
               }
-              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
               placeholder="Enter max number of users"
             />
           </div>
@@ -1411,59 +1614,59 @@ export function OrganizationManagement() {
 
       {/* Delete Organization Modal */}
       <Modal
-  isOpen={showDeleteConfirmation}
-  onClose={handleCancelDelete}
-  title=""
->
-  <div className="flex flex-col items-center text-center p-2">
-
-    {/* Warning Icon */}
-    <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mb-4">
-      <ExclamationTriangleIcon className="w-8 h-8 text-red-600" />
-    </div>
-
-    {/* Title */}
-    <h2 className="text-xl font-semibold text-gray-900 mb-2 dark:text-gray-200">
-      This action is irreversible
-    </h2>
-
-    {/* Subtitle */}
-    <p className="text-sm text-gray-600 max-w-sm mb-5 dark:text-gray-400">
-      You are about to permanently delete the{" "}
-      <span className="font-semibold text-gray-900 dark:text-gray-300">
-        "{selectOrgName}"
-      </span>{" "}
-      organization.
-    </p>
-
-    {/* Warning Box */}
-    <div className="w-full p-4 rounded-lg bg-red-50 border border-red-200 text-left mb-6">
-      <p className="text-sm text-red-700">
-        <span className="font-semibold">Caution:</span> Deleting this
-        organization will also permanently delete all associated codes and
-        linked data. This action cannot be undone.
-      </p>
-    </div>
-
-    {/* Footer Buttons */}
-    <div className="flex justify-between w-full space-x-3">
-      <button
-        onClick={handleCancelDelete}
-        className="w-full py-2.5 rounded-lg bg-gray-100 text-gray-800 font-medium hover:bg-gray-200 transition"
+        isOpen={showDeleteConfirmation}
+        onClose={handleCancelDelete}
+        title=""
       >
-        Cancel
-      </button>
+        <div className="flex flex-col items-center text-center p-2">
 
-      <button
-        onClick={() => handleDeleteOrganization(selectedOrgForDelete)}
-        disabled={deletingOrg}
-        className="w-full py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition disabled:opacity-50"
-      >
-        {deletingOrg ? "Deleting..." : "Delete"}
-      </button>
-    </div>
-  </div>
-</Modal>
+          {/* Warning Icon */}
+          <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mb-4">
+            <ExclamationTriangleIcon className="w-8 h-8 text-red-600" />
+          </div>
+
+          {/* Title */}
+          <h2 className="text-xl font-semibold text-gray-900 mb-2 dark:text-gray-200">
+            This action is irreversible
+          </h2>
+
+          {/* Subtitle */}
+          <p className="text-sm text-gray-600 max-w-sm mb-5 dark:text-gray-400">
+            You are about to permanently delete the{" "}
+            <span className="font-semibold text-gray-900 dark:text-gray-300">
+              "{selectOrgName}"
+            </span>{" "}
+            organization.
+          </p>
+
+          {/* Warning Box */}
+          <div className="w-full p-4 rounded-lg bg-red-50 border border-red-200 text-left mb-6">
+            <p className="text-sm text-red-700">
+              <span className="font-semibold">Caution:</span> Deleting this
+              organization will also permanently delete all associated codes and
+              linked data. This action cannot be undone.
+            </p>
+          </div>
+
+          {/* Footer Buttons */}
+          <div className="flex justify-between w-full space-x-3">
+            <button
+              onClick={handleCancelDelete}
+              className="w-full py-2.5 rounded-lg bg-gray-100 text-gray-800 font-medium hover:bg-gray-200 transition"
+            >
+              Cancel
+            </button>
+
+            <button
+              onClick={() => handleDeleteOrganization(selectedOrgForDelete)}
+              disabled={deletingOrg}
+              className="w-full py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition disabled:opacity-50"
+            >
+              {deletingOrg ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
 
 
@@ -1519,6 +1722,6 @@ export function OrganizationManagement() {
           </div>
         )}
       </Modal>
-    </div>
+    </div >
   );
 }

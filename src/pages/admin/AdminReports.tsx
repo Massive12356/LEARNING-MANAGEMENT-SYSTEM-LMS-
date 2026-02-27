@@ -1,10 +1,9 @@
-import * as React from 'react';
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { exportToCSV } from '../../utils/csvParser';
-import { 
+import {
   ChartBarIcon,
   UserGroupIcon,
   BookOpenIcon,
@@ -39,7 +38,7 @@ export function AdminReports() {
 
   const loadReportData = async () => {
     if (!user?.organizationId) return;
-    
+
     try {
       // Mock data - replace with real API calls
       const mockData = {
@@ -96,7 +95,7 @@ export function AdminReports() {
         { Metric: 'Average Completion Rate', Value: `${reportData.averageCompletionRate}%` },
         { Metric: 'Average Time Spent (minutes)', Value: reportData.averageTimeSpent }
       ];
-      
+
       exportToCSV(csvData, `admin-report-${new Date().toISOString().split('T')[0]}.csv`);
     } else {
       // Export as PDF (HTML for now, as per project requirements)
@@ -129,7 +128,7 @@ export function AdminReports() {
         .stat-value { font-size: 24px; font-weight: bold; color: #1f2937; }
         .stat-label { font-size: 14px; color: #6b7280; margin-top: 5px; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #0c0d0fff; }
         th { background: #f9fafb; font-weight: 600; }
         .generated-date { text-align: center; color: #6b7280; margin-top: 40px; font-size: 14px; }
     </style>
@@ -261,34 +260,50 @@ export function AdminReports() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Analytics & Reports
-          </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Comprehensive insights into your organization's learning activities
-          </p>
-        </div>
-        <div className="flex items-center space-x-4">
-          <select
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
-          >
-            <option value="7">Last 7 days</option>
-            <option value="30">Last 30 days</option>
-            <option value="90">Last 90 days</option>
-            <option value="365">Last year</option>
-          </select>
-          <Button variant="outline" onClick={() => exportReport('csv')}>
-            <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
-            Export CSV
-          </Button>
-          <Button variant="outline" onClick={() => exportReport('pdf')}>
-            <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
-            Export PDF
-          </Button>
+      <div className="relative overflow-hidden rounded-3xl bg-slate-900 shadow-2xl">
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 h-96 w-96 rounded-full bg-purple-500/20 blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-80 w-80 rounded-full bg-blue-500/20 blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-full w-full bg-[url('/grid-pattern.svg')] opacity-10"></div>
+
+        <div className="relative p-10 md:p-12">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
+            <div className="space-y-4">
+              <div className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-purple-200 text-sm font-medium">
+                <ChartBarIcon className="h-4 w-4 mr-2" />
+                <span>Analytics Center</span>
+              </div>
+              <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight">
+                Analytics & Reports
+              </h1>
+              <p className="text-slate-300 text-lg max-w-xl leading-relaxed">
+                Comprehensive insights into your organization's learning activities, performance, and engagement.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="bg-white p-1 rounded-xl shadow-lg border border-gray-200 flex">
+                <select
+                  value={dateRange}
+                  onChange={(e) => setDateRange(e.target.value)}
+                  className="bg-transparent border-none text-black text-sm focus:ring-0 cursor-pointer font-bold dark:text-black"
+                >
+                  <option value="7">Last 7 days</option>
+                  <option value="30">Last 30 days</option>
+                  <option value="90">Last 90 days</option>
+                  <option value="365">Last year</option>
+                </select>
+              </div>
+
+              <Button
+                variant="ghost"
+                onClick={() => exportReport('csv')}
+                className="bg-white text-black hover:bg-slate-50 shadow-lg shadow-black/5 border border-gray-200 rounded-xl font-bold transition-all !text-black dark:!text-black"
+              >
+                <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
+                Export CSV
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -297,30 +312,27 @@ export function AdminReports() {
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card key={stat.name}>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                    <Icon className={`h-6 w-6 ${stat.color}`} />
-                  </div>
-                  <div className="ml-4 flex-1">
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {stat.value}
+            <div key={stat.name} className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
+              <div className="flex items-center">
+                <div className={`p-3 rounded-lg ${stat.bgColor}`}>
+                  <Icon className={`h-6 w-6 ${stat.color}`} />
+                </div>
+                <div className="ml-4 flex-1">
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {stat.value}
+                  </p>
+                  <div className="flex items-center">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {stat.name}
                     </p>
-                    <div className="flex items-center">
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {stat.name}
-                      </p>
-                      <span className={`ml-2 text-sm font-medium ${
-                        stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
+                    <span className={`ml-2 text-sm font-medium ${stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
                       }`}>
-                        {stat.change}
-                      </span>
-                    </div>
+                      {stat.change}
+                    </span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           );
         })}
       </div>
@@ -328,13 +340,13 @@ export function AdminReports() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* User Growth Chart */}
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 h-full">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               User Growth Trend
             </h2>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div>
             <div className="h-64 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center">
               <div className="text-center">
                 <ChartBarIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
@@ -346,17 +358,17 @@ export function AdminReports() {
                 </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Course Completion Rate */}
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 h-full">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               Course Completion Rate
             </h2>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div>
             <div className="h-64 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center">
               <div className="text-center">
                 <div className="text-4xl font-bold text-blue-600 mb-2">
@@ -370,20 +382,20 @@ export function AdminReports() {
                 </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Detailed Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Popular Courses */}
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 h-full">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               Most Popular Courses
             </h2>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div>
             <div className="space-y-4">
               {reportData.coursePopularity.map((course, index) => (
                 <div key={course.course} className="flex items-center justify-between">
@@ -403,17 +415,17 @@ export function AdminReports() {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Learning Activity */}
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 h-full">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               Learning Activity
             </h2>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div>
             <div className="space-y-6">
               <div className="text-center">
                 <div className="text-3xl font-bold text-purple-600 mb-2">
@@ -462,18 +474,18 @@ export function AdminReports() {
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Engagement Metrics */}
-      <Card>
-        <CardHeader>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+      <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="mb-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             Engagement Metrics
           </h2>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600 mb-2">
@@ -483,7 +495,7 @@ export function AdminReports() {
                 User Engagement Rate
               </p>
             </div>
-            
+
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600 mb-2">
                 {(reportData.completedCourses / reportData.totalEnrollments * 100).toFixed(1)}%
@@ -492,7 +504,7 @@ export function AdminReports() {
                 Course Completion Rate
               </p>
             </div>
-            
+
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600 mb-2">
                 {(reportData.totalEnrollments / reportData.totalUsers).toFixed(1)}
@@ -501,7 +513,7 @@ export function AdminReports() {
                 Avg. Enrollments per User
               </p>
             </div>
-            
+
             <div className="text-center">
               <div className="text-2xl font-bold text-yellow-600 mb-2">
                 {(reportData.certificatesIssued / reportData.completedCourses * 100).toFixed(1)}%
@@ -511,8 +523,8 @@ export function AdminReports() {
               </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </div>
+    </div >
   );
 }

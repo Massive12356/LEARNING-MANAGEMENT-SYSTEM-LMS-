@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 
 import { mockApi } from '../../services/mockApi';
 import { organizationService } from '../../services/organizationService';
 import { Course, Program, Enrollment, Certificate, Organization } from '../../types';
-import { 
-  BookOpenIcon, 
+import {
+  BookOpenIcon,
   AcademicCapIcon,
   ClockIcon,
   TrophyIcon,
-  ChartBarIcon,
   ArrowDownTrayIcon,
   PlayIcon,
   DocumentTextIcon,
@@ -77,26 +75,26 @@ export const StudentDashboard: React.FC = () => {
 
   const loadDashboardData = async () => {
     if (!user) return;
-    
+
     try {
       const [enrollmentsData, coursesData, programsData, certificatesData] = await Promise.all([
         mockApi.getUserEnrollments(user.id),
-        mockApi.getCourses({ 
+        mockApi.getCourses({
           status: 'live',
           organizationId: user.id // Only get courses from user's organization
         }),
-        mockApi.getPrograms({ 
+        mockApi.getPrograms({
           status: 'live',
           organizationId: user.id // Only get programs from user's organization
         }),
         mockApi.getCertificates(user.id)
       ]);
-      
+
       setEnrollments(enrollmentsData);
       setCourses(coursesData);
       setPrograms(programsData);
       setCertificates(certificatesData);
-      
+
       // Mock recent activity data
       const activity = [];
       for (const enrollment of enrollmentsData.slice(0, 3)) {
@@ -107,7 +105,7 @@ export const StudentDashboard: React.FC = () => {
           if (course.modules.length > 0 && course.modules[0].lessons.length > 0) {
             lessonTitle = course.modules[0].lessons[0].title;
           }
-          
+
           activity.push({
             id: `activity-${Date.now()}-${Math.random()}`,
             courseId: course.id,
@@ -128,7 +126,7 @@ export const StudentDashboard: React.FC = () => {
 
   const loadOrganization = async () => {
     if (!user?.organizationDetails?.id) return;
-    
+
     try {
       const orgData = await organizationService.getOrganizationById(user?.organizationDetails?.id.toString()
       );
@@ -143,15 +141,15 @@ export const StudentDashboard: React.FC = () => {
     loadOrganization();
   }, [user]);
 
-  const enrolledCourses = courses.filter(course => 
+  const enrolledCourses = courses.filter(course =>
     enrollments.some(enrollment => enrollment.courseId === course.id)
   );
 
-  const enrolledPrograms = programs.filter(program => 
+  const enrolledPrograms = programs.filter(program =>
     enrollments.some(enrollment => enrollment.programId === program.id)
   );
 
-  const availableCourses = courses.filter(course => 
+  const availableCourses = courses.filter(course =>
     !enrollments.some(enrollment => enrollment.courseId === course.id)
   ).slice(0, 6);
 
@@ -197,11 +195,11 @@ export const StudentDashboard: React.FC = () => {
     );
   }
 
-  const overallProgress = enrolledCourses.length > 0 
+  const overallProgress = enrolledCourses.length > 0
     ? enrolledCourses.reduce((acc, course) => {
-        const enrollment = enrollments.find(e => e.courseId === course.id);
-        return acc + (enrollment?.progress || 0);
-      }, 0) / enrolledCourses.length
+      const enrollment = enrollments.find(e => e.courseId === course.id);
+      return acc + (enrollment?.progress || 0);
+    }, 0) / enrolledCourses.length
     : 0;
 
   const stats = [
@@ -236,39 +234,49 @@ export const StudentDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-8">
-      {/* Welcome Section with Organization Context */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Welcome back, {user?.firstName}!
-          </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Continue your learning journey
-          </p>
-          {organization ? (
-            <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
-              <BuildingOfficeIcon className="h-4 w-4 mr-1" />
-              <span>Learning with {organization?.name}</span>
+    <div className="space-y-10 pb-12">
+      {/* Modern Header */}
+      <div className="relative overflow-hidden rounded-3xl bg-slate-900 shadow-2xl">
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 h-96 w-96 rounded-full bg-blue-500/20 blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-80 w-80 rounded-full bg-indigo-500/20 blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-full w-full bg-[url('/grid-pattern.svg')] opacity-10"></div>
+
+        <div className="relative p-10 md:p-12">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
+            <div className="space-y-4">
+              <div className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-blue-200 text-sm font-medium">
+                <AcademicCapIcon className="h-4 w-4 mr-2" />
+                <span>Student Hub</span>
+              </div>
+              <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight">
+                Welcome back, {user?.firstName}!
+              </h1>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <p className="text-slate-300 text-lg max-w-xl leading-relaxed">
+                  Continue your learning journey and explore new horizons.
+                </p>
+                {organization && (
+                  <div className="inline-flex items-center px-3 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 text-sm">
+                    <BuildingOfficeIcon className="h-4 w-4 mr-2" />
+                    <span>{organization.name}</span>
+                  </div>
+                )}
+              </div>
             </div>
-          ) : (
-            <div className="mt-2 flex items-center text-sm text-yellow-600 dark:text-yellow-400">
-              <BuildingOfficeIcon className="h-4 w-4 mr-1" />
-              <span>No organization enrollment found</span>
+
+            <div className="flex flex-wrap gap-4">
+              <Link to="/student/discover">
+                <Button variant="outline" className="bg-white/5 border-white/10 text-white hover:bg-white/20 rounded-xl px-6 h-12 font-bold transition-all backdrop-blur-sm">
+                  Browse Courses
+                </Button>
+              </Link>
+              <Link to="/student/todo">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 rounded-xl px-6 h-12 font-bold transition-all">
+                  My Todo List
+                </Button>
+              </Link>
             </div>
-          )}
-        </div>
-        <div className="flex space-x-3">
-          <Link to="/student/discover">
-            <Button variant="outline">
-              Browse Courses
-            </Button>
-          </Link>
-          <Link to="/student/todo">
-            <Button>
-              My Todo List
-            </Button>
-          </Link>
+          </div>
         </div>
       </div>
 
@@ -277,187 +285,213 @@ export const StudentDashboard: React.FC = () => {
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card key={stat.name}>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                    <Icon className={`h-6 w-6 ${stat.color}`} />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {stat.value}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {stat.name}
-                    </p>
-                  </div>
+            <div key={stat.name} className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-4">
+                <div className={`p-4 rounded-2xl ${stat.bgColor.replace('bg-', 'bg-')}`}>
+                  <Icon className={`h-6 w-6 ${stat.color}`} />
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white leading-tight">
+                    {stat.value}
+                  </p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {stat.name}
+                  </p>
+                </div>
+              </div>
+            </div>
           );
         })}
       </div>
 
-      {/* Overall Progress */}
+      {/* Main Focus Area: Progress */}
       {enrolledCourses.length > 0 && (
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Overall Progress
-            </h2>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center p-6">
-            <RadialProgress percentage={overallProgress} />
-            <p className="mt-4 text-gray-600 dark:text-gray-400 text-center">
-              You're making great progress! Keep going to reach your learning goals.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] p-10 shadow-sm border border-gray-100 dark:border-gray-700">
+          <div className="flex flex-col lg:flex-row items-center gap-12">
+            <div className="flex-shrink-0">
+              <RadialProgress percentage={overallProgress} size={180} />
+            </div>
+            <div className="flex-1 space-y-4 text-center lg:text-left">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+                Your Learning Velocity
+              </h2>
+              <p className="text-gray-500 text-lg leading-relaxed max-w-2xl">
+                You're maintaining a steady pace! Complete your remaining modules to unlock your certificates and achieve your learning goals for this month.
+              </p>
+              <div className="pt-4 flex flex-wrap justify-center lg:justify-start gap-4">
+                <div className="px-5 py-3 rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30">
+                  <span className="block text-xs font-bold text-blue-400 uppercase tracking-widest mb-1">Status</span>
+                  <span className="text-blue-700 dark:text-blue-300 font-bold">On Track</span>
+                </div>
+                <div className="px-5 py-3 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/30">
+                  <span className="block text-xs font-bold text-indigo-400 uppercase tracking-widest mb-1">Next Milestone</span>
+                  <span className="text-indigo-700 dark:text-indigo-300 font-bold">Course Completion</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Continue Learning */}
       {enrolledCourses.length > 0 && (
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-gray-700">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-xl">
+              <PlayIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
               Continue Learning
             </h2>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {enrolledCourses.slice(0, 3).map((course) => {
-                const enrollment = enrollments.find(e => e.courseId === course.id);
-                return (
-                  <div 
-                    key={course.id} 
-                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => navigate(`/student/course/${course.id}`)}
-                  >
-                    <div className="flex items-start">
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {enrolledCourses.slice(0, 3).map((course) => {
+              const enrollment = enrollments.find(e => e.courseId === course.id);
+              return (
+                <div
+                  key={course.id}
+                  className="group bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/5 transition-all cursor-pointer"
+                  onClick={() => navigate(`/student/course/${course.id}`)}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-gray-100 dark:border-gray-700">
                       <img
                         src={course.coverImage || 'https://picsum.photos/80/60'}
                         alt={course.title}
-                        className="w-16 h-12 object-cover rounded"
+                        className="h-full w-full object-cover transition-transform group-hover:scale-110"
                       />
-                      <div className="ml-4 flex-1">
-                        <h3 className="font-medium text-gray-900 dark:text-white line-clamp-2">
-                          {course.title}
-                        </h3>
-                        <div className="mt-2 flex items-center">
-                          <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                            <div 
-                              className="bg-blue-600 h-2 rounded-full" 
-                              style={{ width: `${enrollment?.progress || 0}%` }}
-                            ></div>
-                          </div>
-                          <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
-                            {Math.round(enrollment?.progress || 0)}%
-                          </span>
+                      <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-gray-900 dark:text-white line-clamp-2 leading-snug mb-3">
+                        {course.title}
+                      </h3>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div
+                            className="bg-blue-600 h-full rounded-full transition-all duration-500"
+                            style={{ width: `${enrollment?.progress || 0}%` }}
+                          ></div>
                         </div>
+                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 w-8">
+                          {Math.round(enrollment?.progress || 0)}%
+                        </span>
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {/* Available Courses */}
       {availableCourses.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-gray-700">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-indigo-100 dark:bg-indigo-900 rounded-xl">
+                <BookOpenIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                 Available Courses
               </h2>
-              <Link to="/student/discover" className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
-                View all
-              </Link>
             </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {availableCourses.map((course) => (
-                <div 
-                  key={course.id} 
-                  className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
-                >
-                  <div className="aspect-w-16 aspect-h-9">
-                    <img
-                      src={course.coverImage || 'https://picsum.photos/400/225'}
-                      alt={course.title}
-                      className="w-full h-32 object-cover"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-medium text-gray-900 dark:text-white line-clamp-2">
-                      {course.title}
-                    </h3>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                      {course.description}
-                    </p>
-                    <div className="mt-4 flex items-center justify-between">
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        {course.modules.length} modules
-                      </span>
-                      <Button 
-                        size="sm" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEnrollCourse(course.id);
-                        }}
-                      >
-                        Enroll
-                      </Button>
-                    </div>
+            <Link to="/student/discover" className="text-sm font-bold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">
+              View all courses →
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {availableCourses.map((course) => (
+              <div
+                key={course.id}
+                className="group flex flex-col bg-gray-50 dark:bg-gray-900/50 rounded-[2rem] overflow-hidden border border-gray-100 dark:border-gray-800 hover:shadow-xl hover:shadow-indigo-500/5 transition-all text-left"
+              >
+                <div className="relative aspect-video overflow-hidden">
+                  <img
+                    src={course.coverImage || 'https://picsum.photos/400/225'}
+                    alt={course.title}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute top-4 left-4">
+                    <span className="px-3 py-1 rounded-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-md text-[10px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50">
+                      New Course
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                <div className="p-6 flex-1 flex flex-col">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-2 leading-tight mb-2">
+                    {course.title}
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-6">
+                    {course.description}
+                  </p>
+                  <div className="mt-auto pt-6 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                    <div className="flex items-center text-gray-400 text-xs font-medium">
+                      <DocumentTextIcon className="h-4 w-4 mr-1" />
+                      {course.modules.length} modules
+                    </div>
+                    <Button
+                      size="sm"
+                      className="rounded-xl px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all hover:translate-y-[-1px] active:translate-y-[1px]"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEnrollCourse(course.id);
+                      }}
+                    >
+                      Enroll Now
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
-      {/* Recent Activity */}
-      {recentActivity.length > 0 && (
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Recent Activity
-            </h2>
-          </CardHeader>
-          <CardContent className="p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Recent Activity */}
+        {recentActivity.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-xl">
+                <ClockIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+                Recent Activity
+              </h2>
+            </div>
             <div className="space-y-4">
               {recentActivity.map((activity) => {
-                const Icon = getLessonIcon('text'); // Default to text icon
+                const Icon = getLessonIcon('text');
                 return (
-                  <div key={activity.id} className="flex items-start p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg">
-                    <div className="flex-shrink-0 p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                  <div key={activity.id} className="group flex items-start p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-blue-500/30 transition-all">
+                    <div className="flex-shrink-0 p-3 bg-white dark:bg-gray-800 rounded-xl shadow-sm group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 transition-colors">
                       <Icon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
-                    <div className="ml-4 flex-1">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+                    <div className="ml-4 flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="text-sm font-bold text-gray-900 dark:text-white truncate">
                           {activity.lessonTitle}
                         </h4>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                           {activity.timestamp.toLocaleDateString()}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                         in {activity.courseTitle}
                       </p>
-                      <div className="mt-2 flex items-center">
-                        <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-                          <div 
-                            className="bg-blue-600 h-1.5 rounded-full" 
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div
+                            className="bg-blue-600 h-full rounded-full"
                             style={{ width: `${activity.progress}%` }}
                           ></div>
                         </div>
-                        <span className="ml-2 text-xs text-gray-600 dark:text-gray-400">
-                          {Math.round(activity.progress)}% complete
+                        <span className="text-[10px] font-bold text-gray-500">
+                          {Math.round(activity.progress)}%
                         </span>
                       </div>
                     </div>
@@ -465,57 +499,52 @@ export const StudentDashboard: React.FC = () => {
                 );
               })}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
 
-      {/* Certificates */}
-      {certificates.length > 0 && (
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Your Certificates
-            </h2>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Certificates */}
+        {certificates.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-xl">
+                <TrophyIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+                Your Certificates
+              </h2>
+            </div>
+            <div className="space-y-4">
               {certificates.slice(0, 3).map((certificate) => (
-                <div 
-                  key={certificate.id} 
-                  className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow"
+                <div
+                  key={certificate.id}
+                  className="group flex items-center p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-yellow-500/30 transition-all"
                 >
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
-                      <TrophyIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="font-medium text-gray-900 dark:text-white">
-                        {certificate.templateData.course || certificate.templateData.program}
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {certificate.templateData.name}
-                      </p>
-                    </div>
+                  <div className="flex-shrink-0 p-3 bg-white dark:bg-gray-800 rounded-xl shadow-sm group-hover:bg-yellow-50 dark:group-hover:bg-yellow-900/20 transition-colors">
+                    <TrophyIcon className="h-6 w-6 text-yellow-500" />
                   </div>
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {new Date(certificate.generatedAt).toLocaleDateString()}
-                    </span>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => handleDownloadCertificate(certificate.id)}
-                    >
-                      <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
-                      Download
-                    </Button>
+                  <div className="ml-4 flex-1 min-w-0">
+                    <h3 className="font-bold text-gray-900 dark:text-white truncate">
+                      {certificate.templateData.course || certificate.templateData.program}
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Issued on {new Date(certificate.generatedAt).toLocaleDateString()}
+                    </p>
                   </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="ml-4 rounded-xl px-4 h-9 bg-white dark:bg-gray-800 text-xs font-bold transition-all hover:bg-gray-50 dark:hover:bg-gray-700"
+                    onClick={() => handleDownloadCertificate(certificate.id)}
+                  >
+                    <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
+                    Download
+                  </Button>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

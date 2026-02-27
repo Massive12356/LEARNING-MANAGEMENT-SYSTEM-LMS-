@@ -13,7 +13,7 @@ import { AnnouncementForm } from '../../components/teacher/AnnouncementForm';
 import { mockApi } from '../../services/mockApi';
 import { UploadResult } from '../../services/fileUploadService';
 import { Course, Module, Lesson, QuizQuestion } from '../../types';
-import { 
+import {
   PlusIcon,
   PencilIcon,
   TrashIcon,
@@ -98,7 +98,7 @@ export function CourseBuilder() {
 
   const loadCourse = async () => {
     if (!courseId) return;
-    
+
     setLoading(true);
     try {
       const courseData = await mockApi.getCourseById(courseId);
@@ -141,7 +141,7 @@ export function CourseBuilder() {
       });
       // Set cover image preview for demo course
       setCoverImagePreview('https://picsum.photos/800/450?random=4');
-      
+
       // Set demo modules and lessons if it's a new course
       const demoCourse: Course = {
         id: 'demo-course',
@@ -269,41 +269,11 @@ export function CourseBuilder() {
         createdAt: new Date(),
         updatedAt: new Date()
       };
-      
+
       setCourse(demoCourse);
     }
   }, [isEditing]);
 
-  const handleSaveCourseDetails = async () => {
-    if (!courseData.title.trim()) {
-      toast.error('Course title is required');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      if (isEditing && course) {
-        await mockApi.updateCourse(course.id, courseData);
-        toast.success('Course details saved successfully');
-      } else {
-        const newCourse = await mockApi.createCourse({
-          ...courseData,
-          teacherId: user!.id
-        });
-        navigate(`/teacher/courses/${newCourse.id}/edit`);
-        toast.success('Course created successfully');
-      }
-    } catch (error) {
-      toast.error('Failed to save course details');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSaveContent = async () => {
-    // In a real implementation, this would save the modules and lessons to separate tables
-    toast.success('Content saved successfully');
-  };
 
   const handleFinalSave = async () => {
     if (!courseData.title.trim()) {
@@ -315,7 +285,7 @@ export function CourseBuilder() {
     try {
       // For new courses, create the course first
       let courseIdToUse = course?.id;
-      
+
       if (!isEditing || !course) {
         // Create new course
         const newCourse = await mockApi.createCourse({
@@ -334,9 +304,9 @@ export function CourseBuilder() {
         });
         setCourse(updatedCourse);
       }
-      
+
       toast.success(isEditing ? 'Course updated successfully!' : 'Course created successfully!');
-      
+
       // Optionally redirect to course list
       // navigate('/teacher/courses');
     } catch (error) {
@@ -347,18 +317,6 @@ export function CourseBuilder() {
     }
   };
 
-  const handleSaveSettings = async () => {
-    if (isEditing && course) {
-      try {
-        await mockApi.updateCourse(course.id, courseData);
-        toast.success('Settings saved successfully');
-      } catch (error) {
-        toast.error('Failed to save settings');
-      }
-    } else {
-      toast.error('Please save course details first');
-    }
-  };
 
   const handleAddModule = async () => {
     if (!moduleData.title.trim()) {
@@ -406,8 +364,8 @@ export function CourseBuilder() {
     if (!editingModule) return;
 
     if (course) {
-      const updatedModules = course.modules.map(module => 
-        module.id === editingModule.id 
+      const updatedModules = course.modules.map(module =>
+        module.id === editingModule.id
           ? { ...module, title: moduleData.title, description: moduleData.description }
           : module
       );
@@ -431,7 +389,7 @@ export function CourseBuilder() {
 
     if (course) {
       const updatedModules = course.modules.filter(module => module.id !== moduleId);
-      
+
       // Update order of remaining modules
       const reorderedModules = updatedModules.map((module, index) => ({
         ...module,
@@ -608,7 +566,7 @@ export function CourseBuilder() {
 
   const handleEditLesson = (lesson: Lesson) => {
     setEditingLesson(lesson);
-    
+
     // Initialize content based on lesson type
     let content = {
       videoUrl: '',
@@ -625,7 +583,7 @@ export function CourseBuilder() {
       },
       reflectionPrompt: ''
     };
-    
+
     switch (lesson.type) {
       case 'video':
         content.videoUrl = lesson.content?.videoUrl || '';
@@ -653,7 +611,7 @@ export function CourseBuilder() {
         content.reflectionPrompt = lesson.content?.reflectionPrompt || '';
         break;
     }
-    
+
     setLessonData({
       title: lesson.title,
       description: lesson.description,
@@ -720,20 +678,20 @@ export function CourseBuilder() {
     if (course) {
       const updatedModules = course.modules.map(module => {
         if (module.id === editingLesson.moduleId) {
-          const updatedLessons = module.lessons.map(lesson => 
-            lesson.id === editingLesson.id 
-              ? { 
-                  ...lesson, 
-                  title: lessonData.title,
-                  description: lessonData.description,
-                  type: lessonData.type,
-                  content: lessonContent,
-                  duration: lessonData.duration,
-                  isRequired: lessonData.isRequired
-                }
+          const updatedLessons = module.lessons.map(lesson =>
+            lesson.id === editingLesson.id
+              ? {
+                ...lesson,
+                title: lessonData.title,
+                description: lessonData.description,
+                type: lessonData.type,
+                content: lessonContent,
+                duration: lessonData.duration,
+                isRequired: lessonData.isRequired
+              }
               : lesson
           );
-          
+
           return {
             ...module,
             lessons: updatedLessons
@@ -852,8 +810,8 @@ export function CourseBuilder() {
               <input
                 type="text"
                 value={courseData.tags.join(', ')}
-                onChange={(e) => setCourseData(prev => ({ 
-                  ...prev, 
+                onChange={(e) => setCourseData(prev => ({
+                  ...prev,
                   tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean)
                 }))}
                 className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -867,9 +825,9 @@ export function CourseBuilder() {
               </label>
               {coverImagePreview && (
                 <div className="mb-4">
-                  <img 
-                    src={coverImagePreview} 
-                    alt="Cover preview" 
+                  <img
+                    src={coverImagePreview}
+                    alt="Cover preview"
                     className="w-full h-48 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
                   />
                 </div>
@@ -892,11 +850,6 @@ export function CourseBuilder() {
               />
             </div>
 
-            <div className="flex justify-end">
-              <Button onClick={handleSaveCourseDetails} loading={loading}>
-                Save Course Details
-              </Button>
-            </div>
           </div>
         );
 
@@ -942,15 +895,15 @@ export function CourseBuilder() {
                             <PlusIcon className="h-4 w-4 mr-1" />
                             Add Lesson
                           </Button>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => handleEditModule(module)}
                           >
                             <PencilIcon className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => handleDeleteModule(module.id, module.title)}
                           >
@@ -991,15 +944,15 @@ export function CourseBuilder() {
                                   </div>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                  <Button 
-                                    variant="outline" 
+                                  <Button
+                                    variant="outline"
                                     size="sm"
                                     onClick={() => handleEditLesson(lesson)}
                                   >
                                     <PencilIcon className="h-4 w-4" />
                                   </Button>
-                                  <Button 
-                                    variant="outline" 
+                                  <Button
+                                    variant="outline"
                                     size="sm"
                                     onClick={() => handleDeleteLesson(lesson.id, lesson.title, lesson.moduleId)}
                                   >
@@ -1031,11 +984,6 @@ export function CourseBuilder() {
               </div>
             )}
 
-            <div className="flex justify-end">
-              <Button onClick={handleSaveContent}>
-                Save Content
-              </Button>
-            </div>
           </div>
         );
 
@@ -1143,11 +1091,6 @@ export function CourseBuilder() {
               </div>
             </div>
 
-            <div className="flex justify-end">
-              <Button onClick={handleSaveSettings} loading={loading}>
-                Save Settings
-              </Button>
-            </div>
           </div>
         );
 
@@ -1163,7 +1106,7 @@ export function CourseBuilder() {
                   Review all course details before publishing
                 </p>
               </div>
-              
+
               <div className="p-6 space-y-6">
                 {/* Course Details */}
                 <div>
@@ -1201,7 +1144,7 @@ export function CourseBuilder() {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Course Content */}
                 <div>
                   <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">Course Content</h4>
@@ -1267,7 +1210,7 @@ export function CourseBuilder() {
                     </div>
                   )}
                 </div>
-                
+
                 {/* Course Settings */}
                 <div>
                   <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">Course Settings</h4>
@@ -1282,7 +1225,7 @@ export function CourseBuilder() {
                           {courseData.isTracked ? 'Enabled' : 'Disabled'}
                         </span>
                       </div>
-                      
+
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-medium text-gray-900 dark:text-white">Self-Paced Learning</p>
@@ -1292,7 +1235,7 @@ export function CourseBuilder() {
                           {courseData.allowSelfPacing ? 'Enabled' : 'Disabled'}
                         </span>
                       </div>
-                      
+
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-medium text-gray-900 dark:text-white">Certificate on Completion</p>
@@ -1302,7 +1245,7 @@ export function CourseBuilder() {
                           {courseData.requiresCertificate ? 'Enabled' : 'Disabled'}
                         </span>
                       </div>
-                      
+
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-medium text-gray-900 dark:text-white">Graded Course</p>
@@ -1317,15 +1260,15 @@ export function CourseBuilder() {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex justify-end space-x-3 pt-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setActiveTab('details')}
               >
                 Back to Editing
               </Button>
-              <Button 
+              <Button
                 onClick={handleFinalSave}
                 loading={finalSaving}
                 className="bg-green-600 hover:bg-green-700"
@@ -1372,8 +1315,8 @@ export function CourseBuilder() {
           </label>
           <select
             value={lessonData.type}
-            onChange={(e) => setLessonData(prev => ({ 
-              ...prev, 
+            onChange={(e) => setLessonData(prev => ({
+              ...prev,
               type: e.target.value as any,
               content: {
                 videoUrl: '',
@@ -1599,7 +1542,7 @@ export function CourseBuilder() {
                 }))}
                 placeholder="Enter quiz title"
               />
-              
+
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Passing Score (%)
@@ -1623,7 +1566,7 @@ export function CourseBuilder() {
                 />
               </div>
             </div>
-            
+
             <div className="space-y-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Quiz Description
@@ -1645,7 +1588,7 @@ export function CourseBuilder() {
                 placeholder="Describe what this quiz covers..."
               />
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <label className="flex items-center">
                 <input
@@ -1668,14 +1611,14 @@ export function CourseBuilder() {
                 </span>
               </label>
             </div>
-            
+
             {/* Questions Section */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                   Questions
                 </h3>
-                <Button 
+                <Button
                   onClick={() => {
                     const newQuestion: QuizQuestion = {
                       id: `question-${Date.now()}`,
@@ -1701,7 +1644,7 @@ export function CourseBuilder() {
                   Add Question
                 </Button>
               </div>
-              
+
               {lessonData.content.quizData.questions.length === 0 ? (
                 <div className="text-center py-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
                   <QuestionMarkCircleIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
@@ -1711,7 +1654,7 @@ export function CourseBuilder() {
                   <p className="text-gray-600 dark:text-gray-400 mb-4">
                     Add your first question to get started.
                   </p>
-                  <Button 
+                  <Button
                     onClick={() => {
                       const newQuestion: QuizQuestion = {
                         id: `question-${Date.now()}`,
@@ -1840,7 +1783,7 @@ export function CourseBuilder() {
                             }}
                             placeholder="Enter your question"
                           />
-                          
+
                           {/* Question Type */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1">
@@ -1856,14 +1799,14 @@ export function CourseBuilder() {
                                     type: e.target.value as 'multiple-choice' | 'short-text',
                                     correctAnswer: e.target.value === 'multiple-choice' ? '' : []
                                   };
-                                  
+
                                   // Reset options if switching to short-text
                                   if (e.target.value === 'short-text') {
                                     delete updatedQuestion.options;
                                   } else {
                                     updatedQuestion.options = ['', ''];
                                   }
-                                  
+
                                   newQuestions[index] = updatedQuestion;
                                   setLessonData(prev => ({
                                     ...prev,
@@ -1882,7 +1825,7 @@ export function CourseBuilder() {
                                 <option value="short-text">Short Text Answer</option>
                               </select>
                             </div>
-                            
+
                             <div className="space-y-1">
                               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                 Points
@@ -1912,7 +1855,7 @@ export function CourseBuilder() {
                               />
                             </div>
                           </div>
-                          
+
                           {/* Options for Multiple Choice */}
                           {question.type === 'multiple-choice' && (
                             <div className="space-y-3">
@@ -1944,7 +1887,7 @@ export function CourseBuilder() {
                                   Add Option
                                 </button>
                               </div>
-                              
+
                               {(question.options || []).map((option, optionIndex) => (
                                 <div key={optionIndex} className="flex items-center space-x-2">
                                   <input
@@ -1976,13 +1919,13 @@ export function CourseBuilder() {
                                     onChange={(e) => {
                                       const newOptions = [...(question.options || [])];
                                       newOptions[optionIndex] = e.target.value;
-                                      
+
                                       const newQuestions = [...lessonData.content.quizData.questions];
                                       newQuestions[index] = {
                                         ...newQuestions[index],
                                         options: newOptions
                                       };
-                                      
+
                                       // Update correct answer if it was this option
                                       if (question.correctAnswer === option) {
                                         newQuestions[index] = {
@@ -1990,7 +1933,7 @@ export function CourseBuilder() {
                                           correctAnswer: e.target.value
                                         };
                                       }
-                                      
+
                                       setLessonData(prev => ({
                                         ...prev,
                                         content: {
@@ -2014,7 +1957,7 @@ export function CourseBuilder() {
                                           ...newQuestions[index],
                                           options: newOptions
                                         };
-                                        
+
                                         // Update correct answer if it was this option
                                         if (question.correctAnswer === option) {
                                           newQuestions[index] = {
@@ -2022,7 +1965,7 @@ export function CourseBuilder() {
                                             correctAnswer: newOptions[0] || ''
                                           };
                                         }
-                                        
+
                                         setLessonData(prev => ({
                                           ...prev,
                                           content: {
@@ -2044,7 +1987,7 @@ export function CourseBuilder() {
                               ))}
                             </div>
                           )}
-                          
+
                           {/* Correct Answers for Short Text */}
                           {question.type === 'short-text' && (
                             <div className="space-y-1">
@@ -2077,7 +2020,7 @@ export function CourseBuilder() {
                               />
                             </div>
                           )}
-                          
+
                           {/* Explanation */}
                           <div className="space-y-1">
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -2210,6 +2153,13 @@ export function CourseBuilder() {
           <Button variant="outline" onClick={() => navigate('/teacher/courses')}>
             Cancel
           </Button>
+          <Button
+            onClick={() => handleFinalSave()}
+            loading={finalSaving}
+            className="px-6"
+          >
+            {finalSaving ? (isEditing ? 'Updating...' : 'Creating...') : (isEditing ? 'Save Changes' : 'Create Course')}
+          </Button>
         </div>
       </div>
 
@@ -2220,11 +2170,10 @@ export function CourseBuilder() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-              }`}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === tab.id
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                }`}
             >
               {tab.name}
             </button>
@@ -2269,8 +2218,8 @@ export function CourseBuilder() {
             />
           </div>
           <div className="flex justify-end space-x-3">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setShowModuleModal(false);
                 setEditingModule(null);

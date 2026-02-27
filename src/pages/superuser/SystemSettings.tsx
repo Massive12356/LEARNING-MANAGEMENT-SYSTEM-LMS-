@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Card, CardHeader, CardContent } from '../../components/ui/Card';
+import { useState } from 'react';
+
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { 
+import {
   CogIcon,
   ServerIcon,
   ShieldCheckIcon,
@@ -14,7 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
-export  function SystemSettings() {
+export function SystemSettings() {
   const [activeTab, setActiveTab] = useState('general');
   const [saving, setSaving] = useState(false);
 
@@ -609,58 +609,91 @@ export  function SystemSettings() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          System Settings
-        </h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">
-          Configure platform-wide settings and system behavior
-        </p>
+    <div className="space-y-8">
+      {/* Modern Header */}
+      <div className="relative overflow-hidden rounded-3xl bg-slate-900 shadow-2xl">
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 h-96 w-96 rounded-full bg-purple-500/20 blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-80 w-80 rounded-full bg-blue-500/20 blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-full w-full bg-[url('/grid-pattern.svg')] opacity-10"></div>
+
+        <div className="relative p-10 md:p-12">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
+            <div className="space-y-4">
+              <div className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-purple-200 text-sm font-medium">
+                <CogIcon className="h-4 w-4 mr-2" />
+                <span>Global Configuration</span>
+              </div>
+              <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight">
+                System Settings
+              </h1>
+              <p className="text-slate-300 text-lg max-w-xl leading-relaxed">
+                Configure platform-wide settings, security protocols, and system behavior.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={handleSave}
+                loading={saving}
+                className="bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/20 border-none rounded-xl px-8 py-3 h-auto text-base font-medium"
+              >
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Sidebar Navigation */}
         <div className="lg:col-span-1">
-          <nav className="space-y-1">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center space-x-3 px-3 py-2 text-left rounded-lg transition-colors ${
-                    activeTab === tab.id
-                      ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span className="font-medium">{tab.name}</span>
-                </button>
-              );
-            })}
-          </nav>
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 sticky top-4">
+            <nav className="space-y-1">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 text-left rounded-xl transition-all duration-200 ${isActive
+                      ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                      }`}
+                  >
+                    <Icon className={`h-5 w-5 ${isActive ? 'text-blue-400' : 'text-gray-400'}`} />
+                    <span className="font-medium">{tab.name}</span>
+                    {isActive && (
+                      <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
         </div>
 
         {/* Main Content */}
         <div className="lg:col-span-3">
-          <Card>
-            <CardHeader>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden min-h-[600px] flex flex-col">
+            <div className="p-8 border-b border-gray-100 dark:border-gray-700">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
                 {tabs.find(tab => tab.id === activeTab)?.name} Settings
               </h2>
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div className="p-8 flex-1">
               {renderTabContent()}
-              
-              <div className="flex justify-end mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                <Button onClick={handleSave} loading={saving}>
-                  Save Settings
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+
+            <div className="p-6 bg-gray-50 dark:bg-gray-900/30 border-t border-gray-100 dark:border-gray-700 flex justify-end">
+              <Button
+                onClick={handleSave}
+                loading={saving}
+                className="rounded-xl shadow-md"
+              >
+                Save Settings
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

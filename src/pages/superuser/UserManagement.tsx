@@ -9,11 +9,12 @@ import { DataTable, Column } from '../../components/ui/DataTable';
 import { User, Organization, UserRole } from '../../types';
 import { adminService } from '../../services/adminService';
 import { organizationService } from '../../services/organizationService';
-import { 
+import {
   PlusIcon,
   UserGroupIcon,
   BuildingOfficeIcon,
-  PencilIcon
+  PencilIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -28,11 +29,11 @@ export default function UserManagement() {
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [searchMode, setSearchMode] = useState(false);
-  const [creatingUser, setCreatingUser]= useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
   const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
   const [updatingUser, setUpdatingUser] = useState(false);
-  
-   const [currentPage, SetCurrentPage] = useState(1);
+
+  const [currentPage, SetCurrentPage] = useState(1);
   const [totalPages, SetTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
   const pageSize = 10;
@@ -54,7 +55,7 @@ export default function UserManagement() {
     organizationId: ''
   });
 
- 
+
 
   const loadUsers = async (page = 1) => {
     try {
@@ -102,7 +103,7 @@ export default function UserManagement() {
 
   //   try {
   //     let createdUser: User;
-      
+
   //     // Create user based on role using real API
   //     if (newUserData.role === 'superuser') {
   //       // Superusers typically don't belong to an organization
@@ -122,7 +123,7 @@ export default function UserManagement() {
   //         password: 'TempPass123!', // In a real app, this would be a generated password
   //         role: 'admin'
   //       });
-        
+
   //       // Then assign to organization
   //       await adminService.assignAdminToOrganization(createdUser.id, newUserData.organizationId);
   //     } else if (newUserData.role === 'teacher') {
@@ -146,7 +147,7 @@ export default function UserManagement() {
   //         newUserData.organizationId
   //       );
   //     }
-      
+
   //     const roleDisplay = newUserData.role === 'superuser' ? 'Superuser' : newUserData.role.charAt(0).toUpperCase() + newUserData.role.slice(1);
   //     toast.success(`${roleDisplay} created successfully`);
   //     setNewUserData({ email: '', firstName: '', lastName: '', role: 'student', organizationId: '' });
@@ -160,7 +161,7 @@ export default function UserManagement() {
   //   }
   // };
 
-  const handleAddUser = async ( e: React.FormEvent) =>{
+  const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const { firstName, lastName, email, password, role, organizationId } = newUserData;
@@ -178,7 +179,7 @@ export default function UserManagement() {
     }
 
     // Find the selected organization by its internal ID
-    const selectedOrg = organizations.find(org =>  String(org.id) === organizationId);
+    const selectedOrg = organizations.find(org => String(org.id) === organizationId);
 
     // Use organizationCode as organizationId for backend
     const payload = {
@@ -212,71 +213,71 @@ export default function UserManagement() {
     }
   }
 
- const handleEditUser = async (e: React.FormEvent) => {
-   e.preventDefault();
+  const handleEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-   if (
-     !editUserData.email ||
-     !editUserData.firstName ||
-     !editUserData.lastName ||
-     !editUserData.organizationId
-   ) {
-     toast.error('Please fill in all required fields');
-     return;
-   }
+    if (
+      !editUserData.email ||
+      !editUserData.firstName ||
+      !editUserData.lastName ||
+      !editUserData.organizationId
+    ) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
 
-   if (!selectedUser) {
-     toast.error('No user selected for editing');
-     return;
-   }
+    if (!selectedUser) {
+      toast.error('No user selected for editing');
+      return;
+    }
 
-   try {
-     setUpdatingUser(true);
+    try {
+      setUpdatingUser(true);
 
-     // Find organization to map to correct organizationCode for backend
-     const selectedOrg = organizations.find(org => String(org.id) === editUserData.organizationId);
+      // Find organization to map to correct organizationCode for backend
+      const selectedOrg = organizations.find(org => String(org.id) === editUserData.organizationId);
 
-     const payload = {
-       firstName: editUserData.firstName.trim(),
-       lastName: editUserData.lastName.trim(),
-       email: editUserData.email.trim().toLowerCase(),
-       role: editUserData.role,
-       organizationId: selectedOrg?.organizationCode || '',
-     };
+      const payload = {
+        firstName: editUserData.firstName.trim(),
+        lastName: editUserData.lastName.trim(),
+        email: editUserData.email.trim().toLowerCase(),
+        role: editUserData.role,
+        organizationId: selectedOrg?.organizationCode || '',
+      };
 
-     console.log('🟢 Updating user with payload:', payload);
+      console.log('🟢 Updating user with payload:', payload);
 
-     // API call to update user
-     await adminService.superuserUpdateUser(selectedUser.id, payload);
+      // API call to update user
+      await adminService.superuserUpdateUser(selectedUser.id, payload);
 
-     toast.success(`User ${editUserData.firstName} ${editUserData.lastName} updated successfully`);
+      toast.success(`User ${editUserData.firstName} ${editUserData.lastName} updated successfully`);
 
-     // Update the UI state accordingly
-     if (searchMode) {
-       // In search mode, update in current users list without refetching all pages
-       setUsers(prev => prev.map(u => (u.id === selectedUser.id ? { ...u, ...payload } : u)));
-     } else {
-       // In normal mode, reload the current page
-       await loadUsers(currentPage);
-     }
+      // Update the UI state accordingly
+      if (searchMode) {
+        // In search mode, update in current users list without refetching all pages
+        setUsers(prev => prev.map(u => (u.id === selectedUser.id ? { ...u, ...payload } : u)));
+      } else {
+        // In normal mode, reload the current page
+        await loadUsers(currentPage);
+      }
 
-     // Reset modal state
-     setShowEditUserModal(false);
-     setSelectedUser(null);
-     setEditUserData({
-       email: '',
-       firstName: '',
-       lastName: '',
-       role: 'student',
-       organizationId: '',
-     });
-   } catch (error) {
-     console.error('❌ Error updating user:', error);
-     toast.error('Failed to update user');
-   } finally {
-     setUpdatingUser(false);
-   }
- };
+      // Reset modal state
+      setShowEditUserModal(false);
+      setSelectedUser(null);
+      setEditUserData({
+        email: '',
+        firstName: '',
+        lastName: '',
+        role: 'student',
+        organizationId: '',
+      });
+    } catch (error) {
+      console.error('❌ Error updating user:', error);
+      toast.error('Failed to update user');
+    } finally {
+      setUpdatingUser(false);
+    }
+  };
 
   // Filter users based on search term, role, and organization
   // const filteredUsers = users.filter(user => {
@@ -297,132 +298,132 @@ export default function UserManagement() {
 
 
   // Search Users based on search term and by clicking a button to trigger the search function
-//  const handleSearch = async () => {
-//    if (!searchTerm.trim()) {
-//      setSearchMode(false);
-//      loadUsers();
-//      return;
-//    }
+  //  const handleSearch = async () => {
+  //    if (!searchTerm.trim()) {
+  //      setSearchMode(false);
+  //      loadUsers();
+  //      return;
+  //    }
 
-//    setSearchMode(true);
-//    setLoading(true);
+  //    setSearchMode(true);
+  //    setLoading(true);
 
-//    try {
-//      // Build the query object
-//      const query: any = {};
-//      if (searchTerm.includes('@')) {
-//        query.email = searchTerm.trim();
-//      } else {
-//        const parts = searchTerm.trim().split(' ');
-//        if (parts.length === 1) {
-//          query.firstName = parts[0];
-//        } else if (parts.length >= 2) {
-//          query.firstName = parts[0];
-//          query.lastName = parts.slice(1).join(' ');
-//        }
-//      }
+  //    try {
+  //      // Build the query object
+  //      const query: any = {};
+  //      if (searchTerm.includes('@')) {
+  //        query.email = searchTerm.trim();
+  //      } else {
+  //        const parts = searchTerm.trim().split(' ');
+  //        if (parts.length === 1) {
+  //          query.firstName = parts[0];
+  //        } else if (parts.length >= 2) {
+  //          query.firstName = parts[0];
+  //          query.lastName = parts.slice(1).join(' ');
+  //        }
+  //      }
 
-//      if (roleFilter !== 'all') {
-//        query.role = roleFilter;
-//      }
+  //      if (roleFilter !== 'all') {
+  //        query.role = roleFilter;
+  //      }
 
-//      // Fetch results
-//      const results = await adminService.searchUsers(query);
+  //      // Fetch results
+  //      const results = await adminService.searchUsers(query);
 
-//      // Handle cases where no users are found
-//      if (!results || results.length === 0) {
-//        setUsers([]); // Clear the table
-//        setTotalUsers(0);
-//        SetTotalPages(1);
-       
-//      } else {
-//        setUsers(results);
-//        setTotalUsers(results.length);
-//        SetTotalPages(1);
-//      }
-//    } catch (error) {
-//      console.error('Search failed:', error);
-//     toast.error('No user found');
-//      setUsers([]); // Make sure table shows "No users found"
-//    } finally {
-//      setLoading(false);
-//    }
-//  };
+  //      // Handle cases where no users are found
+  //      if (!results || results.length === 0) {
+  //        setUsers([]); // Clear the table
+  //        setTotalUsers(0);
+  //        SetTotalPages(1);
+
+  //      } else {
+  //        setUsers(results);
+  //        setTotalUsers(results.length);
+  //        SetTotalPages(1);
+  //      }
+  //    } catch (error) {
+  //      console.error('Search failed:', error);
+  //     toast.error('No user found');
+  //      setUsers([]); // Make sure table shows "No users found"
+  //    } finally {
+  //      setLoading(false);
+  //    }
+  //  };
 
 
 
-// auto search after user stops typing for 5 seconds
-useEffect(() =>{
-  if (!searchTerm.trim()) {
-    setSearchMode(false);
-    loadUsers();
-    return;
-  }
-    // clear previous timeout if the user keeps typing
-   if (debounceTimeout) clearTimeout(debounceTimeout);
-
-   const timeout = setTimeout(async() =>{
-    try {
-      setCreatingUser(true);
-      setLoading(true);
-
-      // Build the query object
-      const query: any = {};
-      if (searchTerm.includes('@')) {
-        query.email = searchTerm.trim();
-      } else {
-        const parts = searchTerm.trim().split(' ');
-        if (parts.length === 1) {
-          query.firstName = parts[0];
-        } else if (parts.length >= 2) {
-          query.firstName = parts[0];
-          query.lastName = parts.slice(1).join(' ');
-        }
-      }
-
-      if (roleFilter !== 'all') {
-        query.role = roleFilter;
-      }
-
-      console.log('[Search Query Sent]', query);
-
-      // Fetch results
-      const results = await adminService.searchUsers(query);
-
-      // Handle cases where no users are found
-      if (!results || results.length === 0) {
-        setUsers([]); // Clear the table
-        setTotalUsers(0);
-        SetTotalPages(1);
-      } else {
-        setUsers(results);
-        setTotalUsers(results.length);
-        SetTotalPages(1);
-      }
-    } catch (error) {
-      console.error('Search failed:', error);
-      toast.error('No user found');
-      setUsers([]); // Make sure table shows "No users found"
-    } finally {
-      setLoading(false);
+  // auto search after user stops typing for 5 seconds
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setSearchMode(false);
+      loadUsers();
+      return;
     }
-   }, 2000);
+    // clear previous timeout if the user keeps typing
+    if (debounceTimeout) clearTimeout(debounceTimeout);
 
-   setDebounceTimeout(timeout)
-   return ()=>clearTimeout(timeout)
-},[searchTerm,roleFilter])
+    const timeout = setTimeout(async () => {
+      try {
+        setCreatingUser(true);
+        setLoading(true);
+
+        // Build the query object
+        const query: any = {};
+        if (searchTerm.includes('@')) {
+          query.email = searchTerm.trim();
+        } else {
+          const parts = searchTerm.trim().split(' ');
+          if (parts.length === 1) {
+            query.firstName = parts[0];
+          } else if (parts.length >= 2) {
+            query.firstName = parts[0];
+            query.lastName = parts.slice(1).join(' ');
+          }
+        }
+
+        if (roleFilter !== 'all') {
+          query.role = roleFilter;
+        }
+
+        console.log('[Search Query Sent]', query);
+
+        // Fetch results
+        const results = await adminService.searchUsers(query);
+
+        // Handle cases where no users are found
+        if (!results || results.length === 0) {
+          setUsers([]); // Clear the table
+          setTotalUsers(0);
+          SetTotalPages(1);
+        } else {
+          setUsers(results);
+          setTotalUsers(results.length);
+          SetTotalPages(1);
+        }
+      } catch (error) {
+        console.error('Search failed:', error);
+        toast.error('No user found');
+        setUsers([]); // Make sure table shows "No users found"
+      } finally {
+        setLoading(false);
+      }
+    }, 2000);
+
+    setDebounceTimeout(timeout)
+    return () => clearTimeout(timeout)
+  }, [searchTerm, roleFilter])
 
 
-   useEffect(() => {
-     loadUsers();
-     loadOrganizations();
-   }, []);
+  useEffect(() => {
+    loadUsers();
+    loadOrganizations();
+  }, []);
 
- const handleClearSearch = () => {
-   setSearchTerm('');
-   setSearchMode(false);
-   loadUsers(); // reload all users
- };
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setSearchMode(false);
+    loadUsers(); // reload all users
+  };
 
 
 
@@ -452,12 +453,11 @@ useEffect(() =>{
       key: 'role',
       label: 'Role',
       render: (_, user) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          user.role === 'superuser' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.role === 'superuser' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
           user.role === 'admin' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
-          user.role === 'teacher' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-          'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-        }`}>
+            user.role === 'teacher' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+              'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+          }`}>
           {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
         </span>
       )
@@ -490,8 +490,8 @@ useEffect(() =>{
       label: 'Actions',
       render: (_, user) => (
         <div className="flex space-x-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={() => {
               // Set the selected user for editing
@@ -562,101 +562,76 @@ useEffect(() =>{
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">User Management</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Manage all users across all organizations
-          </p>
+    <div className="space-y-8">
+      {/* Modern Header */}
+      <div className="relative overflow-hidden rounded-3xl bg-slate-900 shadow-2xl">
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 h-96 w-96 rounded-full bg-purple-500/20 blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-80 w-80 rounded-full bg-blue-500/20 blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-full w-full bg-[url('/grid-pattern.svg')] opacity-10"></div>
+
+        <div className="relative p-10 md:p-12">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
+            <div className="space-y-4">
+              <div className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-purple-200 text-sm font-medium">
+                <UserGroupIcon className="h-4 w-4 mr-2" />
+                <span>Global User Control</span>
+              </div>
+              <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight">
+                User Management
+              </h1>
+              <p className="text-slate-300 text-lg max-w-xl leading-relaxed">
+                Oversee all users across the platform, manage roles, and handle account settings.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => setShowAddUserModal(true)}
+                className="bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/20 border-none rounded-xl px-6 py-3 h-auto text-base"
+              >
+                <PlusIcon className="h-5 w-5 mr-2" />
+                Add New User
+              </Button>
+            </div>
+          </div>
         </div>
-        <Button onClick={() => setShowAddUserModal(true)}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Add User
-        </Button>
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="relative w-full md:w-[50%] md:col-span-2">
+      {/* Filters */}
+      <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="relative w-full md:w-[50%] md:col-span-2">
+            <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by email or name..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="pl-12 block w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+            />
+            {searchTerm && (
               <button
-                type="button"
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600"
-                title="Search"
+                onClick={handleClearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 p-1.5 rounded-lg transition-colors"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z"
-                  />
+                <span className="sr-only">Clear</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
                 </svg>
               </button>
-
-              {/* Input Field */}
-              <Input
-                placeholder="Search By email and name"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="pl-10 pr-10"
-              />
-
-              {/* Clear Button */}
-              {searchTerm && (
-                <button
-                  onClick={handleClearSearch}
-                  className="absolute right-3 top-1 bg-blue-600 hover:bg-blue-700 text-white shadow-sm focus:ring-blue-500 px-3 py-1.5 text-sm rounded-lg  "
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-
-            {/* <select
-              value={roleFilter}
-              onChange={e => setRoleFilter(e.target.value as any)}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white sm:text-sm"
-            >
-              <option value="all">All Roles</option>
-              <option value="student">Student</option>
-              <option value="teacher">Teacher</option>
-              <option value="admin">Admin</option>
-              <option value="superuser">Superuser</option>
-            </select> */}
-            {/* <select
-              value={orgFilter}
-              onChange={e => setOrgFilter(e.target.value)}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white sm:text-sm"
-            >
-              <option value="all">All Organizations</option>
-              {organizations.map(org => (
-                <option key={org.id} value={org.id}>
-                  {org.name}
-                </option>
-              ))}
-            </select> */}
+            )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Users Table */}
-      <Card>
-        <CardHeader>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+      <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <div className="p-8 border-b border-gray-100 dark:border-gray-700">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             All Users ({totalUsers})
           </h2>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -674,19 +649,23 @@ useEffect(() =>{
           ) : (
             <>
               <DataTable
-                data={users} // ✅ correct dataset
+                data={users}
                 columns={columns}
                 loading={loading}
-                pagination={false} // handled externally by backend
+                pagination={false}
                 searchable={false}
               />
 
               {/* Show pagination only in normal (non-search) mode */}
-              {!searchMode && totalPages > 1 && renderPagination()}
+              {!searchMode && totalPages > 1 && (
+                <div className="px-8 pb-8">
+                  {renderPagination()}
+                </div>
+              )}
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Add User Modal */}
       {/* Add User Modal */}
