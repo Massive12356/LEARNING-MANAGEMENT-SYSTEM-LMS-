@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { mockApi } from '../../services/mockApi';
 import { Course } from '../../types';
-import { 
+import {
   MagnifyingGlassIcon,
   FunnelIcon,
   EyeIcon,
@@ -16,6 +16,7 @@ import {
   ClockIcon,
 } from '@heroicons/react/24/outline';
 import { Modal } from '../../components/ui/Modal';
+import toast from 'react-hot-toast';
 
 export default function CourseList() {
   const { user } = useAuthStore();
@@ -39,13 +40,13 @@ export default function CourseList() {
 
   const loadData = async () => {
     if (!user) return;
-    
+
     try {
       const [coursesData, teachersData] = await Promise.all([
         mockApi.getCourses({ organizationId: user.organizationId }),
         mockApi.getUsers({ role: 'teacher', organizationId: user.organizationId })
       ]);
-      
+
       setCourses(coursesData);
       setTeachers(teachersData.data);
     } catch (error) {
@@ -107,7 +108,7 @@ export default function CourseList() {
           { week: 'Week 4', completions: 40 }
         ]
       };
-      
+
       setSelectedCourseAnalytics(analyticsData);
       setShowAnalyticsModal(true);
     } catch (error) {
@@ -177,7 +178,7 @@ export default function CourseList() {
             </div>
             <div className="ml-4">
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {courses.filter(c => c.status === 'live').length}
+                {courses.filter(c => c.status === 'published').length}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Live Courses
@@ -235,7 +236,7 @@ export default function CourseList() {
                 />
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <FunnelIcon className="h-4 w-4 text-gray-400" />
@@ -272,14 +273,14 @@ export default function CourseList() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCourses.map((course) => (
             <Card key={course.id} className="group hover:shadow-lg transition-shadow">
-              <div className="aspect-w-16 aspect-h-9">
+              <div className="aspect-video relative overflow-hidden">
                 <img
                   src={course.coverImage || 'https://picsum.photos/400/225'}
                   alt={course.title}
                   className="w-full h-48 object-cover rounded-t-lg"
                 />
               </div>
-              
+
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
@@ -290,12 +291,11 @@ export default function CourseList() {
                       {course.description}
                     </p>
                   </div>
-                  <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
-                    course.status === 'live' 
+                  <span className={`ml-2 px-2 py-1 text-xs rounded-full ${course.status === 'published'
                       ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
                       : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
-                  }`}>
-                    {course.status}
+                    }`}>
+                    {course.status === 'published' ? 'Live' : 'Draft'}
                   </span>
                 </div>
 
@@ -304,11 +304,11 @@ export default function CourseList() {
                     <UserGroupIcon className="h-4 w-4 mr-2" />
                     <span>Teacher: {getTeacherName(course.teacherId)}</span>
                   </div>
-                  
+
                   <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
                     <div className="flex items-center">
                       <BookOpenIcon className="h-4 w-4 mr-1" />
-                      <span>{course.modules.length} modules</span>
+                      <span>{course.modules?.length ?? 0} modules</span>
                     </div>
                     <div className="flex items-center">
                       <ClockIcon className="h-4 w-4 mr-1" />
@@ -316,7 +316,7 @@ export default function CourseList() {
                     </div>
                   </div>
 
-                  {course.requiresCertificate && (
+                  {course.certificateOnCompletion && (
                     <div className="flex items-center text-sm text-yellow-600 dark:text-yellow-400">
                       <span className="w-2 h-2 bg-yellow-400 rounded-full mr-2"></span>
                       Certificate Available
@@ -359,9 +359,9 @@ export default function CourseList() {
                       </Button>
                     </Link>
                   </div>
-                  
-                  <Button 
-                    variant="outline" 
+
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => handleViewAnalytics(course.id)}
                   >
@@ -378,8 +378,8 @@ export default function CourseList() {
           <CardContent className="text-center py-12">
             <BookOpenIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              {searchTerm || statusFilter !== 'all' || teacherFilter !== 'all' 
-                ? 'No courses found' 
+              {searchTerm || statusFilter !== 'all' || teacherFilter !== 'all'
+                ? 'No courses found'
                 : 'No courses yet'
               }
             </h3>
@@ -478,7 +478,7 @@ export default function CourseList() {
                 <div className="h-32 flex items-end justify-between space-x-2">
                   {selectedCourseAnalytics.weeklyProgress.map((week: any, index: number) => (
                     <div key={index} className="flex-1 flex flex-col items-center">
-                      <div 
+                      <div
                         className="w-full bg-blue-600 rounded-t"
                         style={{ height: `${(week.completions / 40) * 100}%` }}
                       />

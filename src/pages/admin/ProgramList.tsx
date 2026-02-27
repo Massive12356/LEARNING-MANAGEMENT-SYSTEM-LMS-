@@ -5,7 +5,7 @@ import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { mockApi } from '../../services/mockApi';
 import { Program, Course } from '../../types';
-import { 
+import {
   MagnifyingGlassIcon,
   FunnelIcon,
   EyeIcon,
@@ -41,13 +41,13 @@ export function ProgramList() {
 
   const loadData = async () => {
     if (!user) return;
-    
+
     try {
       const [programsData, coursesData] = await Promise.all([
         mockApi.getPrograms({ organizationId: user.organizationId }),
         mockApi.getCourses({ organizationId: user.organizationId })
       ]);
-      
+
       setPrograms(programsData);
       setCourses(coursesData);
     } catch (error) {
@@ -101,7 +101,7 @@ export function ProgramList() {
           { stage: 'Course 3', students: 67 }
         ]
       };
-      
+
       setSelectedProgramAnalytics(analyticsData);
       setShowAnalyticsModal(true);
     } catch (error) {
@@ -203,7 +203,7 @@ export function ProgramList() {
             </div>
             <div className="ml-4">
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {programs.reduce((acc, p) => acc + p.courseIds.length, 0)}
+                {programs.reduce((acc, p) => acc + (p.courseGeneralIds?.length ?? 0), 0)}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Total Courses
@@ -229,7 +229,7 @@ export function ProgramList() {
                 />
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <FunnelIcon className="h-4 w-4 text-gray-400" />
@@ -253,17 +253,17 @@ export function ProgramList() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {filteredPrograms.map((program) => {
             const programCourses = getProgramCourses(program);
-            
+
             return (
               <Card key={program.id} className="group hover:shadow-lg transition-shadow">
-                <div className="aspect-w-16 aspect-h-9">
+                <div className="aspect-video relative overflow-hidden">
                   <img
                     src={program.coverImage || 'https://picsum.photos/600/300'}
                     alt={program.title}
                     className="w-full h-48 object-cover rounded-t-lg"
                   />
                 </div>
-                
+
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
@@ -274,12 +274,11 @@ export function ProgramList() {
                         {program.description}
                       </p>
                     </div>
-                    <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
-                      program.status === 'live' 
+                    <span className={`ml-2 px-2 py-1 text-xs rounded-full ${program.status === 'published' || program.status === 'live'
                         ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
                         : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
-                    }`}>
-                      {program.status}
+                      }`}>
+                      {program.status === 'published' ? 'Live' : program.status === 'live' ? 'Live' : 'Draft'}
                     </span>
                   </div>
 
@@ -287,7 +286,7 @@ export function ProgramList() {
                   <div className="flex items-center space-x-4 mb-4 text-sm text-gray-600 dark:text-gray-400">
                     <div className="flex items-center">
                       <BookOpenIcon className="h-4 w-4 mr-1" />
-                      <span>{program.courseIds.length} courses</span>
+                      <span>{program.courseGeneralIds?.length ?? 0} courses</span>
                     </div>
                     {program.requiresCertificate && (
                       <div className="flex items-center text-yellow-600 dark:text-yellow-400">
@@ -348,9 +347,9 @@ export function ProgramList() {
                         </Button>
                       </Link>
                     </div>
-                    
-                    <Button 
-                      variant="outline" 
+
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => handleViewAnalytics(program.id)}
                     >
@@ -368,8 +367,8 @@ export function ProgramList() {
           <CardContent className="text-center py-12">
             <AcademicCapIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              {searchTerm || statusFilter !== 'all' 
-                ? 'No programs found' 
+              {searchTerm || statusFilter !== 'all'
+                ? 'No programs found'
                 : 'No programs yet'
               }
             </h3>
@@ -462,29 +461,6 @@ export function ProgramList() {
                 ))}
               </div>
             </div>
-      {/* Program Analytics Summary */}
-      {programs.length > 0 && (
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Program Analytics Summary
-            </h2>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-              <div className="text-center">
-                <ChartBarIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-600 dark:text-gray-400">
-                  Program analytics dashboard placeholder
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
-                  Connect analytics service for detailed program insights
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
             {/* Student Progression */}
             <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <h4 className="font-medium text-gray-900 dark:text-white mb-4">
@@ -493,7 +469,7 @@ export function ProgramList() {
               <div className="flex items-end justify-between space-x-4 h-32">
                 {selectedProgramAnalytics.studentProgression.map((stage: any, index: number) => (
                   <div key={index} className="flex-1 flex flex-col items-center">
-                    <div 
+                    <div
                       className="w-full bg-blue-600 rounded-t flex items-end justify-center text-white text-sm font-medium pb-2"
                       style={{ height: `${(stage.students / selectedProgramAnalytics.enrollments) * 100}%` }}
                     >

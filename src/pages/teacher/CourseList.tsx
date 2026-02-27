@@ -248,7 +248,7 @@ export function CourseList() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredCourses.map((course) => (
             <div key={course.id} className="group flex flex-col bg-white dark:bg-gray-800 rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-300 hover:-translate-y-1">
-              <div className="aspect-w-16 aspect-h-9 relative overflow-hidden">
+              <div className="aspect-video relative overflow-hidden">
                 <img
                   src={course.coverImage || 'https://picsum.photos/400/225'}
                   alt={course.title}
@@ -257,11 +257,11 @@ export function CourseList() {
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
 
                 <div className="absolute top-4 left-4 flex gap-2">
-                  <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full backdrop-blur-md ${(course.status === 'live' || course.status === 'published')
+                  <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full backdrop-blur-md ${course.status === 'published'
                     ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                     : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                     }`}>
-                    {course.status}
+                    {course.status === 'published' ? 'live' : course.status}
                   </span>
                 </div>
 
@@ -318,7 +318,7 @@ export function CourseList() {
                     </div>
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => handleDeleteCourse(course.id)}
+                        onClick={() => handleDeleteCourse(course.id.toString())}
                         className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                         title="Delete course"
                       >
@@ -377,7 +377,7 @@ export function CourseList() {
               </div>
               <span className="text-emerald-100 text-sm font-medium">Active</span>
             </div>
-            <div className="text-4xl font-bold mb-1">{courses.filter(c => c.status === 'live' || c.status === 'published').length}</div>
+            <div className="text-4xl font-bold mb-1">{courses.filter(c => c.status === 'published').length}</div>
             <div className="text-emerald-100 text-sm">Live Courses</div>
           </div>
 

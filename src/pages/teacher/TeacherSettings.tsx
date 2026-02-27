@@ -13,7 +13,6 @@ import {
   BuildingOfficeIcon,
   BellIcon,
   Cog6ToothIcon,
-  ShieldCheckIcon,
   KeyIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
@@ -52,9 +51,9 @@ export const TeacherSettings: React.FC = () => {
   });
 
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>({
-    emailNotificationEnabler: false,
-    pushNotificationEnabler: false,
-    smsNotificationEnabler: false,
+    emailNotifications: false,
+    pushNotifications: false,
+    smsNotifications: false,
   });
 
   const loadOrganization = useCallback(async () => {

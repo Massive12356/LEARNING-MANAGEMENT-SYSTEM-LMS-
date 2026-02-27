@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { Button } from '../../components/ui/Button';
@@ -26,7 +26,7 @@ export function TeacherDashboard() {
   const { user } = useAuthStore();
   const [dashboardData, setDashboardData] = useState<teacherDashboardData | null>(null);
   const [organization, setOrganization] = useState<Organization | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'analytics'>('overview');
   const [courses, setCourses] = useState<any[]>([]);
 
@@ -269,7 +269,7 @@ export function TeacherDashboard() {
                     key={course.id}
                     className="group relative bg-white dark:bg-gray-800 rounded-3xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-300 hover:-translate-y-1"
                   >
-                    <div className="aspect-w-16 aspect-h-9 relative overflow-hidden">
+                    <div className="aspect-video relative overflow-hidden">
                       <img
                         src={course.coverImage || 'https://picsum.photos/400/225'}
                         alt={course.title}
@@ -278,11 +278,11 @@ export function TeacherDashboard() {
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
 
                       <div className="absolute top-4 left-4">
-                        <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full backdrop-blur-md ${course.status === 'live'
+                        <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full backdrop-blur-md ${course.status === 'published'
                           ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                           : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                           }`}>
-                          {course.status}
+                          {course.status === 'published' ? 'live' : course.status}
                         </span>
                       </div>
                     </div>

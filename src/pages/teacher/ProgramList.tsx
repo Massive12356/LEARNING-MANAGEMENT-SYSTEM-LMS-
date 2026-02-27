@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { mockApi } from '../../services/mockApi';
-import { Program, Course, programStats } from '../../types';
-import { 
+import { Program, programStats } from '../../types';
+import {
   MagnifyingGlassIcon,
   FunnelIcon,
   EyeIcon,
@@ -24,13 +23,12 @@ export function ProgramList() {
   const navigate = useNavigate();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [programsStats, setProgramsStats] = useState<programStats | null>(null);
-  const [courses, setCourses] = useState<Course[]>([]);
   const [filteredPrograms, setFilteredPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
 
-  
+
   // useEffect(() => {
   //   filterPrograms();
   // }, [programs, searchTerm, statusFilter]);
@@ -41,7 +39,7 @@ export function ProgramList() {
       navigate('/teacher/dashboard');
       return;
     }
-    
+
     try {
       const response = await courseService.loadProgramStats()
       setProgramsStats(response)
@@ -59,7 +57,7 @@ export function ProgramList() {
       navigate('/teacher/dashboard');
       return;
     }
-    
+
     try {
       const data = await courseService.loadAllPrograms(user.organizationId);
       setPrograms(data);
@@ -75,7 +73,7 @@ export function ProgramList() {
     let filtered = [...programs];
 
     // Apply search filter
-    if (searchTerm) { 
+    if (searchTerm) {
       filtered = filtered.filter(program =>
         program.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         program.description?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -102,7 +100,7 @@ export function ProgramList() {
     loadStatsData();
     loadPrograms();
   }, [user]);
-  
+
   useEffect(() => {
     filterPrograms();
   }, [programs, searchTerm, statusFilter]);
@@ -321,10 +319,10 @@ export function ProgramList() {
                         <PencilIcon className="h-4 w-4 mr-2" />
                         Edit
                       </Button>
-                      <Link to={`/teacher/programs/${program.id}/edit`}>
+                      <Link to={`/student/program/${program.id}`}>
                         <Button variant="outline" size="sm">
                           <EyeIcon className="h-4 w-4 mr-2" />
-                          View
+                          Preview
                         </Button>
                       </Link>
                     </div>
