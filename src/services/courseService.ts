@@ -129,6 +129,25 @@ class CourseService {
     }
   }
 
+  async editCourse(courseId: string, formData: FormData) {
+    try {
+      const response = await apiClient.patch(`/course/general/${courseId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log('[courseService EDIT] SUCCESS:', response?.data);
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService EDIT] ERROR:',
+        err?.response?.data?.message || err?.message
+      );
+      throw new Error(err?.response?.data?.message || err?.message);
+    }
+  }
+
   async teacherDashboardStats() {
     try {
       const response = await apiClient.get('/teacher/stats');

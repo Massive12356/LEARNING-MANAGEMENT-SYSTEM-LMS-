@@ -1,9 +1,9 @@
 export type UserRole = 'student' | 'teacher' | 'admin' | 'superuser';
 export type UserStatus = 'active' | 'pending';
 
-export type CourseStatus = 'draft' | 'published' ;
+export type CourseStatus = 'draft' | 'published';
 export type ProgramStatus = 'draft' | 'live';
-export type OrganizationStatus = 'active' | 'suspended' ;
+export type OrganizationStatus = 'active' | 'suspended';
 
 export interface courseSettings {
   courseStatus: CourseStatus;
@@ -17,10 +17,19 @@ export interface createCoursePayload {
   programIds?: number;
   courseId: number;
   courseSettingsId: number;
-  courseModuleId:number[]
+  courseModuleId: number[];
 }
 
-export interface teacherDashboardData{
+export interface EditCoursePayload {
+  courseTitle?: string;
+  description?: string;
+  tags?: string[];
+  courseSettings?: courseSettings;
+  courseModuleId?: number[];
+  images?: File;
+}
+
+export interface teacherDashboardData {
   totalPrograms: number;
   totalCourses: number;
   totalLiveCourses: number;
@@ -105,7 +114,7 @@ export interface OrganizationSearchQuery {
 
 export interface Course {
   id: string;
-  courseId:string
+  courseId: string
   title: string;
   description: string;
   coverImage?: string;
@@ -611,7 +620,7 @@ export interface UserSearchQuery {
   role?: 'admin' | 'student' | 'teacher' | 'superuser';
 }
 
-export  interface adminSearchQuery {
+export interface adminSearchQuery {
   name?: string;
   firstName?: string;
   lastName?: string;
@@ -662,34 +671,34 @@ export interface UserRegistrationData {
   firstName: string;
   lastName: string;
   email: string;
-  role:string;
+  role: string;
   createdAt: string
 }
 
-export interface Activity<T = any>{
+export interface Activity<T = any> {
   type: ActivityType;
   data: T;
   createdAt: string
 }
 
-export interface RecentActivitiesResponse{
+export interface RecentActivitiesResponse {
   message: string;
   activities: Activity<UserRegistrationData>[];
 }
 
-export interface RecentUser{
-  id:number;
+export interface RecentUser {
+  id: number;
   firstName: string;
   lastName: string;
   email: string;
-  role:UserRole;
+  role: UserRole;
   status: UserStatus;
   createdAt: string;
 }
 
-export interface RecentUserResponse{
+export interface RecentUserResponse {
   message: string;
-  users:RecentUser[];
+  users: RecentUser[];
 }
 
 export interface OrganizationStats {
@@ -699,7 +708,7 @@ export interface OrganizationStats {
   activeEnrollments: number;
 }
 
-export interface OrganizationStatsResponse{
+export interface OrganizationStatsResponse {
   message: string;
   stats: OrganizationStats;
 }
@@ -822,7 +831,7 @@ export interface teacherAnalyticsStats {
 }
 
 export interface coursePerformanceAnalytics {
-  id:string;
+  id: string;
   courseName: string;
   courseStatus: CourseStatus;
   studentCount: number;
@@ -836,10 +845,10 @@ export interface dashboardAnalyticsResponse {
   averageTimeSpentHours?: number;
 }
 
-export interface programPayload{
+export interface programPayload {
   title: string
   description: string
-  images:string
+  images: string
   programStatus: CourseStatus
   requiredCourseOrder: boolean
   programCertificate: boolean;
@@ -851,12 +860,12 @@ export interface AnalyticsMetrics {
   newEnrollments: number;
   completions: number;
 }
-export interface AnalyticsSummary extends AnalyticsMetrics {}
+export interface AnalyticsSummary extends AnalyticsMetrics { }
 export interface DailyAnalyticsBreakdown extends AnalyticsMetrics {
   date: string;
 }
 export interface AnalyticsPeriod {
-  startDate: string; 
+  startDate: string;
   endDate: string;
 }
 
@@ -880,10 +889,10 @@ export interface PopularCourse {
   createdAt: string;
 }
 
-export interface EditModulePayload{
-   moduleNumber: number;    
-   title: string;
-    description: string
+export interface EditModulePayload {
+  moduleNumber: number;
+  title: string;
+  description: string
   courseContentId: number[];
 }
 export interface studentOverviewStats {
@@ -1001,9 +1010,9 @@ export interface CertificateElementDTO {
   positionX: number;
   positionY: number;
 }
-   
+
 export interface courseDescription {
-  id:string;
+  id: string;
   courseTitle: string;
   description: string;
 }
@@ -1128,7 +1137,7 @@ export interface CertPagination {
 
 
 export interface VerifyCertificatePayload {
-  credentialId: string;  
+  credentialId: string;
 }
-  
+
 
