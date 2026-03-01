@@ -312,33 +312,6 @@ export function CourseBuilder() {
     }
   }, [courseId]);
 
-  // const loadCourse = async () => {
-  //   if (!courseId) return;
-
-  //   setLoading(true);
-  //   try {
-  //     const courseData = await mockApi.getCourseById(courseId);
-  //     setCourse(courseData);
-  //     setCourseData({
-  //       title: courseData.title,
-  //       description: courseData.description,
-  //       tags: courseData.tags,
-  //       courseStatus: courseData.courseStatus,
-  //       trackingProgress: courseData.trackingProgress,
-  //       selfPacedLearning: courseData.selfPacedLearning,
-  //       certificateOnCompletion: courseData.certificateOnCompletion,
-  //       gradedCourse: courseData.gradedCourse,
-  //     });
-  //     if (courseData.coverImage) {
-  //       setCoverImagePreview(courseData.coverImage);
-  //     }
-  //   } catch (error) {
-  //     console.error('Failed to load course:', error);
-  //     toast.error('Failed to load course');
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   const handleSaveCourseDetails = async () => {
     if (!courseDetails.courseTitle.trim()) {
@@ -2728,12 +2701,12 @@ export function CourseBuilder() {
                                   const newQuestions = [...lessonData.content.quizData.questions];
                                   const updatedQuestion = {
                                     ...newQuestions[index],
-                                    type: e.target.value as 'multiple-choice' | 'short-text',
+                                    type: e.target.value as 'multiple-choice' | 'easy',
                                     correctAnswers: e.target.value === 'multiple-choice' ? '' : [],
                                   };
 
                                   // Reset options if switching to short-text
-                                  if (e.target.value === 'short-text') {
+                                  if (e.target.value === 'easy') {
                                     delete updatedQuestion.options;
                                   } else {
                                     updatedQuestion.options = ['', ''];
@@ -2754,7 +2727,7 @@ export function CourseBuilder() {
                                 className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                               >
                                 <option value="multiple-choice">Multiple Choice</option>
-                                <option value="short-text">Short Text Answer</option>
+                                <option value="easy">Short Text Answer</option>
                               </select>
                             </div>
 
