@@ -312,33 +312,68 @@ export function CourseBuilder() {
     }
   }, [courseId]);
 
-  // const loadCourse = async () => {
-  //   if (!courseId) return;
+  const loadCourse = async () => {
+    if (!courseId) return;
 
-  //   setLoading(true);
-  //   try {
-  //     const courseData = await mockApi.getCourseById(courseId);
-  //     setCourse(courseData);
-  //     setCourseData({
-  //       title: courseData.title,
-  //       description: courseData.description,
-  //       tags: courseData.tags,
-  //       courseStatus: courseData.courseStatus,
-  //       trackingProgress: courseData.trackingProgress,
-  //       selfPacedLearning: courseData.selfPacedLearning,
-  //       certificateOnCompletion: courseData.certificateOnCompletion,
-  //       gradedCourse: courseData.gradedCourse,
-  //     });
-  //     if (courseData.coverImage) {
-  //       setCoverImagePreview(courseData.coverImage);
-  //     }
-  //   } catch (error) {
-  //     console.error('Failed to load course:', error);
-  //     toast.error('Failed to load course');
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+    setLoading(true);
+    try {
+      const response = await courseService.getCourseById(courseId);
+      console.log('[CourseBuilder] LOAD COURSE RESPONSE:', response);
+
+      if (response) {
+        // Map Course Details
+        const courseInfo = response.course;
+        setCourseDetails({
+          courseTitle: courseInfo.title || '',
+          description: courseInfo.description || '',
+          images: null, // File object can't be restored from URL
+          tags: courseInfo.tags || [],
+        });
+
+        if (courseInfo.images && courseInfo.images.length > 0) {
+          setCoverImagePreview(courseInfo.images[0]);
+        }
+
+        // Map Course Settings
+        const settings = response.settings;
+        setCourseData({
+          title: courseInfo.title || '',
+          description: courseInfo.description || '',
+          tags: courseInfo.tags || [],
+          courseStatus: settings.courseStatus || 'draft',
+          trackingProgress: settings.trackingProgress ?? true,
+          selfPacedLearning: settings.selfPacedLearning ?? true,
+          certificateOnCompletion: settings.certificateOnCompletion ?? false,
+          gradedCourse: settings.gradedCourse ?? false,
+          coverImage: courseInfo.images?.[0] || '',
+        });
+
+        // Map Modules and IDs
+        const rawModules = response.modules || [];
+        const modules = rawModules.map((m: any) => ({
+          ...m,
+          Contents: m.contents || m.Contents || [],
+        }));
+        setSelectModule(modules);
+        setCourseModules(modules);
+        const ids = modules.map((m: any) => m.id);
+        setModuleIds(ids);
+
+        // Map Other IDs
+        setSelectCourseId(courseInfo.id.toString());
+        setCourseSettingId(settings.id);
+
+        // Sync Session Storage
+        sessionStorage.setItem('currentCourseId', courseInfo.id.toString());
+        sessionStorage.setItem('settingID', settings.id.toString());
+      }
+    } catch (error: any) {
+      console.error('Failed to load course:', error);
+      toast.error(error.message || 'Failed to load course');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSaveCourseDetails = async () => {
     if (!courseDetails.courseTitle.trim()) {
@@ -1200,10 +1235,15 @@ export function CourseBuilder() {
     try {
       setIsLoadingModules(true);
       const response = await courseService.getCreatedModules(activeCourseId);
-      setSelectModule(response || []);
-      setCourseModules(response || []);
+      const rawModules = response || [];
+      const modules = rawModules.map((m: any) => ({
+        ...m,
+        Contents: m.contents || m.Contents || [],
+      }));
+      setSelectModule(modules);
+      setCourseModules(modules);
       // Keep moduleIds in sync so the final save endpoint gets all IDs
-      const ids = (response || []).map((m: any) => m.id);
+      const ids = modules.map((m: any) => m.id);
       setModuleIds(ids);
     } catch (error: any) {
       console.log(error?.message || 'Failed to load module');
