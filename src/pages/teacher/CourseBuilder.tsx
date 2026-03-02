@@ -124,7 +124,7 @@ export function CourseBuilder() {
     return isCourseDetailsEmpty && !hasModules && isSettingsEmpty;
   };
   const [studentCount, setStudentCount] = useState(0);
-  const [selectCourseId, setSelectCourseId] = useState<string>(''); // holds course id after creation
+  const [selectCourseId, setSelectCourseId] = useState<string>(initialState.selectCourseId || ''); // holds course id after creation
   const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
   const [isSavingModule, setIsSavingModule] = useState(false);
   const [isGettingModule, setIsGettingModule] = useState(false);
@@ -132,7 +132,7 @@ export function CourseBuilder() {
   const [selectedModuleNumber, setSelectedModuleNumber] = useState<number | null>(null);
   const [isSavingSetting, setIsSavingSetting] = useState(false);
   const [isAddingLesson, setIsAddingLesson] = useState(false);
-  const [courseSettingId, setCourseSettingId] = useState<number | null>(null);
+  const [courseSettingId, setCourseSettingId] = useState<number | null>(initialState.courseSettingId || null);
 
   // Cache for storing created/updated lesson data for editing
   const [lessonCache, setLessonCache] = useState<Record<string, Lesson>>({});
@@ -276,6 +276,8 @@ export function CourseBuilder() {
         isRequired: true,
         imageFile: null,
       },
+      selectCourseId: sessionStorage.getItem('currentCourseId') || '',
+      courseSettingId: sessionStorage.getItem('settingID') ? Number(sessionStorage.getItem('settingID')) : null,
     };
   };
 
