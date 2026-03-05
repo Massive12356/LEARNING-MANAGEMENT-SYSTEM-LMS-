@@ -204,7 +204,6 @@ export const AppRoutes: React.FC = () => {
                 <Route path="todo" element={<TeacherTodoPage />} />
                 <Route path="courses" element={<TeacherCourseList />} />
                 <Route path="courses/new" element={<CourseBuilder />} />
-                <Route path="courses/:courseId/edit" element={<CourseBuilder />} />
                 <Route path="certificates" element={<CertificateManagement />} />
                 <Route path="notifications" element={<NotificationManagement />} />
                 <Route path="notifications/list" element={<NotificationList />} />
