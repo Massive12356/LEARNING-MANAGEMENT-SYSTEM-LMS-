@@ -1418,38 +1418,26 @@ const handleUpdateSettings = async () => {
                    }}
                    onKeyDown={e => {
                      if (e.key === ',') {
-                       // Allow comma to be typed first
-                       setTimeout(() => {
-                         const currentValue = tagsInput + ',';
-                         const newTags = currentValue
-                           .split(',')
-                           .map(tag => tag.trim())
-                           .filter(Boolean);
-                                       
+                       e.preventDefault();
+                       const currentValue = tagsInput.trim();
+                       if (currentValue && !courseDetails.tags.includes(currentValue)) {
                          setCourseDetails(prev => ({
                            ...prev,
-                           tags: newTags,
+                           tags: [...prev.tags, currentValue],
                          }));
-                                       
-                         // Keep input showing what user typed
-                         setTagsInput(currentValue);
-                       }, 0);
+                       }
+                       setTagsInput('');
                      }
                    }}
                    onBlur={() => {
-                     // On blur, process final tag
-                     if (tagsInput.trim()) {
-                       const newTags = tagsInput
-                         .split(',')
-                         .map(tag => tag.trim())
-                         .filter(Boolean);
-                                     
+                     const currentValue = tagsInput.trim();
+                     if (currentValue && !courseDetails.tags.includes(currentValue)) {
                        setCourseDetails(prev => ({
                          ...prev,
-                         tags: [...prev.tags, ...newTags],
+                         tags: [...prev.tags, currentValue],
                        }));
-                       setTagsInput('');
                      }
+                     setTagsInput('');
                    }}
                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                    placeholder="Type tags and press comma to add them"
