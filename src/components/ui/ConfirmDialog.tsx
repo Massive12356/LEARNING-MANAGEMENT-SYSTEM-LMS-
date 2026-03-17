@@ -7,11 +7,12 @@ interface ConfirmDialogProps {
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  message: string;
+  message: string | React.ReactNode;
   confirmText?: string;
   cancelText?: string;
   confirmVariant?: 'primary' | 'secondary' | 'danger';
   confirmDisabled?: boolean;
+  isConfirming?: boolean;
 }
 
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
@@ -24,6 +25,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   cancelText = 'Cancel',
   confirmVariant = 'primary',
   confirmDisabled = false,
+  isConfirming = false,
 }) => {
   const handleConfirm = () => {
     onConfirm();
@@ -38,16 +40,20 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         
         <div className="flex justify-end space-x-3 pt-4">
           <Button 
+            type="button"
             variant="outline" 
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium"
+            disabled={isConfirming}
           >
             {cancelText}
           </Button>
           <Button 
+            type="button"
             variant={confirmVariant} 
             onClick={handleConfirm} 
-            disabled={confirmDisabled}
+            disabled={confirmDisabled || isConfirming}
+            loading={isConfirming}
             className="px-4 py-2 text-sm font-medium"
           >
             {confirmText}

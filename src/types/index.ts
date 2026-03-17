@@ -160,7 +160,7 @@ export interface Quiz {
 export interface QuizQuestion {
   id: string;
   question: string;
-  type: 'multiple-choice' | 'short-text';
+  type: 'multiple-choice' | 'easy';
   options?: string[];
   correctAnswers: string[];
   explanation?: string;

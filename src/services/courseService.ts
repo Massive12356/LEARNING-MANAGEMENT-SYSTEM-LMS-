@@ -13,6 +13,8 @@ import {
 
 class CourseService {
   //service functions for handling posting courses
+
+  // create course Details
   async createCourseDetials(formData: FormData) {
     try {
       const response = await apiClient.post(`/create/program/description`, formData, {
@@ -31,6 +33,23 @@ class CourseService {
     }
   }
 
+  // Update createCourseDetails
+  async updateCourseDetails(formData: FormData, courseDetailsId: string) {
+    try {
+      const response = await apiClient.patch(`/description/${courseDetailsId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log('[CourseService] RESPONSE FROM SERVER:', response.data);
+      return response.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log('[CourseService] ERROR FROM SERVER:', err.response?.data?.message || err.message);
+      throw new Error(err.response?.data?.message || err.message);
+    }
+  }
+  // Create Modules
   async createModules(formData: {}, courseId: string) {
     try {
       const response = await apiClient.post(`/create/course/${courseId}/module`, formData);
@@ -46,6 +65,7 @@ class CourseService {
     }
   }
 
+  // Get Created Modules
   async getCreatedModules(courseId: string) {
     try {
       const response = await apiClient.get(`/modules/${courseId}`);
@@ -61,6 +81,8 @@ class CourseService {
     }
   }
 
+  
+  // Create Course Content
   async createCourseContent(formData: FormData, id: string) {
     try {
       const response = await apiClient.post(`/create/course/${id}/content`, formData, {
@@ -80,6 +102,7 @@ class CourseService {
     }
   }
 
+  // Edit Course Content  
   async editCourseContent(formData: FormData, id: string) {
     try {
       const response = await apiClient.patch(`/content/${id}`, formData, {
@@ -99,9 +122,26 @@ class CourseService {
     }
   }
 
+  // Course Settings
   async courseSettings(courseId: string, payload: courseSettings) {
     try {
       const response = await apiClient.post(`/create/course/${courseId}/settings`, payload);
+      console.log('[courseSettings] SUCCESS RESPONSE FROM SERVER', response?.data);
+      return response?.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.log(
+        '[courseService] ERROR RESPONSE FROM SERVER',
+        err?.response?.data?.message || err?.message
+      );
+      throw new Error(err?.message || err?.response?.data?.message);
+    }
+  }
+
+  // update course settings 
+  async updateCourseSettings(settingsId: string, payload: courseSettings) {
+    try {
+      const response = await apiClient.patch(`/settings/${settingsId}`, payload);
       console.log('[courseSettings] SUCCESS RESPONSE FROM SERVER', response?.data);
       return response?.data;
     } catch (error) {
@@ -474,7 +514,9 @@ class CourseService {
       throw new Error(err?.message ?? err?.response?.data?.message);
     }
   }
-
+     
+   
+  // get course details by Id
   async getCourseById(courseId: string) {
     try {
       const response = await apiClient.get(`/course/general/${courseId}`);
@@ -641,5 +683,6 @@ class CourseService {
       throw new Error(err?.message ?? err?.response?.data?.message);
     }
   }
+
 }
 export const courseService = new CourseService();

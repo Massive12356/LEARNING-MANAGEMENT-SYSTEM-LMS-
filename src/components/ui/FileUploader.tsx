@@ -152,16 +152,17 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           await (onUpload as (files: UploadResult[]) => Promise<void> | void)(uploadResults);
         } else {
           // Convert files to UploadResult format without actually uploading
-          // Convert files to UploadResult format without actually uploading
           const mockResults: UploadResult[] = validFiles.map(file => ({
             id: `temp_${Date.now()}_${Math.random()}`,
-            url: URL.createObjectURL(file),
-            publicUrl: URL.createObjectURL(file),
-            filename: file.name,
-            originalName: file.name,
+            url: '', // Don't create blob URL - not needed for display
+            publicUrl: '',
+            filename: file.name, // Use actual filename
+            originalName: file.name, // Use actual filename
             size: file.size,
             type: file.type,
-            originalFile: file, // <-- REQUIRED FIX
+            metadata: {
+              originalFileObject: file, // Store reference to actual File
+            },
           }));
 
           await(onUpload as (files: UploadResult[]) => Promise<void> | void)(mockResults);
@@ -289,17 +290,26 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         <div className="space-y-2">
           <h4 className="text-sm font-medium text-gray-900 dark:text-white">Uploaded Files</h4>
           {uploadedFiles.map((uploadedFile, index) => {
-            const Icon = getFileIcon(uploadedFile.file);
+            // Check if this is a File object (legacy mode) or UploadResult (modern mode)
+            const isLegacyMode = 'file' in uploadedFile && uploadedFile.file instanceof File;
+            const fileName = isLegacyMode 
+              ? uploadedFile.file.name 
+              : (uploadedFile as any).originalName || (uploadedFile as any).filename || 'Unknown file';
+            const fileSize = isLegacyMode 
+              ? formatFileSize(uploadedFile.file.size)
+              : formatFileSize((uploadedFile as any).size || 0);
+            const Icon = isLegacyMode ? getFileIcon(uploadedFile.file) : DocumentTextIcon;
+            
             return (
               <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                 <div className="flex items-center space-x-3">
                   <Icon className="h-5 w-5 text-gray-400" />
                   <div>
                     <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      {uploadedFile.file.name}
+                      {fileName}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {formatFileSize(uploadedFile.file.size)}
+                      {fileSize}
                     </p>
                   </div>
                 </div>

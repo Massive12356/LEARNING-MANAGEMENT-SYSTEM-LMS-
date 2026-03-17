@@ -31,6 +31,7 @@ import { CertificatePreviewPage } from '../pages/student/CertificatePreviewPage'
 import { TeacherDashboard } from '../pages/teacher/TeacherDashboard';
 import { TeacherTodoPage } from '../pages/teacher/TeacherTodoPage';
 import { CourseBuilder } from '../pages/teacher/CourseBuilder';
+import EditCourseWorkflow from '../pages/teacher/EditCourseWorkflow';
 import { CourseList as TeacherCourseList } from '../pages/teacher/CourseList';
 import CertificateManagement from '../pages/teacher/CertificateManagement';
 import { ProgramBuilder } from '../pages/teacher/ProgramBuilder';
@@ -204,6 +205,7 @@ export const AppRoutes: React.FC = () => {
                 <Route path="todo" element={<TeacherTodoPage />} />
                 <Route path="courses" element={<TeacherCourseList />} />
                 <Route path="courses/new" element={<CourseBuilder />} />
+                <Route path="courses/:courseId/edit" element={<EditCourseWorkflow />} />
                 <Route path="certificates" element={<CertificateManagement />} />
                 <Route path="notifications" element={<NotificationManagement />} />
                 <Route path="notifications/list" element={<NotificationList />} />

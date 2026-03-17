@@ -282,6 +282,9 @@ export function CourseBuilder() {
   const initialState = getInitialState();
   const [courseData, setCourseData] = useState(initialState.courseData);
   const [courseDetails, setCourseDetails] = useState(initialState.courseDetails);
+  
+  // Separate state for tags input to allow free typing
+  const [tagsInput, setTagsInput] = useState('');
   const [moduleData, setModuleData] = useState<any[]>(initialState.moduleData);
   const [lessonData, setLessonData] = useState(initialState.lessonData);
   
@@ -1380,19 +1383,71 @@ export function CourseBuilder() {
               </label>
               <input
                 type="text"
-                value={courseDetails.tags.join(', ')}
-                onChange={e =>
-                  setCourseDetails(prev => ({
-                    ...prev,
-                    tags: e.target.value
+                value={tagsInput}
+                onChange={e => {
+                  setTagsInput(e.target.value);
+                }}
+                onKeyDown={e => {
+                  if (e.key === ',') {
+                    // Allow comma to be typed first
+                    setTimeout(() => {
+                      const currentValue = tagsInput + ',';
+                      const newTags = currentValue
+                        .split(',')
+                        .map(tag => tag.trim())
+                        .filter(Boolean);
+                      
+                      setCourseDetails(prev => ({
+                        ...prev,
+                        tags: newTags,
+                      }));
+                      
+                      // Keep input showing what user typed
+                      setTagsInput(currentValue);
+                    }, 0);
+                  }
+                }}
+                onBlur={() => {
+                  // On blur, process final tag
+                  if (tagsInput.trim()) {
+                    const newTags = tagsInput
                       .split(',')
                       .map(tag => tag.trim())
-                      .filter(Boolean),
-                  }))
-                }
+                      .filter(Boolean);
+                    
+                    setCourseDetails(prev => ({
+                      ...prev,
+                      tags: [...prev.tags, ...newTags],
+                    }));
+                    setTagsInput('');
+                  }
+                }}
                 className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="react, javascript, frontend"
+                placeholder="Type tags and press comma to add them"
               />
+              {/* Display current tags */}
+              {courseDetails.tags && courseDetails.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {courseDetails.tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newTags = courseDetails.tags.filter((_, i) => i !== index);
+                          setCourseDetails(prev => ({ ...prev, tags: newTags }));
+                        }}
+                        className="ml-1 hover:text-blue-600 dark:hover:text-blue-400"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="space-y-1">
@@ -2281,8 +2336,8 @@ export function CourseBuilder() {
                     ...prev,
                     content: {
                       ...prev.content,
-                      pdfUrl: uploadResults[0]?.url || '',
-                      pdfUpload: uploadResults[0]?.originalFile || null,
+                      pdfUrl: uploadResults[0]?.originalName || '', // Use filename, not blob URL
+                      pdfUpload: uploadResults[0]?.metadata?.originalFileObject || null, // Get File from metadata
                     },
                   }));
                 }}

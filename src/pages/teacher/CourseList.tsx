@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { mockApi } from '../../services/mockApi';
 import { organizationService } from '../../services/organizationService';
 import { Course, CourseListItem, CourseResponse, Organization } from '../../types';
@@ -33,6 +34,11 @@ export function CourseList() {
     'all' | 'live' | 'draft' >('all');
   const [sortBy, setSortBy] = useState<'title' | 'created' | 'updated'>('updated');
   const [organization, setOrganization] = useState<Organization | null>(null);
+  
+  // Delete confirmation state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<CourseListItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadCourses();
@@ -54,7 +60,7 @@ export function CourseList() {
       const response: CourseResponse[] = await courseService.loadAllCourses();
 
       const mappedCourses: CourseListItem[] = response.map(item => ({
-        id: item.course.id,
+        editId: item.id,
         title: item.course.title,
         description: item.course.description,
         tags: item.course.tags,
@@ -132,18 +138,42 @@ export function CourseList() {
   //   }
   // };
 
-  const handleDeleteCourse = async (courseId: string) => {
-    if (!confirm('Are you sure you want to delete this course? This action cannot be undone.')) {
+  const handleDeleteCourse = async (course: CourseListItem) => {
+    // Show confirmation modal with full course object
+    setCourseToDelete(course);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    console.log('[CourseList] handleConfirmDelete called, courseToDelete:', courseToDelete);
+    
+    if (!courseToDelete) {
+      console.error('[CourseList] No courseToDelete!');
       return;
     }
 
+    console.log('[CourseList] Starting delete for course ID:', courseToDelete.editId);
+    setIsDeleting(true);
+    
     try {
-      await courseService.deleteCourse(courseId);
+      console.log('[CourseList] Calling courseService.deleteCourse...');
+      await courseService.deleteCourse(courseToDelete.editId);
+      console.log('[CourseList] Course deleted successfully!');
       toast.success('Course deleted successfully');
       loadCourses();
-    } catch (error:any) {
-      toast.error( error?.message ?? 'Failed to delete course');
+      setShowDeleteConfirm(false);
+      setCourseToDelete(null);
+    } catch (error: any) {
+      console.error('[CourseList] Delete failed:', error);
+      toast.error(error?.message ?? 'Failed to delete course');
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setCourseToDelete(null);
   };
 
   return (
@@ -262,7 +292,8 @@ export function CourseList() {
       ) : filteredCourses?.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCourses?.map(course => (
-            <Card key={course.id} className="group hover:shadow-lg transition-shadow">
+            console.log("course ID:", course.editId),
+            <Card key={course.editId} className="group hover:shadow-lg transition-shadow">
               <div className="aspect-w-16 aspect-h-9">
                 <img
                   src={course.coverImage || 'https://picsum.photos/400/225'}
@@ -327,13 +358,13 @@ export function CourseList() {
                 {/* Actions */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <Link to={`/student/course/${course.id}`}>
+                    {/* <Link to={`/student/course/${course.editId}`}>
                       <Button variant="outline" size="sm">
                         <EyeIcon className="h-4 w-4 mr-1" />
                         Preview
                       </Button>
-                    </Link>
-                    <Link to={`/teacher/courses/${course.id}/edit`}>
+                    </Link> */}
+                    <Link to={`/teacher/courses/${course.editId}/edit`}>
                       <Button size="sm">
                         <PencilIcon className="h-4 w-4 mr-1" />
                         Edit
@@ -343,14 +374,14 @@ export function CourseList() {
 
                   <div className="flex items-center space-x-1">
                     {/* <button
-                      onClick={() => handleDuplicateCourse(course.id)}
+                      onClick={() => handleDuplicateCourse(course.editId)}
                       className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                       title="Duplicate course"
                     >
                       <DocumentDuplicateIcon className="h-4 w-4" />
                     </button> */}
                     <button
-                      onClick={() => handleDeleteCourse(course.id)}
+                      onClick={() => handleDeleteCourse(course)}
                       className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                       title="Delete course"
                     >
@@ -421,6 +452,32 @@ export function CourseList() {
           </CardContent>
         </Card>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        title="Delete Course"
+        message={
+          courseToDelete ? (
+            <>
+              Are you sure you want to delete the course{' '}
+              <strong className="font-semibold text-gray-900 dark:text-white">
+                "{courseToDelete.title}"
+              </strong>
+              ? This action cannot be undone and all modules, lessons, and student progress will be permanently removed.
+            </>
+          ) : (
+            'Are you sure you want to delete this course? This action cannot be undone and all modules, lessons, and student progress will be permanently removed.'
+          )
+        }
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmVariant="danger"
+        confirmDisabled={isDeleting}
+        isConfirming={isDeleting}
+      />
     </div>
   );
 }
