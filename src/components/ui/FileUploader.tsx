@@ -315,17 +315,17 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                 </div>
                 
                 <div className="flex items-center space-x-2">
-                  {uploadedFile.progress !== undefined && uploadedFile.progress < 100 && (
+                  {(uploadedFile as any).progress !== undefined && (uploadedFile as any).progress < 100 && (
                     <div className="w-20 bg-gray-200 rounded-full h-2">
                       <div 
                         className="bg-blue-600 h-2 rounded-full transition-all" 
-                        style={{ width: `${uploadedFile.progress}%` }}
+                        style={{ width: `${(uploadedFile as any).progress}%` }}
                       />
                     </div>
                   )}
                   
-                  {uploadedFile.error && (
-                    <span className="text-xs text-red-600">{uploadedFile.error}</span>
+                  {(uploadedFile as any).error && (
+                    <span className="text-xs text-red-600">{(uploadedFile as any).error}</span>
                   )}
                   
                   {onRemove && (

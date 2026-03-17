@@ -1621,7 +1621,7 @@ const handleUpdateSettings = async () => {
                                           (lesson as any).videoDuration !== undefined && (
                                             <>
                                               <span className="font-medium text-black">•</span>
-                                              <span>{Math.ceil((lesson as any).videoDuration / 60)}min</span>
+                                              <span>{(lesson as any).videoDuration}min</span>
                                             </>
                                           )}
                                         {(lesson as any).isRequired && (

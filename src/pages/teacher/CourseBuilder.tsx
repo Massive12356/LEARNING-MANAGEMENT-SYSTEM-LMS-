@@ -285,7 +285,11 @@ export function CourseBuilder() {
   
   // Separate state for tags input to allow free typing
   const [tagsInput, setTagsInput] = useState('');
-  const [moduleData, setModuleData] = useState<any[]>(initialState.moduleData);
+  const [moduleData, setModuleData] = useState<{ title: string; description: string; moduleNumber: string }>({
+    title: '',
+    description: '',
+    moduleNumber: '',
+  });
   const [lessonData, setLessonData] = useState(initialState.lessonData);
   
   // Debug lessonData changes
@@ -365,6 +369,52 @@ export function CourseBuilder() {
     } catch (error: any) {
       console.log(error?.message || 'Failed to post details');
       toast.error(error?.message || 'Failed to create course details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateCourseDetails = async () => {
+    if (!selectCourseId) {
+      toast.error('No course ID found. Please save course details first.');
+      return;
+    }
+
+    if (!courseDetails.courseTitle.trim()) {
+      toast.error('Course title is required');
+      return;
+    }
+
+    // prepare course data to send backend
+    const payload = new FormData();
+    payload.append('courseTitle', courseDetails.courseTitle);
+    payload.append('description', courseDetails.description);
+    
+    // Only append image if it's a new file (File object), not if it's a string URL
+    if (courseDetails.images instanceof File) {
+      payload.append('images', courseDetails.images);
+    }
+
+    courseDetails.tags.forEach(tag => {
+      payload.append('tags', tag);
+    });
+
+    try {
+      setLoading(true);
+      const response = await courseService.updateCourseDetails(payload, selectCourseId);
+      toast.success('Course Details updated successfully');
+      console.log('UPDATE COURSE RAW RESPONSE:', response);
+
+      // Update courseData with details from courseDetails
+      setCourseData(prev => ({
+        ...prev,
+        title: courseDetails.courseTitle,
+        description: courseDetails.description,
+        tags: [...courseDetails.tags],
+      }));
+    } catch (error: any) {
+      console.log(error?.message || 'Failed to update details');
+      toast.error(error?.message || 'Failed to update course details');
     } finally {
       setLoading(false);
     }
@@ -1459,9 +1509,10 @@ export function CourseBuilder() {
                 onUpload={files => {
                   if (files && files.length > 0) {
                     const file = files[0];
-                    const originalFile = file?.originalFile || file?.file || null;
+                    // Get the actual File object from metadata (modern mode) or use file directly (legacy)
+                    const originalFile = file?.metadata?.originalFileObject || file;
 
-                    if (originalFile) {
+                    if (originalFile instanceof File) {
                       // Update your course details state
                       setCourseDetails(prev => ({
                         ...prev,
@@ -1477,10 +1528,20 @@ export function CourseBuilder() {
               />
             </div>
 
-            <div className="flex justify-end">
-              <Button onClick={handleSaveCourseDetails} loading={loading}>
-                Save Course Details
-              </Button>
+            <div className="flex justify-end space-x-3">
+              {selectCourseId ? (
+                <Button 
+                  onClick={handleUpdateCourseDetails} 
+                  loading={loading}
+                  variant="primary"
+                >
+                  Update Course Details
+                </Button>
+              ) : (
+                <Button onClick={handleSaveCourseDetails} loading={loading}>
+                  Save Course Details
+                </Button>
+              )}
             </div>
           </div>
         );
@@ -1591,7 +1652,7 @@ export function CourseBuilder() {
                                         lesson?.videoDuration !== undefined && (
                                           <>
                                             <span className="font-medium text-black">•</span>
-                                            <span>{Math.ceil(lesson.videoDuration / 60)}min</span>
+                                            <span>{lesson.videoDuration}min</span>
                                           </>
                                         )}
                                       {lesson.isRequired && (
@@ -1886,7 +1947,7 @@ export function CourseBuilder() {
                                               <>
                                                 <span className="font-medium text-black">•</span>
                                                 <span>
-                                                  {Math.ceil(lesson?.videoDuration / 60)}min
+                                                  {lesson?.videoDuration}min
                                                 </span>
                                               </>
                                             )}
@@ -3220,7 +3281,7 @@ export function CourseBuilder() {
               onClick={() => {
                 setShowModuleModal(false);
                 setEditingModule(null);
-                setModuleData({ title: '', description: '' });
+                setModuleData({ title: '', description: '', moduleNumber: '' });
               }}
             >
               Cancel
