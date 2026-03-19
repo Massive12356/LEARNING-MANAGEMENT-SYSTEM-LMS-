@@ -213,10 +213,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
         return [
           { name: 'Dashboard', href: '/admin/dashboard', icon: HomeIcon },
           { name: 'Users', href: '/admin/users', icon: UserGroupIcon },
-          { name: 'Courses', href: '/admin/courses', icon: BookOpenIcon },
-          { name: 'Programs', href: '/admin/programs', icon: AcademicCapIcon },
+          // { name: 'Courses', href: '/admin/courses', icon: BookOpenIcon },
+          // { name: 'Programs', href: '/admin/programs', icon: AcademicCapIcon },
           { name: 'Organization', href: '/admin/organization', icon: BuildingOfficeIcon },
-          { name: 'Email Templates', href: '/admin/email-templates', icon: PencilSquareIcon },
+          // { name: 'Email Templates', href: '/admin/email-templates', icon: PencilSquareIcon },
           { name: 'Notifications', href: '/admin/notifications', icon: BellIcon },
           { name: 'Reports', href: '/admin/reports', icon: PresentationChartLineIcon },
           { name: 'Settings', href: '/admin/settings', icon: CogIcon },
